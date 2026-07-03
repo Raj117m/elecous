@@ -1,0 +1,42 @@
+# Behavioural reasoning vocabulary (spec 5.7). Chains are composed from
+# these config-declared consequences — configuration, never hardcoded
+# science. Each phenomenon:direction maps to an observable human consequence;
+# each category maps to the need it serves. A mechanism's behavioural chain
+# is: world change -> human consequence -> need -> category demand.
+
+phenomenon_consequences:
+  thermal_stress:up: "outdoor heat discomfort rises"
+  thermal_stress:down: "cooler conditions reduce heat discomfort"
+  cold_stress:up: "milder cold reduces indoor confinement"
+  cold_stress:down: "cold discomfort drives people indoors"
+  rainfall_intensity:up: "wet conditions push activity indoors and demand rain protection"
+  rainfall_intensity:down: "dry conditions favour outdoor activity"
+  wind_intensity:up: "storm conditions raise damage and outage risk"
+  air_pollution:up: "poor air quality discourages outdoor exposure"
+  air_pollution:down: "clean air favours outdoor activity"
+  weather_hazard:up: "official hazard warnings raise preparedness behaviour"
+  seismic_activity:up: "seismic events raise emergency preparedness"
+  public_attention:up: "public attention to the activity grows"
+  media_attention:up: "news coverage amplifies awareness"
+  calendar_event:up: "holidays free time for leisure activity"
+  calendar_proximity:down: "an approaching holiday triggers preparation"
+  energy_demand:up: "electricity strain signals intensive climate control"
+  economic_growth:up: "economic expansion supports discretionary spending"
+  economic_growth:down: "economic caution suppresses discretionary spending"
+  price_pressure:up: "rising prices shift demand toward budget substitutes"
+  labor_stress:up: "employment stress suppresses big-ticket purchases"
+
+category_needs:
+  cooling: "staying cool"
+  heating: "staying warm"
+  climate_control: "indoor climate comfort"
+  rain_protection: "staying dry"
+  sun_protection: "sun exposure protection"
+  outdoor_protection: "outdoor nuisance protection"
+  outdoor_recreation: "outdoor leisure"
+  camping_equipment: "camping trips"
+  outdoor_cooking: "outdoor cooking"
+  winter_equipment: "winter readiness"
+  emergency_power: "backup power resilience"
+  indoor_recreation: "indoor entertainment"
+  seasonal_food: "seasonal refreshment"

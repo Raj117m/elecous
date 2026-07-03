@@ -22,7 +22,11 @@
       "Bash(.venv/bin/pytest elecous/tests/test_phase4_environment.py -q -k \"not network\")",
       "Bash(.venv/bin/pytest elecous/tests/test_phase4_environment.py::test_pattern_miner_finds_lifted_combinations -q)",
       "Bash(.venv/bin/pytest elecous/tests/test_phase4_environment.py -q)",
-      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 3+4: Demand Intelligence Engine and Environmental Intelligence Engine — baselines, spike detection, episodes, controls; signal extraction, pattern mining, factors, interactions, world state, world conditions *)"
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 3+4: Demand Intelligence Engine and Environmental Intelligence Engine — baselines, spike detection, episodes, controls; signal extraction, pattern mining, factors, interactions, world state, world conditions *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase5_mechanisms.py -q)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase5_mechanisms.py::test_confidence_blend_and_reputation -q)",
+      "Bash(.venv/bin/python -c \"import elecous.mechanisms.engine\")",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 5: Mechanism Intelligence Engine — versioned mechanism store, behavioural reasoning, control comparison, hierarchy, interactions, competitions, business value *)"
     ]
   }
 }
