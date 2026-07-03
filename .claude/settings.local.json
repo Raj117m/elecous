@@ -16,7 +16,13 @@
       "Bash(.venv/bin/pytest elecous/tests/test_phase2_observation.py -q)",
       "Bash(.venv/bin/pytest elecous/tests/test_phase2_observation.py::test_wikimedia_pageviews_live_collection -q)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://date.nager.at/api/v3/PublicHolidays/2026/IN\")",
-      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 2: Observation Network — source registry, 10 real public-data connectors, validators, semantic normalization, dedup/compression store, health scoring, sandbox, gap engine *)"
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 2: Observation Network — source registry, 10 real public-data connectors, validators, semantic normalization, dedup/compression store, health scoring, sandbox, gap engine *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase3_demand.py -q)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"https://api.gdeltproject.org/api/v2/doc/doc?query=%22air%20conditioner%22&mode=timelinevol&format=json&startdatetime=20260201000000&enddatetime=20260703000000\")",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase4_environment.py -q -k \"not network\")",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase4_environment.py::test_pattern_miner_finds_lifted_combinations -q)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase4_environment.py -q)",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 3+4: Demand Intelligence Engine and Environmental Intelligence Engine — baselines, spike detection, episodes, controls; signal extraction, pattern mining, factors, interactions, world state, world conditions *)"
     ]
   }
 }

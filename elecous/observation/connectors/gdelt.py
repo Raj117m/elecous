@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from elecous.common import timeutil
+from elecous.common.errors import ConnectorError
 from elecous.observation.connectors.base import CollectionResult, Connector
 
 URL = "https://api.gdeltproject.org/api/v2/doc/doc"
@@ -19,8 +20,20 @@ URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 class GdeltMediaVolumeConnector(Connector):
     parser_id = "gdelt_timelinevol@1"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # GDELT asks for at most one request every ~5 seconds per IP.
+        self.http.per_host_interval = max(self.http.per_host_interval, 6.0)
+
     def collect(self, mode: str = "live", since: datetime | None = None) -> CollectionResult:
-        themes = self.config.load_file("entities.yaml").get("themes", [])
+        entities_config = self.config.load_file("entities.yaml")
+        themes = list(entities_config.get("themes", []))
+        # Product topics are also observed in media volume: news mentions of
+        # a product category are an independent demand signal (spec 3.3
+        # "Discussion Volume") from a different provider than pageviews.
+        if self.params.get("include_topics", True):
+            for topic in entities_config.get("topics", []):
+                themes.append({"entity": topic["entity"], "query": f'"{topic["entity"].lower()}"'})
         observations = []
         schema_hash = None
         raw_count = 0
@@ -30,11 +43,23 @@ class GdeltMediaVolumeConnector(Connector):
             span = {"startdatetime": start.strftime("%Y%m%d%H%M%S"), "enddatetime": now.strftime("%Y%m%d%H%M%S")}
         else:
             span = {"timespan": self.params.get("timespan", "7d")}
+        failures = 0
         for theme in themes:
-            payload = self.http.get_json(
-                URL,
-                params={"query": theme["query"], "mode": "timelinevol", "format": "json", **span},
-            )
+            try:
+                payload = self.http.get_json(
+                    URL,
+                    params={"query": theme["query"], "mode": "timelinevol", "format": "json", **span},
+                )
+            except ConnectorError:
+                # Partial collection beats total failure; the missing theme
+                # is retried on the next scheduled run.
+                failures += 1
+                if failures >= len(themes):
+                    raise
+                continue
+            if payload is None or not isinstance(payload, dict):
+                failures += 1
+                continue
             schema_hash = self.structure_hash(payload)
             timeline = (payload.get("timeline") or [{}])[0].get("data", [])
             raw_count += len(timeline)

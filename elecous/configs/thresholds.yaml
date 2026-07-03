@@ -1,0 +1,62 @@
+# Scientific thresholds (spec 10.20). These are *starting* values; engines
+# that learn (windows, weights) persist learned values in their databases and
+# only fall back here before enough evidence exists. Nothing here is a
+# hardcoded scientific assumption inside code.
+
+demand:
+  # Eligibility (spec 3.5): research begins only with stable history.
+  min_history_days: 42
+  min_observations: 30
+  max_gap_days: 7
+  # Baseline (spec 3.6): trailing robust window per entity+signal.
+  baseline_window_days: 28
+  # Abnormal acceleration ladder (spec 3.7), in robust z-score units
+  # relative to the entity's own learned baseline.
+  stage_z:
+    small_growth: 1.0
+    expected_growth: 2.0
+    acceleration: 3.0
+    abnormal_acceleration: 4.0
+  # Demand Evidence (spec 3.8): score in [0,100]; spike threshold.
+  evidence_threshold: 60
+  # Default observation window (spec 3.10) until a category learns its own.
+  default_window_days: 14
+  # False spike rules (spec 3.11).
+  false_spike:
+    max_single_day_multiple: 50      # >50x in one day = platform/data glitch
+    max_missing_share: 0.34          # too many gaps inside the window
+    min_signals_agreeing: 2          # governance 3.20: multiple signals agree
+    dominance_share: 0.85            # one signal carrying >85% of evidence
+  # Research confidence floor for an episode to train mechanisms (3.16).
+  research_confidence_floor: 0.6
+
+environment:
+  # Signal discovery (spec 4.5): how far back the pre-episode search reaches.
+  lookback_days: 30
+  # A signal is "changed" when |robust z| exceeds this before the episode.
+  change_z: 1.5
+  # Pattern mining (4.9): a combination must appear before at least this
+  # share of episodes vs its base rate in ordinary periods.
+  min_support_episodes: 3
+  min_lift: 1.8
+  max_signals_per_factor: 5
+
+mechanisms:
+  min_supporting_episodes: 3
+  min_confidence_experimental: 0.35
+  min_confidence_validated: 0.55
+  min_confidence_trusted: 0.7
+
+validation:
+  historical_min_precision: 0.5
+  calibration_bins: 10
+  concept_drift_drop: 0.2           # recent vs historical accuracy drop
+  revalidation_days:
+    trusted: 30
+    validated: 14
+    experimental: 7
+
+prediction:
+  match_threshold: 0.6              # world-state/mechanism similarity gate
+  activation_full: 0.85
+  opportunity_expiry_days: 21
