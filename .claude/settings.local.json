@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c \"import pdfplumber; print\\('ok'\\)\")",
+      "Read(//tmp/**)",
+      "Bash(sw_vers)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python -c \"import duckdb, requests, yaml, fastapi, numpy, psutil; print\\('deps ok', duckdb.__version__\\)\")",
+      "Bash(read d *)",
+      "Bash(touch __TRACKED_VAR__/__init__.py)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase1_infrastructure.py -q)",
+      "Bash(git add *)",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 1: infrastructure foundation — config, logging, event bus, DuckDB manager, storage tiers, scheduler, observation budget, constitution guards, test framework *)"
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elecous"
+version = "1.0.0"
+description = "ELECOUS — Scientific Demand Intelligence Platform. Observes the public world, discovers and validates demand mechanisms, and predicts demand opportunities with full provenance."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+dependencies = [
+    "duckdb>=1.0",
+    "requests>=2.31",
+    "pyyaml>=6.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "numpy>=1.26",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+elecous = "elecous.scripts.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["elecous*"]
+exclude = ["elecous.data*", "elecous.docs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["elecous/tests"]
+markers = [
+    "network: tests that fetch real public data over the network (Real Data Rule: tests never fabricate data; they are skipped when offline)",
+    "slow: long-running tests (historical replays)",
+]

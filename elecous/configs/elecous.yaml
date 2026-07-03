@@ -1,0 +1,99 @@
+# ELECOUS root configuration (spec 10.20). Nothing scientific is hardcoded.
+platform:
+  name: ELECOUS
+  version: "1.0.0"
+  timezone: UTC
+
+storage:
+  data_dir: data
+  databases_dir: databases
+  tiers:
+    hot: tiers/hot
+    warm: tiers/warm
+    cold: tiers/cold
+  # Observations older than this many days move from hot to warm (compressed
+  # parquet); warm older than warm_days moves to cold (zstd parquet).
+  hot_days: 30
+  warm_days: 365
+
+databases:
+  # One database per responsibility (spec 10.14).
+  domains:
+    - observations
+    - demand
+    - signals
+    - environment
+    - mechanisms
+    - knowledge
+    - predictions
+    - validation
+    - dashboard
+
+logging:
+  dir: logs
+  level: INFO
+  # Every subsystem writes an independent log (spec 10.21).
+  subsystems:
+    - observation
+    - demand
+    - signals
+    - environment
+    - mechanisms
+    - validation
+    - knowledge
+    - prediction
+    - dashboard
+    - expansion
+    - scheduler
+    - governance
+    - infrastructure
+    - supervisor
+
+scheduler:
+  tick_seconds: 5
+  # Dynamic observation budget (spec 2.8): units allocated per hour across
+  # observation capabilities, re-weighted by measured contribution.
+  observation_units_per_hour: 100
+  min_units_per_capability: 2
+  # Default cadence tiers (spec 2.7); the scheduler adapts them dynamically.
+  cadence:
+    high_minutes: 5
+    medium_minutes: 60
+    low_minutes: 1440
+    very_low_minutes: 10080
+
+resources:
+  # Resource Manager targets (spec 10.24): stay responsive on a MacBook.
+  max_cpu_percent: 60
+  max_memory_mb: 2048
+  pause_cpu_percent: 85
+  check_seconds: 30
+
+event_bus:
+  # Persistent event log for auditability; events also fan out in-process.
+  persist: true
+
+http:
+  user_agent: "ELECOUS/1.0 (scientific demand research; contact: rajdeep7az@gmail.com)"
+  timeout_seconds: 30
+  max_retries: 3
+  backoff_seconds: 2.0
+  # Global politeness floor between requests to the same host (seconds).
+  per_host_interval: 1.0
+
+dashboard:
+  host: 127.0.0.1
+  port: 8321
+  refresh_seconds: 30
+  notifications:
+    # Spec 9.25: notify only above scientific-importance thresholds.
+    opportunity_confidence: 0.8
+    mechanism_failure_drop: 0.25
+    knowledge_revision_major: true
+    observation_loss_critical: 0.5
+
+# API keys are optional; connectors requiring keys stay suspended until a key
+# is configured (Real Data Rule: we wait for real data, never invent it).
+credentials:
+  eia_api_key: ""
+  fred_api_key: ""
