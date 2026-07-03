@@ -101,9 +101,15 @@ class MechanismStore:
             raise KeyError(mechanism_id)
         version = int(current["version"]) + 1
         constitution.require_append_only(int(current["version"]), version)
+        from datetime import datetime
+
         row = dict(current)
         for key, value in updates.items():
-            row[key] = value if isinstance(value, (str, int, float, bool, type(None))) else json.dumps(value)
+            row[key] = (
+                value
+                if isinstance(value, (str, int, float, bool, datetime, type(None)))
+                else json.dumps(value, default=str)
+            )
         stability = json.loads(row["stability"]) if isinstance(row["stability"], str) else row["stability"]
         stability["revisions"] = stability.get("revisions", 0) + 1
         stability["age_days"] = (timeutil.utcnow() - timeutil.ensure_utc(current["created_at"])).days

@@ -26,7 +26,9 @@
       "Bash(.venv/bin/pytest elecous/tests/test_phase5_mechanisms.py -q)",
       "Bash(.venv/bin/pytest elecous/tests/test_phase5_mechanisms.py::test_confidence_blend_and_reputation -q)",
       "Bash(.venv/bin/python -c \"import elecous.mechanisms.engine\")",
-      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 5: Mechanism Intelligence Engine — versioned mechanism store, behavioural reasoning, control comparison, hierarchy, interactions, competitions, business value *)"
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 5: Mechanism Intelligence Engine — versioned mechanism store, behavioural reasoning, control comparison, hierarchy, interactions, competitions, business value *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase5_mechanisms.py::test_mechanism_versioning_and_promotion_ladder -q)",
+      "Bash(.venv/bin/python -c \"import elecous.mechanisms.engine; print\\('engine imports ok'\\)\")"
     ]
   }
 }
