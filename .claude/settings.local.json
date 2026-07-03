@@ -12,7 +12,11 @@
       "Bash(touch __TRACKED_VAR__/__init__.py)",
       "Bash(.venv/bin/pytest elecous/tests/test_phase1_infrastructure.py -q)",
       "Bash(git add *)",
-      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 1: infrastructure foundation — config, logging, event bus, DuckDB manager, storage tiers, scheduler, observation budget, constitution guards, test framework *)"
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 1: infrastructure foundation — config, logging, event bus, DuckDB manager, storage tiers, scheduler, observation budget, constitution guards, test framework *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase2_observation.py -q)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase2_observation.py::test_wikimedia_pageviews_live_collection -q)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://date.nager.at/api/v3/PublicHolidays/2026/IN\")",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 2: Observation Network — source registry, 10 real public-data connectors, validators, semantic normalization, dedup/compression store, health scoring, sandbox, gap engine *)"
     ]
   }
 }

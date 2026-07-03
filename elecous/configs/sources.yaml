@@ -1,0 +1,145 @@
+# Source Registry seeds (spec 2.5). ELECOUS never hardcodes providers.
+# status here is only the *initial* state; health/reliability/status evolve
+# from evidence in the registry database and are never reseeded.
+sources:
+  - source_id: open_meteo_weather
+    name: Open-Meteo Daily Weather
+    provider: Open-Meteo
+    category: environment
+    observation_capability: weather
+    license: "CC BY 4.0 (non-commercial use, attribution)"
+    access_method: official_api
+    update_frequency: hourly
+    countries: []
+    coverage: global
+    connector: elecous.observation.connectors.open_meteo.OpenMeteoWeatherConnector
+    connector_config: { past_days: 7, backfill_days: 730 }
+    status: active
+
+  - source_id: open_meteo_air_quality
+    name: Open-Meteo Air Quality (CAMS)
+    provider: Open-Meteo
+    category: environment
+    observation_capability: air_quality
+    license: "CC BY 4.0 (non-commercial use, attribution)"
+    access_method: official_api
+    update_frequency: hourly
+    countries: []
+    coverage: global
+    connector: elecous.observation.connectors.open_meteo.OpenMeteoAirQualityConnector
+    connector_config: { past_days: 5 }
+    status: active
+
+  - source_id: wikimedia_pageviews
+    name: Wikimedia Pageviews (per-article, human)
+    provider: Wikimedia Foundation
+    category: attention
+    observation_capability: public_attention
+    license: "CC0/public REST API"
+    access_method: official_api
+    update_frequency: daily
+    countries: []
+    coverage: global
+    connector: elecous.observation.connectors.wikimedia.WikimediaPageviewsConnector
+    connector_config: { project: en.wikipedia, past_days: 7, backfill_days: 730 }
+    status: active
+
+  - source_id: usgs_earthquakes
+    name: USGS FDSN Earthquake Events
+    provider: US Geological Survey
+    category: environment
+    observation_capability: geophysical
+    license: "US public domain"
+    access_method: official_api
+    update_frequency: hourly
+    countries: []
+    coverage: global
+    connector: elecous.observation.connectors.usgs.UsgsEarthquakeConnector
+    connector_config: { min_magnitude: 4.5, past_days: 2, backfill_days: 365 }
+    status: active
+
+  - source_id: nws_alerts
+    name: US National Weather Service Active Alerts
+    provider: NOAA / NWS
+    category: environment
+    observation_capability: weather_hazard
+    license: "US public domain"
+    access_method: official_api
+    update_frequency: hourly
+    countries: [US]
+    coverage: national
+    connector: elecous.observation.connectors.nws.NwsAlertsConnector
+    connector_config: {}
+    status: active
+
+  - source_id: gdelt_media
+    name: GDELT DOC 2.0 Media Volume
+    provider: The GDELT Project
+    category: media
+    observation_capability: media_attention
+    license: "Open (GDELT terms of use)"
+    access_method: official_api
+    update_frequency: daily
+    countries: []
+    coverage: global
+    connector: elecous.observation.connectors.gdelt.GdeltMediaVolumeConnector
+    connector_config: { timespan: 7d, backfill_days: 365 }
+    status: active
+
+  - source_id: nager_holidays
+    name: Nager.Date Public Holidays
+    provider: Nager.Date
+    category: calendar
+    observation_capability: calendar
+    license: "MIT"
+    access_method: official_api
+    update_frequency: daily
+    countries: [US, GB, DE, FR, ES, IN, JP, AU, CA]
+    coverage: multi_national
+    connector: elecous.observation.connectors.holidays.NagerHolidaysConnector
+    connector_config: {}
+    status: active
+
+  - source_id: worldbank_macro
+    name: World Bank Open Data (macro indicators)
+    provider: World Bank
+    category: economics
+    observation_capability: economics
+    license: "CC BY 4.0"
+    access_method: open_data
+    update_frequency: weekly
+    countries: [US, GB, DE, FR, ES, IN, JP, AU, CA]
+    coverage: multi_national
+    connector: elecous.observation.connectors.worldbank.WorldBankConnector
+    connector_config: {}
+    status: active
+
+  - source_id: eia_electricity
+    name: US EIA Daily Electricity Demand
+    provider: US Energy Information Administration
+    category: energy
+    observation_capability: energy_demand
+    license: "US public domain (free API key required)"
+    access_method: official_api
+    update_frequency: daily
+    countries: [US]
+    coverage: national
+    connector: elecous.observation.connectors.keyed.EiaElectricityConnector
+    connector_config: { regions: [US48], past_days: 7, backfill_days: 365 }
+    requires_credential: eia_api_key
+    status: active
+
+  - source_id: fred_series
+    name: FRED Economic Series
+    provider: Federal Reserve Bank of St. Louis
+    category: economics
+    observation_capability: economics
+    license: "FRED API terms (free API key required)"
+    access_method: official_api
+    update_frequency: daily
+    countries: [US]
+    coverage: national
+    connector: elecous.observation.connectors.keyed.FredSeriesConnector
+    connector_config: {}
+    requires_credential: fred_api_key
+    status: active

@@ -1,0 +1,54 @@
+# Semantic normalization (spec 2.13) and the shared phenomenon vocabulary
+# used by the Semantic Engine (spec 4.13). Boundaries are ascending upper
+# bounds; a value above the last boundary receives the highest level.
+levels:
+  temperature_max_c:
+    phenomenon: thermal_stress
+    boundaries: [0, 10, 20, 27, 32, 38]   # levels 0..6
+  temperature_min_c:
+    phenomenon: cold_stress
+    boundaries: [-15, -5, 0, 5, 12, 20]
+  precipitation_sum_mm:
+    phenomenon: rainfall_intensity
+    boundaries: [0.1, 2, 10, 25, 50]      # 0=dry .. 5=extreme
+  windspeed_max_kmh:
+    phenomenon: wind_intensity
+    boundaries: [12, 29, 50, 75, 103]     # beaufort-aligned bands
+  pm2_5_ugm3:
+    phenomenon: air_pollution
+    boundaries: [12, 35.4, 55.4, 150.4, 250.4]  # US AQI breakpoints
+  earthquake_magnitude:
+    phenomenon: seismic_activity
+    boundaries: [4.0, 5.0, 6.0, 7.0]
+  weather_alert_severity:
+    phenomenon: weather_hazard
+    boundaries: [1, 2, 3]                 # minor/moderate/severe/extreme
+
+phenomena:
+  temperature_max_c: thermal_stress
+  temperature_min_c: cold_stress
+  precipitation_sum_mm: rainfall_intensity
+  windspeed_max_kmh: wind_intensity
+  pm2_5_ugm3: air_pollution
+  earthquake_magnitude: seismic_activity
+  weather_alert_severity: weather_hazard
+  pageviews_daily: public_attention
+  media_volume_pct: media_attention
+  public_holiday: calendar_event
+  days_to_next_holiday: calendar_proximity
+  electricity_demand_mwh: energy_demand
+  gdp_growth_pct: economic_growth
+  inflation_pct: price_pressure
+  unemployment_pct: labor_stress
+
+# Provider vocabulary -> ELECOUS observation types (extended as the
+# Expansion Engine adds providers; never hardcoded in connectors).
+aliases:
+  heavy rain: precipitation_sum_mm
+  severe rain: precipitation_sum_mm
+  extreme rainfall: precipitation_sum_mm
+  storm activity: windspeed_max_kmh
+  high heat: temperature_max_c
+  extreme temperature: temperature_max_c
+  heatwave: temperature_max_c
+  record temperature: temperature_max_c

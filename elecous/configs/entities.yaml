@@ -1,0 +1,89 @@
+# The observed world (spec 10.20: regions/categories are configuration).
+#
+# locations: places whose environment ELECOUS observes (weather, air quality).
+# topics: product/category entities whose public attention ELECOUS observes
+#         via Wikipedia pageviews (real, public, licensed CC BY-SA metadata)
+#         and media volume via GDELT. Articles are real en.wikipedia titles.
+# themes: world phenomena tracked in media volume (GDELT).
+# countries: ISO codes for calendar/economic observation.
+
+locations:
+  - { name: "New York",     country: US, lat: 40.7128,  lon: -74.0060,  climate: humid_subtropical }
+  - { name: "Los Angeles",  country: US, lat: 34.0522,  lon: -118.2437, climate: mediterranean }
+  - { name: "Chicago",      country: US, lat: 41.8781,  lon: -87.6298,  climate: humid_continental }
+  - { name: "Houston",      country: US, lat: 29.7604,  lon: -95.3698,  climate: humid_subtropical }
+  - { name: "Phoenix",      country: US, lat: 33.4484,  lon: -112.0740, climate: hot_desert }
+  - { name: "London",       country: GB, lat: 51.5074,  lon: -0.1278,   climate: oceanic }
+  - { name: "Berlin",       country: DE, lat: 52.5200,  lon: 13.4050,   climate: oceanic }
+  - { name: "Paris",        country: FR, lat: 48.8566,  lon: 2.3522,    climate: oceanic }
+  - { name: "Madrid",       country: ES, lat: 40.4168,  lon: -3.7038,   climate: cold_semi_arid }
+  - { name: "Delhi",        country: IN, lat: 28.6139,  lon: 77.2090,   climate: humid_subtropical }
+  - { name: "Mumbai",       country: IN, lat: 19.0760,  lon: 72.8777,   climate: tropical }
+  - { name: "Tokyo",        country: JP, lat: 35.6762,  lon: 139.6503,  climate: humid_subtropical }
+  - { name: "Sydney",       country: AU, lat: -33.8688, lon: 151.2093,  climate: humid_subtropical }
+  - { name: "Toronto",      country: CA, lat: 43.6532,  lon: -79.3832,  climate: humid_continental }
+
+topics:
+  # entity: canonical ELECOUS entity name; article: en.wikipedia title;
+  # traits feed the Product Trait system (spec 5.12).
+  - { entity: "Air conditioner",   article: "Air conditioning",   category: "cooling",
+      traits: [cooling, home, summer, electrical] }
+  - { entity: "Portable fan",      article: "Fan (machine)",      category: "cooling",
+      traits: [cooling, portable, summer, electrical, budget] }
+  - { entity: "Evaporative cooler", article: "Evaporative cooler", category: "cooling",
+      traits: [cooling, portable, summer, electrical, dry_climate] }
+  - { entity: "Dehumidifier",      article: "Dehumidifier",       category: "climate_control",
+      traits: [humidity, home, electrical] }
+  - { entity: "Humidifier",        article: "Humidifier",         category: "climate_control",
+      traits: [humidity, home, winter, electrical] }
+  - { entity: "Space heater",      article: "Space heater",       category: "heating",
+      traits: [heating, portable, winter, electrical] }
+  - { entity: "Umbrella",          article: "Umbrella",           category: "rain_protection",
+      traits: [rain, portable, outdoor, budget] }
+  - { entity: "Raincoat",          article: "Raincoat",           category: "rain_protection",
+      traits: [rain, apparel, outdoor] }
+  - { entity: "Sunscreen",         article: "Sunscreen",          category: "sun_protection",
+      traits: [summer, outdoor, personal_care, consumable] }
+  - { entity: "Insect repellent",  article: "Insect repellent",   category: "outdoor_protection",
+      traits: [summer, outdoor, personal_care, consumable] }
+  - { entity: "Camping",           article: "Camping",            category: "outdoor_recreation",
+      traits: [outdoor, recreation, summer, travel] }
+  - { entity: "Tent",              article: "Tent",               category: "camping_equipment",
+      traits: [outdoor, camping, portable, shelter] }
+  - { entity: "Sleeping bag",      article: "Sleeping bag",       category: "camping_equipment",
+      traits: [outdoor, camping, portable] }
+  - { entity: "Portable stove",    article: "Portable stove",     category: "camping_equipment",
+      traits: [outdoor, camping, portable, cooking] }
+  - { entity: "Barbecue grill",    article: "Barbecue grill",     category: "outdoor_cooking",
+      traits: [outdoor, cooking, summer, social] }
+  - { entity: "Snow blower",       article: "Snow blower",        category: "winter_equipment",
+      traits: [winter, snow, outdoor, electrical] }
+  - { entity: "Electric generator", article: "Electric generator", category: "emergency_power",
+      traits: [emergency, electrical, outdoor, resilience] }
+  - { entity: "Board game",        article: "Board game",         category: "indoor_recreation",
+      traits: [indoor, recreation, social, family] }
+  - { entity: "Swimming pool",     article: "Swimming pool",      category: "outdoor_recreation",
+      traits: [outdoor, summer, recreation, cooling] }
+  - { entity: "Ice cream",         article: "Ice cream",          category: "seasonal_food",
+      traits: [summer, cooling, consumable, food] }
+
+themes:
+  # GDELT media-volume themes: real global news coverage share.
+  - { entity: "Heatwave",       query: "heatwave" }
+  - { entity: "Flooding",       query: "flooding" }
+  - { entity: "Wildfire",       query: "wildfire" }
+  - { entity: "Power outage",   query: "\"power outage\"" }
+  - { entity: "Cold wave",      query: "\"cold wave\"" }
+  - { entity: "Storm",          query: "storm damage" }
+  - { entity: "Drought",        query: "drought" }
+
+countries:
+  - US
+  - GB
+  - DE
+  - FR
+  - ES
+  - IN
+  - JP
+  - AU
+  - CA
