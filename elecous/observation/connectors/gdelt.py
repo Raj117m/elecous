@@ -39,7 +39,12 @@ class GdeltMediaVolumeConnector(Connector):
         raw_count = 0
         now = timeutil.utcnow()
         if mode == "backfill":
-            start = since or now - timedelta(days=int(self.params.get("backfill_days", 365)))
+            # See wikimedia.py's identical fix: `since` is a live-mode
+            # incremental optimization and must never gate backfill mode,
+            # or newly added entities silently get almost no real history
+            # because `since` reflects the source's most recent observation
+            # across every OTHER entity already collected.
+            start = now - timedelta(days=int(self.params.get("backfill_days", 365)))
             span = {"startdatetime": start.strftime("%Y%m%d%H%M%S"), "enddatetime": now.strftime("%Y%m%d%H%M%S")}
         else:
             span = {"timespan": self.params.get("timespan", "7d")}

@@ -31,7 +31,18 @@ class WikimediaPageviewsConnector(Connector):
         today = timeutil.utcnow().date()
         end = today - timedelta(days=1)  # yesterday is the last complete day
         if mode == "backfill":
-            start = (since or timeutil.days_ago(int(self.params.get("backfill_days", 730)))).date()
+            # Backfill means "get full historical depth," always — `since`
+            # reflects the *source's* most recent observation across every
+            # entity sharing this source_id, not this specific entity's
+            # history. Using it here silently truncated newly-added
+            # entities (which have no prior observations at all) down to
+            # whatever tiny window was left since the source's last run for
+            # OTHER entities, discovered when a 288-topic backfill produced
+            # only 271 total day-records instead of the expected tens of
+            # thousands. `since` is a live-mode incremental optimization
+            # only; backfill mode always requests its full configured depth
+            # and lets the store's dedup handle any overlap.
+            start = timeutil.days_ago(int(self.params.get("backfill_days", 730))).date()
         else:
             start = (since.date() + timedelta(days=1)) if since else end - timedelta(days=int(self.params.get("past_days", 7)))
         if start > end:

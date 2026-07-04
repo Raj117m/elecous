@@ -1,89 +1,2187 @@
-# The observed world (spec 10.20: regions/categories are configuration).
-#
-# locations: places whose environment ELECOUS observes (weather, air quality).
-# topics: product/category entities whose public attention ELECOUS observes
-#         via Wikipedia pageviews (real, public, licensed CC BY-SA metadata)
-#         and media volume via GDELT. Articles are real en.wikipedia titles.
-# themes: world phenomena tracked in media volume (GDELT).
-# countries: ISO codes for calendar/economic observation.
-
 locations:
-  - { name: "New York",     country: US, lat: 40.7128,  lon: -74.0060,  climate: humid_subtropical }
-  - { name: "Los Angeles",  country: US, lat: 34.0522,  lon: -118.2437, climate: mediterranean }
-  - { name: "Chicago",      country: US, lat: 41.8781,  lon: -87.6298,  climate: humid_continental }
-  - { name: "Houston",      country: US, lat: 29.7604,  lon: -95.3698,  climate: humid_subtropical }
-  - { name: "Phoenix",      country: US, lat: 33.4484,  lon: -112.0740, climate: hot_desert }
-  - { name: "London",       country: GB, lat: 51.5074,  lon: -0.1278,   climate: oceanic }
-  - { name: "Berlin",       country: DE, lat: 52.5200,  lon: 13.4050,   climate: oceanic }
-  - { name: "Paris",        country: FR, lat: 48.8566,  lon: 2.3522,    climate: oceanic }
-  - { name: "Madrid",       country: ES, lat: 40.4168,  lon: -3.7038,   climate: cold_semi_arid }
-  - { name: "Delhi",        country: IN, lat: 28.6139,  lon: 77.2090,   climate: humid_subtropical }
-  - { name: "Mumbai",       country: IN, lat: 19.0760,  lon: 72.8777,   climate: tropical }
-  - { name: "Tokyo",        country: JP, lat: 35.6762,  lon: 139.6503,  climate: humid_subtropical }
-  - { name: "Sydney",       country: AU, lat: -33.8688, lon: 151.2093,  climate: humid_subtropical }
-  - { name: "Toronto",      country: CA, lat: 43.6532,  lon: -79.3832,  climate: humid_continental }
-
+- name: New York
+  country: US
+  lat: 40.7128
+  lon: -74.006
+  climate: humid_subtropical
+- name: Los Angeles
+  country: US
+  lat: 34.0522
+  lon: -118.2437
+  climate: mediterranean
+- name: Chicago
+  country: US
+  lat: 41.8781
+  lon: -87.6298
+  climate: humid_continental
+- name: Houston
+  country: US
+  lat: 29.7604
+  lon: -95.3698
+  climate: humid_subtropical
+- name: Phoenix
+  country: US
+  lat: 33.4484
+  lon: -112.074
+  climate: hot_desert
+- name: London
+  country: GB
+  lat: 51.5074
+  lon: -0.1278
+  climate: oceanic
+- name: Berlin
+  country: DE
+  lat: 52.52
+  lon: 13.405
+  climate: oceanic
+- name: Paris
+  country: FR
+  lat: 48.8566
+  lon: 2.3522
+  climate: oceanic
+- name: Madrid
+  country: ES
+  lat: 40.4168
+  lon: -3.7038
+  climate: cold_semi_arid
+- name: Delhi
+  country: IN
+  lat: 28.6139
+  lon: 77.209
+  climate: humid_subtropical
+- name: Mumbai
+  country: IN
+  lat: 19.076
+  lon: 72.8777
+  climate: tropical
+- name: Tokyo
+  country: JP
+  lat: 35.6762
+  lon: 139.6503
+  climate: humid_subtropical
+- name: Sydney
+  country: AU
+  lat: -33.8688
+  lon: 151.2093
+  climate: humid_subtropical
+- name: Toronto
+  country: CA
+  lat: 43.6532
+  lon: -79.3832
+  climate: humid_continental
 topics:
-  # entity: canonical ELECOUS entity name; article: en.wikipedia title;
-  # traits feed the Product Trait system (spec 5.12).
-  - { entity: "Air conditioner",   article: "Air conditioning",   category: "cooling",
-      traits: [cooling, home, summer, electrical] }
-  - { entity: "Portable fan",      article: "Fan (machine)",      category: "cooling",
-      traits: [cooling, portable, summer, electrical, budget] }
-  - { entity: "Evaporative cooler", article: "Evaporative cooler", category: "cooling",
-      traits: [cooling, portable, summer, electrical, dry_climate] }
-  - { entity: "Dehumidifier",      article: "Dehumidifier",       category: "climate_control",
-      traits: [humidity, home, electrical] }
-  - { entity: "Humidifier",        article: "Humidifier",         category: "climate_control",
-      traits: [humidity, home, winter, electrical] }
-  - { entity: "Space heater",      article: "Space heater",       category: "heating",
-      traits: [heating, portable, winter, electrical] }
-  - { entity: "Umbrella",          article: "Umbrella",           category: "rain_protection",
-      traits: [rain, portable, outdoor, budget] }
-  - { entity: "Raincoat",          article: "Raincoat",           category: "rain_protection",
-      traits: [rain, apparel, outdoor] }
-  - { entity: "Sunscreen",         article: "Sunscreen",          category: "sun_protection",
-      traits: [summer, outdoor, personal_care, consumable] }
-  - { entity: "Insect repellent",  article: "Insect repellent",   category: "outdoor_protection",
-      traits: [summer, outdoor, personal_care, consumable] }
-  - { entity: "Camping",           article: "Camping",            category: "outdoor_recreation",
-      traits: [outdoor, recreation, summer, travel] }
-  - { entity: "Tent",              article: "Tent",               category: "camping_equipment",
-      traits: [outdoor, camping, portable, shelter] }
-  - { entity: "Sleeping bag",      article: "Sleeping bag",       category: "camping_equipment",
-      traits: [outdoor, camping, portable] }
-  - { entity: "Portable stove",    article: "Portable stove",     category: "camping_equipment",
-      traits: [outdoor, camping, portable, cooking] }
-  - { entity: "Barbecue grill",    article: "Barbecue grill",     category: "outdoor_cooking",
-      traits: [outdoor, cooking, summer, social] }
-  - { entity: "Snow blower",       article: "Snow blower",        category: "winter_equipment",
-      traits: [winter, snow, outdoor, electrical] }
-  - { entity: "Electric generator", article: "Electric generator", category: "emergency_power",
-      traits: [emergency, electrical, outdoor, resilience] }
-  - { entity: "Board game",        article: "Board game",         category: "indoor_recreation",
-      traits: [indoor, recreation, social, family] }
-  - { entity: "Swimming pool",     article: "Swimming pool",      category: "outdoor_recreation",
-      traits: [outdoor, summer, recreation, cooling] }
-  - { entity: "Ice cream",         article: "Ice cream",          category: "seasonal_food",
-      traits: [summer, cooling, consumable, food] }
-
+- entity: Air conditioner
+  article: Air conditioning
+  category: cooling
+  traits:
+  - cooling
+  - home
+  - summer
+  - electrical
+- entity: Portable fan
+  article: Fan (machine)
+  category: cooling
+  traits:
+  - cooling
+  - portable
+  - summer
+  - electrical
+  - budget
+- entity: Evaporative cooler
+  article: Evaporative cooler
+  category: cooling
+  traits:
+  - cooling
+  - portable
+  - summer
+  - electrical
+  - dry_climate
+- entity: Dehumidifier
+  article: Dehumidifier
+  category: climate_control
+  traits:
+  - humidity
+  - home
+  - electrical
+- entity: Humidifier
+  article: Humidifier
+  category: climate_control
+  traits:
+  - humidity
+  - home
+  - winter
+  - electrical
+- entity: Space heater
+  article: Space heater
+  category: heating
+  traits:
+  - heating
+  - portable
+  - winter
+  - electrical
+- entity: Umbrella
+  article: Umbrella
+  category: rain_protection
+  traits:
+  - rain
+  - portable
+  - outdoor
+  - budget
+- entity: Raincoat
+  article: Raincoat
+  category: rain_protection
+  traits:
+  - rain
+  - apparel
+  - outdoor
+- entity: Sunscreen
+  article: Sunscreen
+  category: sun_protection
+  traits:
+  - summer
+  - outdoor
+  - personal_care
+  - consumable
+- entity: Insect repellent
+  article: Insect repellent
+  category: outdoor_protection
+  traits:
+  - summer
+  - outdoor
+  - personal_care
+  - consumable
+- entity: Camping
+  article: Camping
+  category: outdoor_recreation
+  traits:
+  - outdoor
+  - recreation
+  - summer
+  - travel
+- entity: Tent
+  article: Tent
+  category: camping_equipment
+  traits:
+  - outdoor
+  - camping
+  - portable
+  - shelter
+- entity: Sleeping bag
+  article: Sleeping bag
+  category: camping_equipment
+  traits:
+  - outdoor
+  - camping
+  - portable
+- entity: Portable stove
+  article: Portable stove
+  category: camping_equipment
+  traits:
+  - outdoor
+  - camping
+  - portable
+  - cooking
+- entity: Barbecue grill
+  article: Barbecue grill
+  category: outdoor_cooking
+  traits:
+  - outdoor
+  - cooking
+  - summer
+  - social
+- entity: Snow blower
+  article: Snow blower
+  category: winter_equipment
+  traits:
+  - winter
+  - snow
+  - outdoor
+  - electrical
+- entity: Electric generator
+  article: Electric generator
+  category: emergency_power
+  traits:
+  - emergency
+  - electrical
+  - outdoor
+  - resilience
+- entity: Board game
+  article: Board game
+  category: indoor_recreation
+  traits:
+  - indoor
+  - recreation
+  - social
+  - family
+- entity: Swimming pool
+  article: Swimming pool
+  category: outdoor_recreation
+  traits:
+  - outdoor
+  - summer
+  - recreation
+  - cooling
+- entity: Ice cream
+  article: Ice cream
+  category: seasonal_food
+  traits:
+  - summer
+  - cooling
+  - consumable
+  - food
+- entity: Absorption refrigerator
+  article: Absorption refrigerator
+  category: cooling
+  traits: &id001
+  - cooling
+  - home
+  - summer
+  - electrical
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 143.0
+- entity: Applications of the Stirling engine
+  article: Applications of the Stirling engine
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 39.0
+- entity: Attic fan
+  article: Attic fan
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 44.0
+- entity: Auto-defrost
+  article: Auto-defrost
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 25.0
+- entity: Cascade refrigeration
+  article: Cascade refrigeration
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 21.0
+- entity: Ceiling fan
+  article: Ceiling fan
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 165.0
+- entity: Chiller
+  article: Chiller
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 122.0
+- entity: Cold chain
+  article: Cold chain
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 80.0
+- entity: Coolant
+  article: Coolant
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 102.0
+- entity: Coolgardie safe
+  article: Coolgardie safe
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 23.0
+- entity: Cooling
+  article: Cooling
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 35.0
+- entity: Cooling bath
+  article: Cooling bath
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 79.0
+- entity: Cooling tower
+  article: Cooling tower
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 283.0
+- entity: Cross ventilation
+  article: Cross ventilation
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 42.0
+- entity: Cryocooler
+  article: Cryocooler
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 84.0
+- entity: Cryonics
+  article: Cryonics
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 574.0
+- entity: Dilution refrigerator
+  article: Dilution refrigerator
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 79.0
+- entity: District cooling
+  article: District cooling
+  category: cooling
+  traits: *id001
+  discovered: true
+  discovery_query: cooling technology
+  discovery_median_pageviews: 35.0
+- entity: Heating, ventilation, and air conditioning
+  article: Heating, ventilation, and air conditioning
+  category: climate_control
+  traits: &id002
+  - humidity
+  - home
+  - electrical
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 765.0
+- entity: Air changes per hour
+  article: Air changes per hour
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 48.0
+- entity: Air door
+  article: Air door
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 20.0
+- entity: Air handler
+  article: Air handler
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 74.0
+- entity: Air source heat pump
+  article: Air source heat pump
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 72.0
+- entity: American Residential Services
+  article: American Residential Services
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 21.0
+- entity: ASHRAE
+  article: ASHRAE
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 81.0
+- entity: ASHRAE 55
+  article: ASHRAE 55
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 27.0
+- entity: Automotive air conditioning
+  article: Automotive air conditioning
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 106.0
+- entity: Clarence Birdseye
+  article: Clarence Birdseye
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 112.0
+- entity: Boiler
+  article: Boiler
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 157.0
+- entity: Brasero (heater)
+  article: Brasero (heater)
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 21.0
+- entity: Building services engineering
+  article: Building services engineering
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 20.0
+- entity: Willis Carrier
+  article: Willis Carrier
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 423.0
+- entity: Chlorofluorocarbon
+  article: Chlorofluorocarbon
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 336.0
+- entity: Coefficient of performance
+  article: Coefficient of performance
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 175.0
+- entity: Cogeneration
+  article: Cogeneration
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 138.0
+- entity: Condenser (heat transfer)
+  article: Condenser (heat transfer)
+  category: climate_control
+  traits: *id002
+  discovered: true
+  discovery_query: HVAC
+  discovery_median_pageviews: 90.0
+- entity: Heating system
+  article: Heating system
+  category: heating
+  traits: &id003
+  - heating
+  - home
+  - winter
+  - electrical
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 25.0
+- entity: Central heating
+  article: Central heating
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 104.0
+- entity: Electric heating
+  article: Electric heating
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 55.0
+- entity: Water heating
+  article: Water heating
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 98.0
+- entity: Solar thermal collector
+  article: Solar thermal collector
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 55.0
+- entity: District heating
+  article: District heating
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 142.0
+- entity: Geothermal heating
+  article: Geothermal heating
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 69.0
+- entity: Radiator (heating)
+  article: Radiator (heating)
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 69.0
+- entity: Heat exchanger
+  article: Heat exchanger
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 255.0
+- entity: Passive house
+  article: Passive house
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 132.0
+- entity: Solar thermal energy
+  article: Solar thermal energy
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 94.0
+- entity: Tankless water heating
+  article: Tankless water heating
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 52.0
+- entity: Heat pump
+  article: Heat pump
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 503.0
+- entity: Joule heating
+  article: Joule heating
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 168.0
+- entity: Infrared heater
+  article: Infrared heater
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 45.0
+- entity: Heat transfer
+  article: Heat transfer
+  category: heating
+  traits: *id003
+  discovered: true
+  discovery_query: space heating
+  discovery_median_pageviews: 281.0
+- entity: Gore-Tex
+  article: Gore-Tex
+  category: rain_protection
+  traits: &id004
+  - rain
+  - portable
+  - outdoor
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 277.0
+- entity: Peter Storm (clothing)
+  article: Peter Storm (clothing)
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 24.0
+- entity: Portwest
+  article: Portwest
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 21.0
+- entity: Hugo Boss
+  article: Hugo Boss
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 886.0
+- entity: Nordic Combat Uniform
+  article: Nordic Combat Uniform
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 32.0
+- entity: Waterproof fabric
+  article: Waterproof fabric
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 35.0
+- entity: Natural rubber
+  article: Natural rubber
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 615.0
+- entity: Cape
+  article: Cape
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 162.0
+- entity: Mackintosh (raincoat)
+  article: Mackintosh (raincoat)
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 106.0
+- entity: Helly Hansen
+  article: Helly Hansen
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 265.0
+- entity: K-Way
+  article: K-Way
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 68.0
+- entity: Halston
+  article: Halston
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 551.0
+- entity: Mino (straw cape)
+  article: Mino (straw cape)
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 51.0
+- entity: London Fog (company)
+  article: London Fog (company)
+  category: rain_protection
+  traits: *id004
+  discovered: true
+  discovery_query: rainwear
+  discovery_median_pageviews: 84.0
+- entity: Sun protective clothing
+  article: Sun protective clothing
+  category: sun_protection
+  traits: &id005
+  - summer
+  - outdoor
+  - personal_care
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 77.0
+- entity: Legionnaire hat
+  article: Legionnaire hat
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 62.0
+- entity: Sun tanning
+  article: Sun tanning
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 320.0
+- entity: Skin care
+  article: Skin care
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 182.0
+- entity: Awning
+  article: Awning
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 89.0
+- entity: Ultraviolet
+  article: Ultraviolet
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 864.0
+- entity: Insulated glazing
+  article: Insulated glazing
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 89.0
+- entity: Anti-sunscreen movement
+  article: Anti-sunscreen movement
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 46.0
+- entity: Ten Essentials
+  article: Ten Essentials
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 40.0
+- entity: Albinism in humans
+  article: Albinism in humans
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 616.0
+- entity: Windburn
+  article: Windburn
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 32.0
+- entity: Sun Yat-sen
+  article: Sun Yat-sen
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 2140.0
+- entity: Alpinia purpurata
+  article: Alpinia purpurata
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 45.0
+- entity: Scarf
+  article: Scarf
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 94.0
+- entity: Preventive healthcare
+  article: Preventive healthcare
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 157.0
+- entity: Sunglasses
+  article: Sunglasses
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 310.0
+- entity: SPF
+  article: SPF
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 48.0
+- entity: Terai hat
+  article: Terai hat
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 29.0
+- entity: Rule of three (writing)
+  article: Rule of three (writing)
+  category: sun_protection
+  traits: *id005
+  discovered: true
+  discovery_query: sun protection
+  discovery_median_pageviews: 294.0
+- entity: Basil
+  article: Basil
+  category: outdoor_protection
+  traits: &id006
+  - summer
+  - outdoor
+  - personal_care
+  - consumable
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 805.0
+- entity: Callicarpa americana
+  article: Callicarpa americana
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 87.0
+- entity: Campfire
+  article: Campfire
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 85.0
+- entity: Carvone
+  article: Carvone
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 74.0
+- entity: DEET
+  article: DEET
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 524.0
+- entity: Dimethyl phthalate
+  article: Dimethyl phthalate
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 22.0
+- entity: Ethyl butylacetylaminopropionate
+  article: Ethyl butylacetylaminopropionate
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 68.0
+- entity: Geraniol
+  article: Geraniol
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 112.0
+- entity: P-Menthane-3,8-diol
+  article: P-Menthane-3,8-diol
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 43.0
+- entity: Metofluthrin
+  article: Metofluthrin
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 45.0
+- entity: Mosquito coil
+  article: Mosquito coil
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 110.0
+- entity: Mothball
+  article: Mothball
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 293.0
+- entity: Nepetalactone
+  article: Nepetalactone
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 136.0
+- entity: Off! (brand)
+  article: Off! (brand)
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 25.0
+- entity: Oleic acid
+  article: Oleic acid
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 292.0
+- entity: Picaridin
+  article: Picaridin
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 294.0
+- entity: Window screen
+  article: Window screen
+  category: outdoor_protection
+  traits: *id006
+  discovered: true
+  discovery_query: insect repellents
+  discovery_median_pageviews: 40.0
+- entity: Academy Sports + Outdoors
+  article: Academy Sports + Outdoors
+  category: outdoor_recreation
+  traits: &id007
+  - outdoor
+  - recreation
+  - travel
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 98.0
+- entity: Backcountry.com
+  article: Backcountry.com
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 35.0
+- entity: Bass Pro Shops
+  article: Bass Pro Shops
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 373.0
+- entity: Big 5 Sporting Goods
+  article: Big 5 Sporting Goods
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 59.0
+- entity: Cabela's
+  article: Cabela's
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 211.0
+- entity: Camping World
+  article: Camping World
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 95.0
+- entity: Champs Sports
+  article: Champs Sports
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 43.0
+- entity: Columbia Sportswear
+  article: Columbia Sportswear
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 228.0
+- entity: Dick's Sporting Goods
+  article: Dick's Sporting Goods
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 431.0
+- entity: Dunham's Sports
+  article: Dunham's Sports
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 40.0
+- entity: Eastbay
+  article: Eastbay
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 77.0
+- entity: Eastern Mountain Sports
+  article: Eastern Mountain Sports
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 29.0
+- entity: Evo (company)
+  article: Evo (company)
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 20.0
+- entity: Fanatics, Inc.
+  article: Fanatics, Inc.
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 494.0
+- entity: Finish Line, Inc.
+  article: Finish Line, Inc.
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 40.0
+- entity: Fleet Feet
+  article: Fleet Feet
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 32.0
+- entity: Foot Locker
+  article: Foot Locker
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 229.0
+- entity: G.I. Joe's
+  article: G.I. Joe's
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 21.0
+- entity: Galyan's
+  article: Galyan's
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 25.0
+- entity: Gander Mountain
+  article: Gander Mountain
+  category: outdoor_recreation
+  traits: *id007
+  discovered: true
+  discovery_query: outdoor recreation equipment
+  discovery_median_pageviews: 50.0
+- entity: Air mattress
+  article: Air mattress
+  category: camping_equipment
+  traits: &id008
+  - outdoor
+  - camping
+  - portable
+  - shelter
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 45.0
+- entity: Axe
+  article: Axe
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 298.0
+- entity: Bender tent
+  article: Bender tent
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 20.0
+- entity: Beverage-can stove
+  article: Beverage-can stove
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 29.0
+- entity: Billycan
+  article: Billycan
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 53.0
+- entity: Bivouac shelter
+  article: Bivouac shelter
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 387.0
+- entity: Canteen (bottle)
+  article: Canteen (bottle)
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 70.0
+- entity: Cowboy bedroll
+  article: Cowboy bedroll
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 25.0
+- entity: Dutch oven
+  article: Dutch oven
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 254.0
+- entity: Hexamine fuel tablet
+  article: Hexamine fuel tablet
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 58.0
+- entity: Hydration pack
+  article: Hydration pack
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 26.0
+- entity: Ice axe
+  article: Ice axe
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 243.0
+- entity: Kelly Kettle
+  article: Kelly Kettle
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 29.0
+- entity: Leatherman
+  article: Leatherman
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 137.0
+- entity: Machete
+  article: Machete
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 389.0
+- entity: Match
+  article: Match
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 303.0
+- entity: Mess kit
+  article: Mess kit
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 47.0
+- entity: Pocketknife
+  article: Pocketknife
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 141.0
+- entity: Portable water purification
+  article: Portable water purification
+  category: camping_equipment
+  traits: *id008
+  discovered: true
+  discovery_query: camping equipment
+  discovery_median_pageviews: 33.0
+- entity: Outdoor cooking
+  article: Outdoor cooking
+  category: outdoor_cooking
+  traits: &id009
+  - outdoor
+  - cooking
+  - summer
+  - social
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 22.0
+- entity: Luke Nichols
+  article: Luke Nichols
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 1244.0
+- entity: Village Cooking Channel
+  article: Village Cooking Channel
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 67.0
+- entity: Gridiron (cooking)
+  article: Gridiron (cooking)
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 44.0
+- entity: Charcoal
+  article: Charcoal
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 536.0
+- entity: Guy Ritchie
+  article: Guy Ritchie
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 5776.0
+- entity: Camping food
+  article: Camping food
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 22.0
+- entity: Justin Wilson (chef)
+  article: Justin Wilson (chef)
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 189.0
+- entity: Griddle
+  article: Griddle
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 115.0
+- entity: Char-Broil
+  article: Char-Broil
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 27.0
+- entity: Maryland Public Television
+  article: Maryland Public Television
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 44.0
+- entity: Goulash
+  article: Goulash
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 637.0
+- entity: Red cooking
+  article: Red cooking
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 42.0
+- entity: Cooking Mama
+  article: Cooking Mama
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 191.0
+- entity: Bain-marie
+  article: Bain-marie
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 287.0
+- entity: Guy Fieri
+  article: Guy Fieri
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 1942.0
+- entity: Fianna
+  article: Fianna
+  category: outdoor_cooking
+  traits: *id009
+  discovered: true
+  discovery_query: outdoor cooking
+  discovery_median_pageviews: 206.0
+- entity: Sports equipment
+  article: Sports equipment
+  category: winter_equipment
+  traits: &id010
+  - winter
+  - snow
+  - outdoor
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 118.0
+- entity: Amer Sports
+  article: Amer Sports
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 345.0
+- entity: Fischer (company)
+  article: Fischer (company)
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 25.0
+- entity: Scott Sports
+  article: Scott Sports
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 111.0
+- entity: K2 Sports
+  article: K2 Sports
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 38.0
+- entity: Olympic medal
+  article: Olympic medal
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 120.0
+- entity: Tecnica Group
+  article: Tecnica Group
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 20.0
+- entity: Reusch (company)
+  article: Reusch (company)
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 23.0
+- entity: Winter Olympic Games
+  article: Winter Olympic Games
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 955.0
+- entity: Anta Sports
+  article: Anta Sports
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 492.0
+- entity: Salomon Group
+  article: Salomon Group
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 382.0
+- entity: Sport
+  article: Sport
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 1174.0
+- entity: Skijoring
+  article: Skijoring
+  category: winter_equipment
+  traits: *id010
+  discovered: true
+  discovery_query: winter sports equipment
+  discovery_median_pageviews: 54.0
+- entity: Bleed air
+  article: Bleed air
+  category: emergency_power
+  traits: &id011
+  - emergency
+  - electrical
+  - resilience
+  discovered: true
+  discovery_query: emergency power systems
+  discovery_median_pageviews: 82.0
+- entity: Aircraft engine starting
+  article: Aircraft engine starting
+  category: emergency_power
+  traits: *id011
+  discovered: true
+  discovery_query: emergency power systems
+  discovery_median_pageviews: 47.0
+- entity: Environmental control system
+  article: Environmental control system
+  category: emergency_power
+  traits: *id011
+  discovered: true
+  discovery_query: emergency power systems
+  discovery_median_pageviews: 23.0
+- entity: Flight management system
+  article: Flight management system
+  category: emergency_power
+  traits: *id011
+  discovered: true
+  discovery_query: emergency power systems
+  discovery_median_pageviews: 64.0
+- entity: Helicopter flight controls
+  article: Helicopter flight controls
+  category: emergency_power
+  traits: *id011
+  discovered: true
+  discovery_query: emergency power systems
+  discovery_median_pageviews: 115.0
+- entity: Landing gear
+  article: Landing gear
+  category: emergency_power
+  traits: *id011
+  discovered: true
+  discovery_query: emergency power systems
+  discovery_median_pageviews: 174.0
+- entity: Pitot–static system
+  article: Pitot–static system
+  category: emergency_power
+  traits: *id011
+  discovered: true
+  discovery_query: emergency power systems
+  discovery_median_pageviews: 55.0
+- entity: Asian Indoor and Martial Arts Games
+  article: Asian Indoor and Martial Arts Games
+  category: indoor_recreation
+  traits: &id012
+  - indoor
+  - recreation
+  - social
+  - family
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 43.0
+- entity: 2017 Asian Indoor and Martial Arts Games
+  article: 2017 Asian Indoor and Martial Arts Games
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 27.0
+- entity: Field hockey at the Asian Games
+  article: Field hockey at the Asian Games
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 30.0
+- entity: Olympic Esports Games
+  article: Olympic Esports Games
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 92.0
+- entity: World Athletics Indoor Championships
+  article: World Athletics Indoor Championships
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 70.0
+- entity: Asian Games sports
+  article: Asian Games sports
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 28.0
+- entity: India national kabaddi team
+  article: India national kabaddi team
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 71.0
+- entity: 2026 Asian Indoor and Martial Arts Games
+  article: 2026 Asian Indoor and Martial Arts Games
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 61.0
+- entity: Arena football
+  article: Arena football
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 246.0
+- entity: Asian Games
+  article: Asian Games
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 625.0
+- entity: World Games
+  article: World Games
+  category: indoor_recreation
+  traits: *id012
+  discovered: true
+  discovery_query: indoor games
+  discovery_median_pageviews: 235.0
+- entity: Arctic roll
+  article: Arctic roll
+  category: seasonal_food
+  traits: &id013
+  - summer
+  - cooling
+  - consumable
+  - food
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 37.0
+- entity: Baked Alaska
+  article: Baked Alaska
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 513.0
+- entity: Bingsu
+  article: Bingsu
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 242.0
+- entity: Blue raspberry flavor
+  article: Blue raspberry flavor
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 446.0
+- entity: Bombe glacée
+  article: Bombe glacée
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 41.0
+- entity: Café liégeois
+  article: Café liégeois
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 33.0
+- entity: Cendol
+  article: Cendol
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 218.0
+- entity: Chipwich
+  article: Chipwich
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 45.0
+- entity: Choc ice
+  article: Choc ice
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 64.0
+- entity: Dragon's Breath (dessert)
+  article: Dragon's Breath (dessert)
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 33.0
+- entity: Faloodeh
+  article: Faloodeh
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 108.0
+- entity: Frozen banana
+  article: Frozen banana
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 24.0
+- entity: Frozen custard
+  article: Frozen custard
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 144.0
+- entity: Frozen yogurt
+  article: Frozen yogurt
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 154.0
+- entity: Gelato
+  article: Gelato
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 723.0
+- entity: Granita
+  article: Granita
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 246.0
+- entity: Ice cream cake
+  article: Ice cream cake
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 102.0
+- entity: Ice cream sandwich
+  article: Ice cream sandwich
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 199.0
+- entity: Ice milk
+  article: Ice milk
+  category: seasonal_food
+  traits: *id013
+  discovered: true
+  discovery_query: frozen desserts
+  discovery_median_pageviews: 42.0
+- entity: 101st Amphibious Reconnaissance Battalion
+  article: 101st Amphibious Reconnaissance Battalion
+  category: air_quality_protection
+  traits: &id014
+  - air_quality
+  - health
+  - indoor
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 30.0
+- entity: Army Ranger Wing
+  article: Army Ranger Wing
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 143.0
+- entity: British commando frogmen
+  article: British commando frogmen
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 22.0
+- entity: Clearance diver
+  article: Clearance diver
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 25.0
+- entity: Clearance Diving Branch (RAN)
+  article: Clearance Diving Branch (RAN)
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 42.0
+- entity: Comando Raggruppamento Subacquei e Incursori Teseo Tesei
+  article: Comando Raggruppamento Subacquei e Incursori Teseo Tesei
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 47.0
+- entity: Combat sidestroke
+  article: Combat sidestroke
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 29.0
+- entity: United States diver badges
+  article: United States diver badges
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 50.0
+- entity: Explosive ordnance disposal (United States Navy)
+  article: Explosive ordnance disposal (United States Navy)
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 59.0
+- entity: Frogman
+  article: Frogman
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 289.0
+- entity: Frogman Corps (Denmark)
+  article: Frogman Corps (Denmark)
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 138.0
+- entity: Fukuryu
+  article: Fukuryu
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 100.0
+- entity: Kommando Spezialkräfte der Marine
+  article: Kommando Spezialkräfte der Marine
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 58.0
+- entity: GRUMEC
+  article: GRUMEC
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 23.0
+- entity: Formoza Military Unit
+  article: Formoza Military Unit
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 20.0
+- entity: KOPASKA
+  article: KOPASKA
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 26.0
+- entity: National Navy UDT-SEAL Museum
+  article: National Navy UDT-SEAL Museum
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 24.0
+- entity: Naval Special Warfare Command (Thailand)
+  article: Naval Special Warfare Command (Thailand)
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 32.0
+- entity: Naval Special Forces (Malaysia)
+  article: Naval Special Forces (Malaysia)
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 25.0
+- entity: Russian commando frogmen
+  article: Russian commando frogmen
+  category: air_quality_protection
+  traits: *id014
+  discovered: true
+  discovery_query: air filtration
+  discovery_median_pageviews: 88.0
+- entity: Allergy
+  article: Allergy
+  category: allergy_season
+  traits: &id015
+  - allergy
+  - health
+  - seasonal
+  - consumable
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 360.0
+- entity: Alpha-gal syndrome
+  article: Alpha-gal syndrome
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 1675.0
+- entity: Allergic rhinitis
+  article: Allergic rhinitis
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 328.0
+- entity: Benadryl
+  article: Benadryl
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 461.0
+- entity: Fexofenadine
+  article: Fexofenadine
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 781.0
+- entity: Tylenol
+  article: Tylenol
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 744.0
+- entity: Cold urticaria
+  article: Cold urticaria
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 166.0
+- entity: Cetirizine
+  article: Cetirizine
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 1378.0
+- entity: Hives
+  article: Hives
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 573.0
+- entity: Sulfonamide (medicine)
+  article: Sulfonamide (medicine)
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 295.0
+- entity: Anaphylaxis
+  article: Anaphylaxis
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 583.0
+- entity: Loratadine
+  article: Loratadine
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 742.0
+- entity: Food allergy
+  article: Food allergy
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 89.0
+- entity: Allergy to cats
+  article: Allergy to cats
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 112.0
+- entity: Asthma
+  article: Asthma
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 621.0
+- entity: Chlorphenamine
+  article: Chlorphenamine
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 248.0
+- entity: Cefalexin
+  article: Cefalexin
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 1150.0
+- entity: Peanut allergy
+  article: Peanut allergy
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 130.0
+- entity: Levocetirizine
+  article: Levocetirizine
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 304.0
+- entity: Side effects of penicillin
+  article: Side effects of penicillin
+  category: allergy_season
+  traits: *id015
+  discovered: true
+  discovery_query: allergy medications
+  discovery_median_pageviews: 36.0
+- entity: Baggage
+  article: Baggage
+  category: travel_season
+  traits: &id016
+  - travel
+  - portable
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 62.0
+- entity: Backpack
+  article: Backpack
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 179.0
+- entity: Baggage allowance
+  article: Baggage allowance
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 27.0
+- entity: Baggage carousel
+  article: Baggage carousel
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 40.0
+- entity: Baggage handler
+  article: Baggage handler
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 25.0
+- entity: Baggage handling system
+  article: Baggage handling system
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 22.0
+- entity: Bindle
+  article: Bindle
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 203.0
+- entity: Briefcase
+  article: Briefcase
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 75.0
+- entity: Carpet bag
+  article: Carpet bag
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 54.0
+- entity: Checked baggage
+  article: Checked baggage
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 35.0
+- entity: Duffel bag
+  article: Duffel bag
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 113.0
+- entity: Footlocker (luggage)
+  article: Footlocker (luggage)
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 45.0
+- entity: Gladstone bag
+  article: Gladstone bag
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 56.0
+- entity: Hand luggage
+  article: Hand luggage
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 55.0
+- entity: Haversack
+  article: Haversack
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 74.0
+- entity: Messenger bag
+  article: Messenger bag
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 65.0
+- entity: Pannier
+  article: Pannier
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 69.0
+- entity: Personal Load Carrying Equipment
+  article: Personal Load Carrying Equipment
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 38.0
+- entity: Portmanteau (luggage)
+  article: Portmanteau (luggage)
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 88.0
+- entity: Satchel
+  article: Satchel
+  category: travel_season
+  traits: *id016
+  discovered: true
+  discovery_query: luggage
+  discovery_median_pageviews: 70.0
 themes:
-  # GDELT media-volume themes: real global news coverage share.
-  - { entity: "Heatwave",       query: "heatwave" }
-  - { entity: "Flooding",       query: "flooding" }
-  - { entity: "Wildfire",       query: "wildfire" }
-  - { entity: "Power outage",   query: "\"power outage\"" }
-  - { entity: "Cold wave",      query: "\"cold wave\"" }
-  - { entity: "Storm",          query: "storm damage" }
-  - { entity: "Drought",        query: "drought" }
-
+- entity: Heatwave
+  query: heatwave
+- entity: Flooding
+  query: flooding
+- entity: Wildfire
+  query: wildfire
+- entity: Power outage
+  query: '"power outage"'
+- entity: Cold wave
+  query: '"cold wave"'
+- entity: Storm
+  query: storm damage
+- entity: Drought
+  query: drought
 countries:
-  - US
-  - GB
-  - DE
-  - FR
-  - ES
-  - IN
-  - JP
-  - AU
-  - CA
+- US
+- GB
+- DE
+- FR
+- ES
+- IN
+- JP
+- AU
+- CA

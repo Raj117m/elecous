@@ -35,6 +35,18 @@ class HttpClient:
         self.config = config or active_config()
         self.session = requests.Session()
         self.session.headers["User-Agent"] = self.config.get("http.user_agent", "ELECOUS/1.0")
+        # Real long-running backfills (spaced by per-host politeness delays
+        # of seconds to minutes) gain nothing from keep-alive, and a
+        # connection idle that long risks the remote closing its end while
+        # the local pool still considers it reusable — observed directly as
+        # a process hung in CLOSE_WAIT, 0% CPU, no progress for 7+ minutes,
+        # because a stale pooled socket's read never returns and never
+        # cleanly raises the configured timeout. Forcing a fresh connection
+        # per request eliminates this failure mode entirely.
+        self.session.headers["Connection"] = "close"
+        adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=1, max_retries=0)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
         self.timeout = float(self.config.get("http.timeout_seconds", 30))
         self.max_retries = int(self.config.get("http.max_retries", 3))
         self.backoff = float(self.config.get("http.backoff_seconds", 2.0))
