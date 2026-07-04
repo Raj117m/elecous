@@ -28,7 +28,14 @@
       "Bash(.venv/bin/python -c \"import elecous.mechanisms.engine\")",
       "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 5: Mechanism Intelligence Engine — versioned mechanism store, behavioural reasoning, control comparison, hierarchy, interactions, competitions, business value *)",
       "Bash(.venv/bin/pytest elecous/tests/test_phase5_mechanisms.py::test_mechanism_versioning_and_promotion_ladder -q)",
-      "Bash(.venv/bin/python -c \"import elecous.mechanisms.engine; print\\('engine imports ok'\\)\")"
+      "Bash(.venv/bin/python -c \"import elecous.mechanisms.engine; print\\('engine imports ok'\\)\")",
+      "Bash(.venv/bin/python -c ' *)",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 6 \\(partial\\): Scientific Validation Engine — validation schema, skeptic engine, walk-forward historical replay, frozen prospective validation, confidence calibration, benchmark engine *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase6_validation.py -q -k \"not network\")",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase6_validation.py::test_full_validation_chain_on_real_data -q)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase7_knowledge.py -q)",
+      "Bash(.venv/bin/python -c \"import elecous.knowledge.engine; print\\('knowledge engine imports ok'\\)\")",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 6+7: complete Scientific Validation Engine facade with negative learning and concept drift; add Knowledge Engine — graph, memory, revision/aging, governance *)"
     ]
   }
 }
