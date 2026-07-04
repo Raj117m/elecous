@@ -24,8 +24,11 @@ def test_pattern_miner_finds_lifted_combinations(isolated_config):
         f"epi_{i}": set(heat_combo) | ({"rainfall_intensity:down:US"} if i % 2 else set())
         for i in range(6)
     }
-    # ordinary periods rarely contain the full combination
-    ordinary = [
+    # Ordinary periods rarely contain the full combination. A real base-rate
+    # estimate needs a real sample size (MIN_ORDINARY_SAMPLES) — fewer than
+    # that and a single zero-occurrence itemset manufactures an arbitrarily
+    # large, statistically meaningless "lift" (found via real-data testing).
+    base_ordinary = [
         {"thermal_stress:up:US"},
         {"energy_demand:up:US"},
         {"rainfall_intensity:down:US", "thermal_stress:up:US"},
@@ -35,6 +38,7 @@ def test_pattern_miner_finds_lifted_combinations(isolated_config):
         set(),
         {"thermal_stress:up:US", "energy_demand:up:US", "media_attention:up:Heatwave"},
     ]
+    ordinary = (base_ordinary * 3)[:20]
     patterns = miner.mine("cooling", episode_signals, ordinary)
     assert patterns, "expected at least one mined pattern"
     combo = next(p for p in patterns if set(p.signals) == heat_combo)

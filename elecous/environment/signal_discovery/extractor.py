@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from elecous.common import timeutil
+from elecous.infrastructure.cache import TTLCache
 from elecous.infrastructure.config import Config, active_config
 from elecous.observation.normalizers.semantic import SemanticNormalizer
 from elecous.observation.store import ObservationStore
@@ -53,6 +54,11 @@ class EnvironmentalSignalExtractor:
         self.config = config or active_config()
         self.normalizer = SemanticNormalizer(self.config)
         self.thresholds = self.config.load_file("thresholds.yaml")["environment"]
+        # Cache (spec 10.25): the same instant is queried repeatedly across
+        # mechanisms during a single replay/research pass. Short TTL keeps
+        # live World State queries fresh relative to the observation
+        # cadence (minutes-to-hours) while eliminating redundant aggregation.
+        self._cache = TTLCache(ttl_seconds=120.0, max_entries=256)
 
     def changes(
         self,
@@ -64,6 +70,10 @@ class EnvironmentalSignalExtractor:
         against the preceding baseline window."""
         window_days = window_days or int(self.thresholds["lookback_days"])
         window_end = timeutil.ensure_utc(window_end)
+        cache_key = (window_end.isoformat(), window_days, baseline_days)
+        return self._cache.get_or_compute(cache_key, lambda: self._compute_changes(window_end, window_days, baseline_days))
+
+    def _compute_changes(self, window_end: datetime, window_days: int, baseline_days: int) -> list[SignalChange]:
         window_start = window_end - timedelta(days=window_days)
         baseline_start = window_start - timedelta(days=baseline_days)
         change_z = float(self.thresholds["change_z"])
@@ -146,3 +156,11 @@ class EnvironmentalSignalExtractor:
                     observation_types=tuple(sorted(set(existing.observation_types) | set(change.observation_types))),
                 )
         return sorted(merged.values(), key=lambda c: -abs(c.z))
+
+    def invalidate_cache(self) -> None:
+        """Force fresh computation (used by tests and after bulk ingestion
+        when 120s staleness is not acceptable)."""
+        self._cache.invalidate()
+
+    def cache_stats(self) -> dict:
+        return self._cache.stats()

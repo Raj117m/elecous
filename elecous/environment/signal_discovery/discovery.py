@@ -90,6 +90,37 @@ class EpisodeSignalDiscovery:
             sets[episode_id].add(key)
         return sets
 
+    @staticmethod
+    def phenomenon_of(signal_key: str) -> str:
+        return ":".join(signal_key.split(":")[:2])
+
+    def episode_phenomenon_sets(self, episode_ids: list[str]) -> dict[str, set[str]]:
+        """Collapse scoped signal keys (phenomenon:direction:scope) to
+        phenomenon:direction for pattern mining. A factor is a combination
+        of PHENOMENA (spec 4.3); geography is factor metadata (spec 4.20),
+        not a mining dimension. Without this collapse, one real global
+        weather event appearing in N tracked countries is treated as N
+        independent combinatorial items, producing a combinatorial
+        explosion of near-duplicate per-country patterns that carry no
+        additional scientific information."""
+        scoped = self.episode_signal_sets(episode_ids)
+        return {eid: {self.phenomenon_of(k) for k in keys} for eid, keys in scoped.items()}
+
+    def scoped_keys_for_phenomena(self, episode_ids: list[str], phenomena: tuple[str, ...]) -> dict[str, list[str]]:
+        """phenomenon:direction -> concrete scoped signal keys that actually
+        satisfied it across the given episodes, for factor metadata
+        (regions, contribution, lead time) once mining has already decided
+        the phenomenon-level combination is worth keeping."""
+        scoped = self.episode_signal_sets(episode_ids)
+        wanted = set(phenomena)
+        result: dict[str, set[str]] = {p: set() for p in phenomena}
+        for keys in scoped.values():
+            for key in keys:
+                phenomenon = self.phenomenon_of(key)
+                if phenomenon in wanted:
+                    result[phenomenon].add(key)
+        return {p: sorted(keys) for p, keys in result.items()}
+
     def episode_lead_times(self, episode_ids: list[str]) -> dict[str, dict[str, float]]:
         """episode -> signal_key -> days before spike."""
         if not episode_ids:
@@ -129,6 +160,12 @@ class EpisodeSignalDiscovery:
             sql += " WHERE category = ?"
             params.append(category)
         return [set(json.loads(r[0])) for r in self.db.query(sql, params)]
+
+    def ordinary_phenomenon_sets(self, category: str | None = None) -> list[set[str]]:
+        """Same phenomenon-level collapse as episode_phenomenon_sets,
+        applied to ordinary-window samples so the base rate is computed on
+        the same dimension the miner searches (spec 4.9)."""
+        return [{self.phenomenon_of(k) for k in s} for s in self.ordinary_signal_sets(category)]
 
     @staticmethod
     def _from_row(row: dict[str, Any]) -> SignalChange:

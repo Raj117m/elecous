@@ -14,6 +14,7 @@ Validation Engine.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -79,17 +80,32 @@ class EnvironmentalEngine:
                 self.discovery.discover_for_episode(episode)
             self._ensure_ordinary_windows(category, group)
             episode_ids = [e["episode_id"] for e in group]
-            signal_sets = self.discovery.episode_signal_sets(episode_ids)
-            ordinary = self.discovery.ordinary_signal_sets(category)
-            patterns = self.miner.mine(category, signal_sets, ordinary)
+            # Mining operates on phenomena, not per-country scoped signals
+            # (spec 4.3: a factor is a combination of phenomena; spec 4.20:
+            # geography is factor metadata). One real weather system hitting
+            # many tracked countries must count as one item, not one item
+            # per country, or the search space explodes combinatorially
+            # into near-duplicate per-country patterns with no additional
+            # scientific content.
+            phenomenon_sets = self.discovery.episode_phenomenon_sets(episode_ids)
+            ordinary_phenomena = self.discovery.ordinary_phenomenon_sets(category)
+            patterns = self.miner.mine(category, phenomenon_sets, ordinary_phenomena)
             lead_times = self.discovery.episode_lead_times(episode_ids)
             for pattern in patterns:
-                contribution = self._contribution(pattern.signals, pattern.supporting_episodes)
-                regions = sorted({k.rsplit(":", 1)[1] for k in pattern.signals})
-                factor_id = self.factors.form_from_pattern(pattern, lead_times, contribution, regions)
+                # Translate the phenomenon-level pattern back to the
+                # concrete scoped signals that actually satisfied it, for
+                # traceable storage (regions, contribution, lead time).
+                scoped_map = self.discovery.scoped_keys_for_phenomena(episode_ids, pattern.signals)
+                concrete_signals = tuple(sorted({k for keys in scoped_map.values() for k in keys}))
+                concrete_pattern = replace(pattern, signals=concrete_signals)
+                contribution = self._contribution(concrete_signals, pattern.supporting_episodes)
+                regions = sorted({k.rsplit(":", 1)[1] for k in concrete_signals})
+                factor_id = self.factors.form_from_pattern(concrete_pattern, lead_times, contribution, regions)
                 counterfactual = self.counterfactual(factor_id, category)
                 summary["factors"].append({"factor_id": factor_id, "counterfactual": counterfactual})
-            summary["interactions"] += len(self.interactions.discover(category, signal_sets, ordinary))
+            summary["interactions"] += len(
+                self.interactions.discover(category, phenomenon_sets, ordinary_phenomena)
+            )
         self.factors.merge_similar()
         self.factors.split_overbroad()
         return summary
@@ -101,7 +117,13 @@ class EnvironmentalEngine:
         existing = self.databases.get("environment").query_one(
             "SELECT count(*) FROM ordinary_windows WHERE category = ?", [category]
         )[0]
-        target = max(8, 2 * len(group))
+        # Pattern mining's lift statistic needs a real base-rate sample, not
+        # a handful of points — see MIN_ORDINARY_SAMPLES in the pattern
+        # miner. Below that floor, a single zero-occurrence itemset
+        # manufactures an unreliable, arbitrarily large "lift".
+        from elecous.environment.pattern_engine.mining import MIN_ORDINARY_SAMPLES
+
+        target = max(MIN_ORDINARY_SAMPLES, 2 * len(group))
         if existing >= target:
             return
         bounds = self.store.db.query_one("SELECT min(timestamp), max(timestamp) FROM observations")
@@ -143,22 +165,32 @@ class EnvironmentalEngine:
     def counterfactual(self, factor_id: str, category: str) -> dict[str, Any]:
         """Counterfactual Testing (spec 4.17): would demand have spiked
         anyway? Compare spike frequency with the factor present vs absent,
-        using ordinary windows as the non-spike world sample."""
+        using ordinary windows as the non-spike world sample.
+
+        Membership must be checked at the same phenomenon-level granularity
+        the pattern miner used to establish support (spec 4.3). The stored
+        ``factor["signals"]`` are concrete per-country observations (kept
+        for traceability/regions), which is a *union* across every
+        supporting episode — no single episode necessarily contains that
+        full union, so checking concrete-signal subset-membership against
+        one episode at a time would almost always fail even for a factor
+        with genuine support, undercounting spikes_with to near zero.
+        """
         factor = self.factors.latest(factor_id)
         if factor is None:
             return {}
-        signals = set(json.loads(factor["signals"]))
-        supporting = set(json.loads(factor["supporting_episodes"]))
+        phenomena = {self.discovery.phenomenon_of(k) for k in json.loads(factor["signals"])}
         all_episodes = [
             e
             for e in self.episodes.list_latest(category=category, include_controls=False)
             if not e["is_negative"]
         ]
-        episode_sets = self.discovery.episode_signal_sets([e["episode_id"] for e in all_episodes])
-        spikes_with = sum(1 for _, s in episode_sets.items() if signals <= s)
+        episode_ids = [e["episode_id"] for e in all_episodes]
+        episode_sets = self.discovery.episode_phenomenon_sets(episode_ids)
+        spikes_with = sum(1 for _, s in episode_sets.items() if phenomena <= s)
         spikes_without = len(all_episodes) - spikes_with
-        ordinary = self.discovery.ordinary_signal_sets(category)
-        ordinary_with = sum(1 for s in ordinary if signals <= s)
+        ordinary = self.discovery.ordinary_phenomenon_sets(category)
+        ordinary_with = sum(1 for s in ordinary if phenomena <= s)
         ordinary_without = len(ordinary) - ordinary_with
         p_spike_given_factor = spikes_with / max(spikes_with + ordinary_with, 1)
         p_spike_given_absent = spikes_without / max(spikes_without + ordinary_without, 1)

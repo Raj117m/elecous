@@ -30,10 +30,29 @@ class MinedPattern:
     supporting_episodes: tuple[str, ...]
 
 
+#: Beam width: only the top-N most-supported single signals seed Apriori
+#: growth. Without this bound, a category with M frequent singles produces
+#: up to C(M, max_signals_per_factor) candidates — with real multi-location
+#: weather data, M easily reaches 20-60, producing tens of thousands of
+#: statistically meaningless combinations for a handful of real episodes.
+#: This is standard beam-search pruning for frequent-itemset mining, not an
+#: arbitrary shortcut: the signals most likely to form a genuine factor are,
+#: by construction, the ones that already recur most often.
+DEFAULT_BEAM_WIDTH = 12
+
+#: Ordinary-window samples below this count cannot support a meaningful
+#: base rate — with e.g. 8 samples, a single zero-occurrence itemset
+#: produces a manufactured base rate that turns tiny, coincidental support
+#: into a fake double-digit "lift". Below this floor, pattern mining for the
+#: category is skipped entirely rather than reporting unreliable numbers.
+MIN_ORDINARY_SAMPLES = 20
+
+
 class PatternMiner:
     def __init__(self, config: Config | None = None):
         self.config = config or active_config()
         self.thresholds = self.config.load_file("thresholds.yaml")["environment"]
+        self.beam_width = int(self.thresholds.get("pattern_beam_width", DEFAULT_BEAM_WIDTH))
         self.log = get_logger("environment")
 
     def mine(
@@ -49,15 +68,30 @@ class PatternMiner:
         n_episodes = len(episodes)
         if n_episodes < min_support:
             return []
+        if len(ordinary_sets) < MIN_ORDINARY_SAMPLES:
+            self.log.info(
+                "pattern mining skipped: insufficient ordinary-window samples for a reliable base rate",
+                category=category,
+                ordinary_samples=len(ordinary_sets),
+                required=MIN_ORDINARY_SAMPLES,
+            )
+            return []
 
-        # Frequent single signals first.
+        # Frequent single signals first, bounded to the beam width.
         item_counts: dict[str, list[str]] = {}
         for episode_id, signals in episodes.items():
             for key in signals:
                 item_counts.setdefault(key, []).append(episode_id)
-        frequent: dict[tuple[str, ...], list[str]] = {
-            (key,): eps for key, eps in item_counts.items() if len(eps) >= min_support
-        }
+        frequent_all = {key: eps for key, eps in item_counts.items() if len(eps) >= min_support}
+        beam_keys = sorted(frequent_all, key=lambda k: -len(frequent_all[k]))[: self.beam_width]
+        frequent: dict[tuple[str, ...], list[str]] = {(key,): frequent_all[key] for key in beam_keys}
+        if len(frequent_all) > self.beam_width:
+            self.log.info(
+                "pattern mining beam-pruned",
+                category=category,
+                frequent_singles=len(frequent_all),
+                kept=len(frequent),
+            )
 
         all_frequent: dict[tuple[str, ...], list[str]] = dict(frequent)
         current = frequent

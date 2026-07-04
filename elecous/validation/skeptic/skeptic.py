@@ -70,13 +70,20 @@ class SkepticEngine:
         challenges["sampling_bias"] = {"passed": len(entities) >= 2, "entities": sorted(entities)}
 
         # Data leakage: a signal that first crossed AFTER the spike began
-        # cannot have preceded it.
+        # cannot have preceded it. Real observations carry day-level
+        # granularity (daily aggregates stamped end-of-day) computed via
+        # independent code paths for the demand spike vs. the environmental
+        # signal; this routinely produces same-day orderings that differ by
+        # seconds or minutes with no genuine future information involved.
+        # A tolerance below one full day distinguishes that from an actual
+        # leak (a signal that only appeared a day or more after the fact).
+        LEAKAGE_TOLERANCE_DAYS = -1.0
         lead_times = self.discovery.episode_lead_times(supporting)
         leaks = [
             (episode_id, key)
             for episode_id, keys in lead_times.items()
             for key, days in keys.items()
-            if key in signals and days is not None and days < 0
+            if key in signals and days is not None and days < LEAKAGE_TOLERANCE_DAYS
         ]
         challenges["data_leakage"] = {"passed": not leaks, "leaks": leaks}
 

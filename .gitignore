@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 elecous/data/
+elecous/configs/elecous.local.yaml
 *.duckdb
 *.duckdb.wal
 .DS_Store
