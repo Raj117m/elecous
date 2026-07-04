@@ -35,7 +35,9 @@
       "Bash(.venv/bin/pytest elecous/tests/test_phase6_validation.py::test_full_validation_chain_on_real_data -q)",
       "Bash(.venv/bin/pytest elecous/tests/test_phase7_knowledge.py -q)",
       "Bash(.venv/bin/python -c \"import elecous.knowledge.engine; print\\('knowledge engine imports ok'\\)\")",
-      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 6+7: complete Scientific Validation Engine facade with negative learning and concept drift; add Knowledge Engine — graph, memory, revision/aging, governance *)"
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 6+7: complete Scientific Validation Engine facade with negative learning and concept drift; add Knowledge Engine — graph, memory, revision/aging, governance *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase8_prediction.py -q)",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 8: Prediction Engine — mechanism matching with partial activation, lead-time distributions, uncertainty exposure, independent opportunity scoring, ranking, opportunity formation/clustering/conflicts, replay *)"
     ]
   }
 }
