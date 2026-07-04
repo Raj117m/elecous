@@ -30,6 +30,35 @@ def test_graph_upsert_and_relationships(isolated_config):
     assert graph.node_for("signal", "sig_1")["confidence"] == 0.9
 
 
+def test_graph_product_and_validation_evidence_chain(isolated_config):
+    """Phase 4 evidence chain: Product -> Historical Episode, and
+    Validation Evidence -> the object it judged, with outcome-as-relationship."""
+    graph = KnowledgeGraph()
+    product_node = graph.sync_product("Portable fan", "cooling", ["epi_1", "epi_2"])
+    episode_node = graph.node_for("research_episode", "epi_1")
+    assert episode_node is not None
+    members = graph.neighbors(product_node, Relationship.MEMBER_OF)
+    assert {m["target_node"] for m in members} == {
+        graph.node_for("research_episode", "epi_1")["node_id"],
+        graph.node_for("research_episode", "epi_2")["node_id"],
+    }
+
+    factor_node = graph.upsert_node("environmental_factor", "fac_1", "Heat Factor", confidence=0.6)
+    passed = graph.sync_validation(
+        {"validation_id": "val_1", "method": "factor_validation", "outcome": "passed",
+         "confidence": 0.8, "object_type": "environmental_factor", "object_id": "fac_1"}
+    )
+    supports = graph.neighbors(passed, Relationship.SUPPORTS)
+    assert supports and supports[0]["target_node"] == factor_node
+
+    failed = graph.sync_validation(
+        {"validation_id": "val_2", "method": "factor_validation", "outcome": "failed",
+         "confidence": 0.1, "object_type": "environmental_factor", "object_id": "fac_1"}
+    )
+    contradicts = graph.neighbors(failed, Relationship.CONTRADICTS)
+    assert contradicts and contradicts[0]["target_node"] == factor_node
+
+
 def test_governance_blocks_manual_edits_and_missing_evidence():
     with pytest.raises(ConstitutionViolation):
         governance.forbid_manual_edit("human")

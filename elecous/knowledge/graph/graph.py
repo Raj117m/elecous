@@ -157,10 +157,47 @@ class KnowledgeGraph:
                 self.link(parent_node["node_id"], node_id, Relationship.GENERALIZES)
         return node_id
 
-    def rebuild_from_stores(self, signal_library, factor_store, mechanism_store) -> dict[str, int]:
+    def sync_product(self, entity: str, category: str, episode_ids: list[str]) -> str:
+        """Product node (Phase 4 evidence chain: ...Demand Signals -> Products
+        -> Historical Episodes...). A product is the real catalog entity an
+        episode is about; linking it to every episode it appears in lets the
+        graph answer "what evidence exists about this product" directly."""
+        node_id = self.upsert_node("product", entity, entity, confidence=1.0)
+        for episode_id in episode_ids:
+            episode_node = self.upsert_node("research_episode", episode_id, episode_id, confidence=1.0)
+            self.link(node_id, episode_node, Relationship.MEMBER_OF)
+        return node_id
+
+    def sync_validation(self, validation_row: dict[str, Any]) -> str:
+        """Validation Evidence node (Phase 4 chain: ...Historical Episodes ->
+        Validation Evidence). Links the validation record to the exact
+        factor/mechanism/signal it judged, with the real outcome as the
+        relationship — supports on pass, contradicts on fail — so the graph
+        carries the validation history, not just the current confidence."""
+        label = f"{validation_row['method']}:{validation_row['outcome']}"
+        node_id = self.upsert_node(
+            "validation", validation_row["validation_id"], label,
+            confidence=float(validation_row["confidence"]) if validation_row.get("confidence") is not None else 0.0,
+        )
+        target = self.node_for(validation_row["object_type"], validation_row["object_id"])
+        if target:
+            relationship = Relationship.SUPPORTS if validation_row["outcome"] == "passed" else Relationship.CONTRADICTS
+            self.link(node_id, target["node_id"], relationship)
+        return node_id
+
+    def rebuild_from_stores(
+        self,
+        signal_library,
+        factor_store,
+        mechanism_store,
+        episode_store=None,
+        validation_rows: list[dict[str, Any]] | None = None,
+    ) -> dict[str, int]:
         """Incremental sync (spec 10.19): re-derives nodes/edges from the
         authoritative versioned stores. Cheap because each store already
-        holds only the latest version per object."""
+        holds only the latest version per object. ``episode_store`` and
+        ``validation_rows`` are optional so existing callers that only need
+        signal/factor/mechanism sync are unaffected."""
         signal_nodes = {s["signal_key"]: self.sync_signal(s) for s in signal_library.list_latest()}
         factor_nodes = {}
         for factor in factor_store.list_latest():
@@ -169,7 +206,30 @@ class KnowledgeGraph:
         for mechanism in mechanism_store.list_latest():
             self.sync_mechanism(mechanism, factor_nodes)
             mechanism_count += 1
-        return {"signals": len(signal_nodes), "factors": len(factor_nodes), "mechanisms": mechanism_count}
+
+        product_count = 0
+        if episode_store is not None:
+            episodes = episode_store.list_latest(include_controls=False)
+            by_entity: dict[tuple[str, str], list[str]] = {}
+            for episode in episodes:
+                by_entity.setdefault((episode["entity"], episode["category"]), []).append(episode["episode_id"])
+            for (entity, category), episode_ids in by_entity.items():
+                self.sync_product(entity, category, episode_ids)
+                product_count += 1
+
+        validation_count = 0
+        if validation_rows:
+            for row in validation_rows:
+                self.sync_validation(row)
+                validation_count += 1
+
+        return {
+            "signals": len(signal_nodes),
+            "factors": len(factor_nodes),
+            "mechanisms": mechanism_count,
+            "products": product_count,
+            "validations": validation_count,
+        }
 
     # -------------------------------------------------------------- search
     def search(self, object_type: str | None = None, min_confidence: float = 0.0) -> list[dict[str, Any]]:

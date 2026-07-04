@@ -63,7 +63,16 @@ class KnowledgeEngine:
             governance.require_traceable_node(
                 "mechanism", mechanism["mechanism_id"], json.loads(mechanism["supporting_episodes"])
             )
-        counts = self.graph.rebuild_from_stores(self.signals, self.factors, self.mechanisms)
+        validation_rows = []
+        if "validation" in self.config.get("databases.domains", []):
+            validation_db = self.databases.get("validation")
+            if validation_db.table_exists("validations"):
+                validation_rows = validation_db.query_dicts(
+                    "SELECT * FROM validations WHERE object_type IN ('environmental_factor', 'mechanism', 'signal')"
+                )
+        counts = self.graph.rebuild_from_stores(
+            self.signals, self.factors, self.mechanisms, episode_store=self.episodes, validation_rows=validation_rows
+        )
         self.bus.emit(EventType.KNOWLEDGE_UPDATED, source="knowledge", **counts)
         return counts
 
