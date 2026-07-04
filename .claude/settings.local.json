@@ -45,7 +45,14 @@
       "Bash(rm -rf /tmp/elecous_dashboard_check2)",
       "Bash(ELECOUS_DATA_DIR=/tmp/elecous_dashboard_check2 .venv/bin/python -c ' *)",
       "Bash(kill -9 24132)",
-      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 9: Dashboard Intelligence System — read-only FastAPI backend covering all spec panels \\(world state, opportunity radar, mechanism/factor/episode explorers, world map, validation center, knowledge growth, self-healing/expansion stubs, system health, resources, search, audit, unknowns, notifications\\) plus a static single-page frontend *)"
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 9: Dashboard Intelligence System — read-only FastAPI backend covering all spec panels \\(world state, opportunity radar, mechanism/factor/episode explorers, world map, validation center, knowledge growth, self-healing/expansion stubs, system health, resources, search, audit, unknowns, notifications\\) plus a static single-page frontend *)",
+      "Bash(rm -rf /tmp/elecous_phase10_check)",
+      "Bash(ELECOUS_DATA_DIR=/tmp/elecous_phase10_check .venv/bin/python -c ' *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase10_autonomy.py -q -k \"not network\")",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase7_knowledge.py elecous/tests/test_phase10_autonomy.py -q -k \"not network\")",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase7_knowledge.py elecous/tests/test_phase9_dashboard.py elecous/tests/test_phase10_autonomy.py -q -k \"not network\")",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase10_autonomy.py::test_expansion_engine_discovers_sandboxes_and_promotes_real_source -q)",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 10: Autonomous Evolution Engine — Autonomous Supervisor with detect/repair-separated self-healing, Expansion Engine \\(real candidate discovery -> sandbox -> promotion, demonstrated end-to-end against the real Open-Meteo Flood API\\), Curiosity Engine populating the Unknown Repository *)"
     ]
   }
 }

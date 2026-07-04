@@ -204,10 +204,18 @@ def knowledge_search(request: Request, object_type: str | None = None, min_confi
 # -------------------------------------------------------------- 9.17 self-healing
 @router.get("/health/self-healing")
 def self_healing(request: Request):
-    """Populated fully once the Autonomous Supervisor (Phase 10) is wired;
-    knowledge integrity scanning is already live."""
     stack = _stack(request)
-    return {"knowledge_integrity": stack.knowledge.self_heal()}
+    return {
+        "status": stack.supervisor.status(),
+        "knowledge_integrity": stack.knowledge.self_heal(),
+    }
+
+
+@router.post("/health/self-healing/run")
+def run_self_healing(request: Request):
+    stack = _stack(request)
+    attempts = stack.supervisor.self_heal()
+    return {"attempts": [a.__dict__ for a in attempts]}
 
 
 # --------------------------------------------------------------- 9.18 expansion
@@ -216,8 +224,15 @@ def expansion(request: Request):
     stack = _stack(request)
     return {
         "observation_requests": stack.gap.open_requests(),
+        "candidate_pool": stack.expansion.candidate_pool(),
         "candidate_signals": stack.environment.library.list_latest(lifecycle="candidate"),
+        "research_agenda": stack.knowledge.research_agenda()[:20],
     }
+
+
+@router.post("/expansion/run")
+def run_expansion(request: Request):
+    return _stack(request).expansion.run_expansion_cycle()
 
 
 # ----------------------------------------------------------------- 9.19 system health

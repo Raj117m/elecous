@@ -16,13 +16,22 @@ from typing import Any
 
 from elecous.common import timeutil
 from elecous.governance import constitution
+from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.logging import get_logger
+
+#: Resource Intelligence (spec 8.25, 10.24): historical replay must never
+#: become unbounded CPU work. If real history is longer than this many
+#: weekly-scale instants, the replay samples evenly across it instead of
+#: walking every step — precision/recall remain statistically meaningful
+#: while wall-clock time stays bounded on a MacBook.
+DEFAULT_MAX_INSTANTS = 60
 
 
 class HistoricalReplay:
-    def __init__(self, extractor, episodes):
+    def __init__(self, extractor, episodes, config: Config | None = None):
         self.extractor = extractor  # EnvironmentalSignalExtractor
         self.episodes = episodes  # EpisodeStore
+        self.config = config or active_config()
         self.log = get_logger("validation")
 
     def replay_mechanism(
@@ -30,6 +39,7 @@ class HistoricalReplay:
         mechanism: dict[str, Any],
         step_days: int = 7,
         activation_threshold: float = 0.99,
+        max_instants: int | None = None,
     ) -> dict[str, Any]:
         signals = set(json.loads(mechanism["supporting_signals"]))
         categories = json.loads(mechanism["affected_categories"])
@@ -44,6 +54,14 @@ class HistoricalReplay:
         if start >= end:
             return {"instants": 0}
 
+        # Resource guard: cap total instants regardless of how long real
+        # history has grown, by widening the effective step (never by
+        # skipping the guard itself).
+        cap = max_instants or DEFAULT_MAX_INSTANTS
+        naive_instants = max(1, int((end - start).days / step_days) + 1)
+        if naive_instants > cap:
+            step_days = max(step_days, int((end - start).days / cap) + 1)
+
         episode_starts = [
             timeutil.ensure_utc(e["spike_start"])
             for category in categories
@@ -55,7 +73,7 @@ class HistoricalReplay:
         true_pos, false_pos, false_neg, true_neg = 0, 0, 0, 0
         lead_errors: list[float] = []
         instant = start
-        while instant <= end:
+        while instant <= end and instants < cap:
             instants += 1
             changes = self.extractor.changes(window_end=instant)
             # Leakage guard: no signal evidence may postdate the instant.

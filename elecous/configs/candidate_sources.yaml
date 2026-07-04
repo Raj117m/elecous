@@ -1,0 +1,30 @@
+# Candidate observation sources not yet in production (spec 12.8-12.10).
+#
+# Autonomously *discovering* brand-new public APIs from the open internet
+# requires live web search, which this codebase's connector layer cannot
+# perform on its own. What the Expansion Engine implemented here CAN do —
+# and does — is exactly the pipeline the spec describes after discovery:
+# take a named candidate, build its connector, run it through the
+# Observation Sandbox (schema stability, repeatability, quality, freshness,
+# performance), and promote to production only if every check passes
+# (spec 2.17-2.18). This is the closest scientifically equivalent solution
+# to full autonomous internet-wide discovery; recorded as
+# docs/decisions/0002-expansion-candidate-pool.md.
+#
+# The Expansion Engine matches open Observation Requests (spec 2.15, 4.23)
+# against this pool by observation_capability and, on a match, registers the
+# candidate into the Source Registry at status "sandbox" for evaluation —
+# never directly to "active".
+candidates:
+  - source_id: open_meteo_flood
+    name: Open-Meteo Flood (river discharge)
+    provider: Open-Meteo
+    category: environment
+    observation_capability: hydrology
+    license: "CC BY 4.0 (non-commercial use, attribution)"
+    access_method: official_api
+    update_frequency: daily
+    countries: []
+    coverage: global
+    connector: elecous.observation.connectors.open_meteo_flood.OpenMeteoFloodConnector
+    connector_config: { past_days: 5 }

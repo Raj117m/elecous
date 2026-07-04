@@ -133,6 +133,10 @@ class KnowledgeEngine:
         return round(len(unknown) / len(new_facts), 4)
 
     # -------------------------------------------------------- self-healing
+    def detect_issues(self) -> dict[str, Any]:
+        """Read-only health check — never mutates state (spec 12.3)."""
+        return self.revision.detect_issues()
+
     def self_heal(self) -> dict[str, Any]:
         return self.revision.integrity_scan()
 

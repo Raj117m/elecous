@@ -129,6 +129,14 @@ class ObservationGapEngine:
             "SELECT * FROM observation_requests WHERE status = 'open' ORDER BY created_at DESC"
         )
 
+    def set_request_status_for_capability(self, capability: str, status: str) -> None:
+        """Close every open request for a capability once a source has been
+        promoted to satisfy it (used by the Expansion Engine, spec 12.6)."""
+        self.db.execute(
+            "UPDATE observation_requests SET status = ? WHERE capability = ? AND status = 'open'",
+            [status, capability],
+        )
+
     def set_request_status(self, request_id: str, status: str) -> None:
         self.db.execute(
             "UPDATE observation_requests SET status = ? WHERE request_id = ?", [status, request_id]

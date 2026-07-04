@@ -34,6 +34,12 @@ class NotificationEngine:
         )
         return notification_id
 
+    def emit_system_alert(self, kind: str, message: str, severity: str, context: dict[str, Any]) -> str:
+        """Public entry point for infrastructure callers (e.g. the
+        Autonomous Supervisor) that need to raise an alert outside the
+        opportunity/mechanism/knowledge/observation threshold checks below."""
+        return self._emit(kind, message, severity, context)
+
     def check_opportunity(self, opportunity: dict[str, Any]) -> str | None:
         threshold = float(self.thresholds.get("opportunity_confidence", 0.8))
         confidence = json.loads(opportunity["confidence"]).get("overall", 0.0)

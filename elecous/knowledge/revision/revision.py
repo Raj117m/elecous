@@ -76,16 +76,14 @@ class KnowledgeRevisionEngine:
         )
 
     # ------------------------------------------------------ self-healing
-    def integrity_scan(self) -> dict[str, Any]:
-        """Self-Healing Knowledge (spec 7.27): find broken references,
-        duplicate objects and invalid links. Repairs what can be repaired
-        automatically (dangling edges are removed); reports the rest."""
+    def detect_issues(self) -> dict[str, Any]:
+        """Read-only detection half of Self-Healing Knowledge (spec 7.27):
+        counts broken references, duplicate objects and invalid links
+        without repairing anything. Used by health checks that must not
+        have side effects (Detect must not silently become Repair)."""
         node_ids = {r[0] for r in self.db.query("SELECT node_id FROM knowledge_nodes")}
         edges = self.db.query_dicts("SELECT * FROM knowledge_edges")
         broken = [e for e in edges if e["source_node"] not in node_ids or e["target_node"] not in node_ids]
-        for edge in broken:
-            self.db.execute("DELETE FROM knowledge_edges WHERE edge_id = ?", [edge["edge_id"]])
-
         duplicates = self.db.query_dicts(
             "SELECT object_type, object_ref, count(*) AS n FROM knowledge_nodes GROUP BY object_type, object_ref HAVING n > 1"
         )
@@ -93,10 +91,29 @@ class KnowledgeRevisionEngine:
             "SELECT n.* FROM knowledge_nodes n LEFT JOIN knowledge_edges e ON n.node_id = e.source_node "
             "WHERE e.edge_id IS NULL AND n.object_type IN ('environmental_factor', 'mechanism')"
         )
-        report = {
-            "broken_edges_repaired": len(broken),
+        return {
+            "broken_edges": len(broken),
             "duplicate_node_groups": len(duplicates),
             "nodes_missing_evidence_links": len(missing_evidence),
+        }
+
+    def integrity_scan(self) -> dict[str, Any]:
+        """Repair half of Self-Healing Knowledge (spec 7.27): find broken
+        references, duplicate objects and invalid links, and repair what can
+        be repaired automatically (dangling edges are removed); reports the
+        rest for investigation."""
+        node_ids = {r[0] for r in self.db.query("SELECT node_id FROM knowledge_nodes")}
+        edges = self.db.query_dicts("SELECT * FROM knowledge_edges")
+        broken = [e for e in edges if e["source_node"] not in node_ids or e["target_node"] not in node_ids]
+        for edge in broken:
+            self.db.execute("DELETE FROM knowledge_edges WHERE edge_id = ?", [edge["edge_id"]])
+
+        remaining = self.detect_issues()
+        report = {
+            "broken_edges_repaired": len(broken),
+            "broken_edges_remaining": remaining["broken_edges"],
+            "duplicate_node_groups": remaining["duplicate_node_groups"],
+            "nodes_missing_evidence_links": remaining["nodes_missing_evidence_links"],
         }
         self.log.info("knowledge integrity scan", **report)
         return report

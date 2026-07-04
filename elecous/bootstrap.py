@@ -13,13 +13,17 @@ from dataclasses import dataclass
 
 from elecous.demand.engine import DemandEngine
 from elecous.environment.engine import EnvironmentalEngine
+from elecous.expansion.curiosity import CuriosityEngine
+from elecous.expansion.engine import ExpansionEngine
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, global_bus
 from elecous.infrastructure.resources import ResourceManager
+from elecous.infrastructure.supervisor import AutonomousSupervisor
 from elecous.knowledge.engine import KnowledgeEngine
 from elecous.mechanisms.engine import MechanismEngine
 from elecous.observation.gap import ObservationGapEngine
 from elecous.observation.network import ObservationNetwork
+from elecous.observation.sandbox.sandbox import ObservationSandbox
 from elecous.prediction.engine import PredictionEngine
 from elecous.scheduler.scheduler import Scheduler
 from elecous.storage.database import DatabaseManager, global_databases
@@ -43,6 +47,9 @@ class ElecousStack:
     knowledge: KnowledgeEngine
     prediction: PredictionEngine
     scheduler: Scheduler
+    expansion: ExpansionEngine
+    curiosity: CuriosityEngine
+    supervisor: AutonomousSupervisor
 
 
 def build_stack(config: Config | None = None) -> ElecousStack:
@@ -77,9 +84,16 @@ def build_stack(config: Config | None = None) -> ElecousStack:
     )
 
     scheduler = Scheduler(config=config, pause_check=resources.should_pause)
-    return ElecousStack(
+    sandbox = ObservationSandbox(observation.registry, config=config)
+    expansion = ExpansionEngine(observation.registry, sandbox, gap, config=config, bus=bus)
+    curiosity = CuriosityEngine(knowledge, mechanisms.store, environment.factors, gap)
+
+    stack = ElecousStack(
         config=config, databases=databases, bus=bus, resources=resources, tiers=tiers,
         observation=observation, gap=gap, demand=demand, environment=environment,
         mechanisms=mechanisms, validation=validation, knowledge=knowledge,
-        prediction=prediction, scheduler=scheduler,
+        prediction=prediction, scheduler=scheduler, expansion=expansion,
+        curiosity=curiosity, supervisor=None,  # type: ignore[arg-type]
     )
+    stack.supervisor = AutonomousSupervisor(stack)
+    return stack
