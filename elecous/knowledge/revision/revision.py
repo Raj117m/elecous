@@ -13,7 +13,6 @@ integrity checks that scan the graph itself.
 from __future__ import annotations
 
 import json
-import math
 from typing import Any
 
 from elecous.common import timeutil
@@ -119,9 +118,11 @@ class KnowledgeRevisionEngine:
         return ranked
 
     # -------------------------------------------------------- compression
-    def compression_ratio(self, observation_count: int, mechanism_count: int) -> float:
+    def compression_ratio(self, observation_count: int, mechanism_count: int) -> float | None:
         """Information Density (Appendix A Principle 3): observations per
-        mechanism. Rising over time is the health signal, not raw volume."""
+        mechanism. Rising over time is the health signal, not raw volume.
+        None (not infinity, which is not JSON-serializable) when no
+        mechanisms exist yet to compress into."""
         if mechanism_count == 0:
-            return math.inf if observation_count else 0.0
+            return None
         return round(observation_count / mechanism_count, 2)

@@ -37,7 +37,15 @@
       "Bash(.venv/bin/python -c \"import elecous.knowledge.engine; print\\('knowledge engine imports ok'\\)\")",
       "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 6+7: complete Scientific Validation Engine facade with negative learning and concept drift; add Knowledge Engine — graph, memory, revision/aging, governance *)",
       "Bash(.venv/bin/pytest elecous/tests/test_phase8_prediction.py -q)",
-      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 8: Prediction Engine — mechanism matching with partial activation, lead-time distributions, uncertainty exposure, independent opportunity scoring, ranking, opportunity formation/clustering/conflicts, replay *)"
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 8: Prediction Engine — mechanism matching with partial activation, lead-time distributions, uncertainty exposure, independent opportunity scoring, ranking, opportunity formation/clustering/conflicts, replay *)",
+      "Bash(rm -rf /tmp/elecous_dashboard_check)",
+      "Bash(ELECOUS_DATA_DIR=/tmp/elecous_dashboard_check .venv/bin/python -c ' *)",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase9_dashboard.py -q -k \"not network\")",
+      "Bash(.venv/bin/pytest elecous/tests/test_phase7_knowledge.py elecous/tests/test_phase9_dashboard.py -q -k \"not network\")",
+      "Bash(rm -rf /tmp/elecous_dashboard_check2)",
+      "Bash(ELECOUS_DATA_DIR=/tmp/elecous_dashboard_check2 .venv/bin/python -c ' *)",
+      "Bash(kill -9 24132)",
+      "Bash(git -c 'user.name=Rajdeep Malladeb' -c user.email=rajdeep7az@gmail.com commit -qm 'Phase 9: Dashboard Intelligence System — read-only FastAPI backend covering all spec panels \\(world state, opportunity radar, mechanism/factor/episode explorers, world map, validation center, knowledge growth, self-healing/expansion stubs, system health, resources, search, audit, unknowns, notifications\\) plus a static single-page frontend *)"
     ]
   }
 }

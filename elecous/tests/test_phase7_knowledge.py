@@ -117,7 +117,8 @@ def test_discovery_ranking_prefers_priority_and_recency(isolated_config):
 
 
 def test_compression_ratio_grows_with_understanding():
-    graph = KnowledgeGraph.__new__(KnowledgeGraph)  # not used, just for ratio math
     revision = KnowledgeRevisionEngine.__new__(KnowledgeRevisionEngine)
     assert KnowledgeRevisionEngine.compression_ratio(revision, 1_000_000, 500) == 2000.0
-    assert KnowledgeRevisionEngine.compression_ratio(revision, 0, 0) == 0.0
+    # Undefined (no mechanisms yet) must be JSON-serializable, so None not inf.
+    assert KnowledgeRevisionEngine.compression_ratio(revision, 0, 0) is None
+    assert KnowledgeRevisionEngine.compression_ratio(revision, 500, 0) is None

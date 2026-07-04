@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ELECOUS — Scientific Demand Intelligence</title>
+<style>
+  :root { --bg:#0b0f14; --panel:#131a22; --line:#233042; --text:#dfe8f2; --dim:#7f93a8; --accent:#4fd1c5; --warn:#e0b23a; --bad:#e05a5a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: -apple-system, "SF Pro Text", Helvetica, Arial, sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; }
+  header h1 { font-size:16px; letter-spacing:2px; margin:0; color:var(--accent); font-weight:600; }
+  nav { display:flex; gap:4px; flex-wrap: wrap; }
+  nav button { background:transparent; border:1px solid var(--line); color:var(--dim); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
+  nav button.active { color:var(--text); border-color:var(--accent); }
+  main { padding:20px; display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 10px; }
+  .row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--line); font-size:13px; }
+  .row:last-child { border-bottom:none; }
+  .muted { color:var(--dim); }
+  .pill { padding:2px 8px; border-radius:10px; font-size:11px; }
+  .pill.ok { background:#173225; color:#5fd68a; }
+  .pill.warn { background:#332a12; color:var(--warn); }
+  .pill.bad { background:#331515; color:var(--bad); }
+  pre { white-space:pre-wrap; font-size:11px; color:var(--dim); max-height:200px; overflow:auto; }
+  .full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ELECOUS</h1>
+  <nav id="nav"></nav>
+</header>
+<main id="app"></main>
+<script>
+const API = "/api";
+const views = ["home", "opportunities", "mechanisms", "factors", "episodes", "observation", "validation", "knowledge", "unknowns", "resources"];
+let current = "home";
+
+async function j(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(path + ": " + r.status);
+  return r.json();
+}
+
+function row(label, value) {
+  return `<div class="row"><span class="muted">${label}</span><span>${value}</span></div>`;
+}
+
+function panel(title, inner, full=false) {
+  return `<div class="panel ${full ? 'full' : ''}"><h2>${title}</h2>${inner}</div>`;
+}
+
+async function renderHome() {
+  const data = await j("/home");
+  const ws = data.world_state;
+  const signals = ws.signals.slice(0, 10).map(s => row(s.signal_key, s.z)).join("");
+  const opps = data.opportunities.map(o => row(o.categories.join(", "), `${(o.confidence.overall*100).toFixed(0)}% · ${o.stage}`)).join("") || row("none active", "");
+  const health = row("active sources", data.observation_network.sources) +
+    row("mechanisms", JSON.stringify(data.system_health.mechanisms)) +
+    row("validation verdict", data.validation_status.verdict);
+  const growth = Object.entries(data.knowledge_growth).filter(([k])=>k!=='compression').map(([k,v]) => row(k, typeof v === 'object' ? JSON.stringify(v) : v)).join("");
+  return panel("World State", signals || row("no active signals","")) +
+         panel("Demand Opportunities", opps) +
+         panel("System Health", health) +
+         panel("Knowledge Growth", growth);
+}
+
+async function renderOpportunities() {
+  const data = await j("/opportunities");
+  if (!data.opportunities.length) return panel("Opportunity Radar", row("no active opportunities",""), true);
+  const rows = data.opportunities.map(o => row(
+    `${o.categories.join(", ")} <span class="muted">(${o.stage})</span>`,
+    `${(o.probability*100).toFixed(0)}% · lead ${o.lead_time.most_probable ?? '?'}d`
+  )).join("");
+  return panel("Opportunity Radar", rows, true);
+}
+
+async function renderMechanisms() {
+  const data = await j("/mechanisms");
+  const rows = data.mechanisms.map(m => row(
+    `${m.name} <span class="pill ${m.lifecycle==='trusted'?'ok':m.lifecycle==='declining'?'bad':'warn'}">${m.lifecycle}</span>`,
+    (m.current_confidence*100).toFixed(0) + "%"
+  )).join("") || row("no mechanisms yet","");
+  return panel("Mechanism Explorer", rows, true);
+}
+
+async function renderFactors() {
+  const data = await j("/factors");
+  const rows = data.factors.map(f => row(f.name, `lift ${f.lift} · support ${f.support}`)).join("") || row("no factors yet","");
+  return panel("Environmental Factor Explorer", rows, true);
+}
+
+async function renderEpisodes() {
+  const data = await j("/episodes");
+  const rows = data.episodes.slice(0,30).map(e => row(`${e.entity} (${e.category})`, `score ${e.demand_score}`)).join("") || row("no episodes yet","");
+  return panel("Research Episode Explorer", rows, true);
+}
+
+async function renderObservation() {
+  const data = await j("/observation/sources");
+  const rows = data.sources.map(s => row(
+    `${s.name} <span class="pill ${s.status==='active'?'ok':s.status==='suspended'?'bad':'warn'}">${s.status}</span>`,
+    `health ${(s.health*100).toFixed(0)}%`
+  )).join("");
+  return panel("Observation Network Monitor", rows, true);
+}
+
+async function renderValidation() {
+  const data = await j("/validations?limit=30");
+  const rows = data.validations.map(v => row(`${v.object_type} · ${v.method}`, `<span class="pill ${v.outcome==='passed'?'ok':'bad'}">${v.outcome}</span>`)).join("") || row("no validations yet","");
+  return panel("Validation Center", rows, true);
+}
+
+async function renderKnowledge() {
+  const data = await j("/knowledge/growth");
+  const rows = Object.entries(data).map(([k,v]) => row(k, typeof v === 'object' ? JSON.stringify(v) : v)).join("");
+  return panel("Knowledge Evolution", rows, true);
+}
+
+async function renderUnknowns() {
+  const data = await j("/unknowns");
+  const rows = data.unknowns.map(u => row(u.description, `priority ${u.rank_score}`)).join("") || row("nothing unexplained right now","");
+  return panel("Unknown Intelligence", rows, true);
+}
+
+async function renderResources() {
+  const data = await j("/health/resources");
+  const s = data.sample;
+  const rows = Object.entries(s).map(([k,v]) => row(k, v)).join("");
+  return panel("Resource Dashboard", rows, true) + panel("Storage Tiers", `<pre>${JSON.stringify(data.tiers, null, 2)}</pre>`, true);
+}
+
+const renderers = {
+  home: renderHome, opportunities: renderOpportunities, mechanisms: renderMechanisms,
+  factors: renderFactors, episodes: renderEpisodes, observation: renderObservation,
+  validation: renderValidation, knowledge: renderKnowledge, unknowns: renderUnknowns,
+  resources: renderResources,
+};
+
+async function render(view) {
+  current = view;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+  const app = document.getElementById("app");
+  try {
+    app.innerHTML = await renderers[view]();
+  } catch (e) {
+    app.innerHTML = panel("Error", `<pre>${e}</pre>`, true);
+  }
+}
+
+const nav = document.getElementById("nav");
+views.forEach(v => {
+  const b = document.createElement("button");
+  b.textContent = v;
+  b.dataset.view = v;
+  b.onclick = () => render(v);
+  nav.appendChild(b);
+});
+
+render("home");
+setInterval(() => render(current), 30000);
+</script>
+</body>
+</html>
