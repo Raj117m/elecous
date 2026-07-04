@@ -23,25 +23,14 @@ from collections import Counter, defaultdict
 from typing import Any
 
 from elecous.bootstrap import build_stack
+from elecous.environment.engine import _season_of
 from elecous.environment.ontology.ontology import CATEGORY_FAMILIES
 
-# ---------------------------------------------------------------- thresholds
 # Minimum evidence a category needs before mechanism discovery on it is
-# scientifically meaningful. These mirror (and are slightly stricter than)
-# the Skeptic Engine's existing sampling_bias check (>=2 entities) and the
-# pattern miner's min_support_episodes (>=3), because a *validation-ready*
-# category needs headroom above the bare minimum a single lucky pattern
-# needs to pass, not just the floor those individual checks enforce.
-MIN_ENTITIES = 5
-MIN_EPISODES = 8
-MIN_SEASONS = 2
-MIN_COUNTRIES_OR_GLOBAL = 1
-MIN_YEARS = 2
-
-
-def _season_of(month: int) -> str:
-    return ["winter", "winter", "spring", "spring", "spring", "summer",
-            "summer", "summer", "autumn", "autumn", "autumn", "winter"][month - 1]
+# scientifically meaningful. Read from configs/thresholds.yaml
+# (environment.gate_min_*) — the exact same values the real
+# EnvironmentalEngine._validation_gate() enforces in the pipeline, so this
+# report can never drift out of sync with what actually gates discovery.
 
 
 def _industry_of(category: str) -> str:
@@ -55,6 +44,10 @@ def _industry_of(category: str) -> str:
 class EvidenceAuditor:
     def __init__(self):
         self.stack = build_stack()
+        gate_thresholds = self.stack.config.load_file("thresholds.yaml")["environment"]
+        self.min_entities = int(gate_thresholds["gate_min_entities"])
+        self.min_episodes = int(gate_thresholds["gate_min_episodes"])
+        self.min_seasons = int(gate_thresholds["gate_min_seasons"])
 
     # ------------------------------------------------------------ Phase 1/5
     def audit_coverage(self) -> dict[str, Any]:
@@ -118,9 +111,9 @@ class EvidenceAuditor:
         # MIN_* thresholds so it reads as "how close to sufficiently
         # powered," not an unbounded score.
         for p in phenomena_detail:
-            entity_power = min(1.0, p["entity_count"] / MIN_ENTITIES)
-            episode_power = min(1.0, p["episode_count"] / MIN_EPISODES)
-            season_power = min(1.0, p["season_count"] / MIN_SEASONS)
+            entity_power = min(1.0, p["entity_count"] / self.min_entities)
+            episode_power = min(1.0, p["episode_count"] / self.min_episodes)
+            season_power = min(1.0, p["season_count"] / self.min_seasons)
             p["statistical_power"] = round((entity_power * episode_power * season_power) ** (1 / 3), 3)
 
         all_categories_in_catalog = set(entities_per_category)
@@ -156,9 +149,9 @@ class EvidenceAuditor:
             "gaps": {
                 "missing_categories_no_episode_ever": missing_categories,
                 "missing_countries_never_observed": missing_countries,
-                "categories_below_min_entities": [p["category"] for p in phenomena_detail if p["entity_count"] < MIN_ENTITIES],
-                "categories_below_min_episodes": [p["category"] for p in phenomena_detail if p["episode_count"] < MIN_EPISODES],
-                "categories_below_min_seasons": [p["category"] for p in phenomena_detail if p["season_count"] < MIN_SEASONS],
+                "categories_below_min_entities": [p["category"] for p in phenomena_detail if p["entity_count"] < self.min_entities],
+                "categories_below_min_episodes": [p["category"] for p in phenomena_detail if p["episode_count"] < self.min_episodes],
+                "categories_below_min_seasons": [p["category"] for p in phenomena_detail if p["season_count"] < self.min_seasons],
             },
         }
 
@@ -167,11 +160,11 @@ class EvidenceAuditor:
         """Rank bottlenecks by estimated impact: how many categories they
         block, weighted by how far each category is from the threshold."""
         bottleneck_defs = [
-            ("insufficient_entity_diversity", "entity_count", MIN_ENTITIES,
+            ("insufficient_entity_diversity", "entity_count", self.min_entities,
              "Only N distinct real entities observed to spike in this category; a mechanism cannot be shown to generalize beyond a single product with fewer than a handful of independent examples."),
-            ("insufficient_episode_count", "episode_count", MIN_EPISODES,
+            ("insufficient_episode_count", "episode_count", self.min_episodes,
              "Too few independent real spike events recorded; each mechanism claim needs repeated, independent confirmation, not a single occurrence."),
-            ("insufficient_seasonal_diversity", "season_count", MIN_SEASONS,
+            ("insufficient_seasonal_diversity", "season_count", self.min_seasons,
              "All observed episodes cluster in the same season; cannot separate 'this phenomenon predicts demand' from 'this is just always true in month X'."),
         ]
         impacts = []
@@ -214,9 +207,9 @@ class EvidenceAuditor:
         catalog entities are the cheapest, highest-value next targets."""
         priorities = []
         for p in coverage["phenomena"]:
-            entity_gap = max(0, MIN_ENTITIES - p["entity_count"])
-            episode_gap = max(0, MIN_EPISODES - p["episode_count"])
-            season_gap = max(0, MIN_SEASONS - p["season_count"])
+            entity_gap = max(0, self.min_entities - p["entity_count"])
+            episode_gap = max(0, self.min_episodes - p["episode_count"])
+            season_gap = max(0, self.min_seasons - p["season_count"])
             untapped_catalog = max(0, p["tracked_entities_in_catalog"] - p["entity_count"])
             if entity_gap == 0 and episode_gap == 0 and season_gap == 0:
                 continue  # already validation-ready; nothing to prioritize
@@ -252,12 +245,12 @@ class EvidenceAuditor:
         if match is None:
             return {"category": category, "gate": "blocked", "reason": "zero real episodes ever recorded"}
         failures = []
-        if match["entity_count"] < MIN_ENTITIES:
-            failures.append(f"entities {match['entity_count']}/{MIN_ENTITIES}")
-        if match["episode_count"] < MIN_EPISODES:
-            failures.append(f"episodes {match['episode_count']}/{MIN_EPISODES}")
-        if match["season_count"] < MIN_SEASONS:
-            failures.append(f"seasons {match['season_count']}/{MIN_SEASONS}")
+        if match["entity_count"] < self.min_entities:
+            failures.append(f"entities {match['entity_count']}/{self.min_entities}")
+        if match["episode_count"] < self.min_episodes:
+            failures.append(f"episodes {match['episode_count']}/{self.min_episodes}")
+        if match["season_count"] < self.min_seasons:
+            failures.append(f"seasons {match['season_count']}/{self.min_seasons}")
         gate = "blocked" if failures else "open"
         return {"category": category, "gate": gate, "unmet_requirements": failures, "statistical_power": match["statistical_power"]}
 

@@ -10,9 +10,45 @@ import json
 import pytest
 
 from elecous.common import timeutil
+from elecous.environment.engine import EnvironmentalEngine
 from elecous.environment.ontology.ontology import Ontology
 from elecous.environment.pattern_engine.mining import PatternMiner
 from elecous.environment.semantic.engine import SemanticEngine
+
+
+def test_validation_gate_blocks_thin_evidence_categories(isolated_config):
+    """The evidence-sufficiency gate (Phase 7 of the evidence-bottleneck
+    directive) must block mechanism discovery for a category before any
+    computation runs, per real thresholds in configs/thresholds.yaml —
+    verified against the exact incident this gate was built to prevent
+    (a category with 1 entity / 3 episodes producing a combinatorial
+    explosion of unvalidatable factors)."""
+    from elecous.demand.episodes.episodes import EpisodeStore
+    from elecous.observation.store import ObservationStore
+
+    engine = EnvironmentalEngine(ObservationStore(), EpisodeStore())
+    now = timeutil.utcnow()
+
+    thin_group = [
+        {"entity": "Evaporative cooler", "spike_start": now, "category": "cooling"},
+        {"entity": "Evaporative cooler", "spike_start": now, "category": "cooling"},
+        {"entity": "Evaporative cooler", "spike_start": now, "category": "cooling"},
+    ]
+    gate = engine._validation_gate("cooling", thin_group)
+    assert gate["open"] is False
+    assert any("entities" in r for r in gate["unmet_requirements"])
+    assert any("episodes" in r for r in gate["unmet_requirements"])
+    assert any("seasons" in r for r in gate["unmet_requirements"])
+
+    from datetime import timedelta
+
+    rich_group = [
+        {"entity": f"Product {i}", "spike_start": now - timedelta(days=30 * i), "category": "cooling"}
+        for i in range(9)
+    ]
+    gate2 = engine._validation_gate("cooling", rich_group)
+    assert gate2["open"] is True
+    assert gate2["unmet_requirements"] == []
 
 
 def test_pattern_miner_finds_lifted_combinations(isolated_config):

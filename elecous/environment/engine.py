@@ -36,6 +36,11 @@ from elecous.signals.library import SignalLibrary
 from elecous.storage.database import DatabaseManager, global_databases
 
 
+def _season_of(month: int) -> str:
+    return ["winter", "winter", "spring", "spring", "spring", "summer",
+            "summer", "summer", "autumn", "autumn", "autumn", "winter"][month - 1]
+
+
 class EnvironmentalEngine:
     def __init__(
         self,
@@ -74,8 +79,16 @@ class EnvironmentalEngine:
         for episode in episodes:
             by_category.setdefault(episode["category"], []).append(episode)
 
-        summary = {"episodes": len(episodes), "factors": [], "interactions": 0}
+        summary = {"episodes": len(episodes), "factors": [], "interactions": 0, "gated_categories": {}}
         for category, group in by_category.items():
+            gate = self._validation_gate(category, group)
+            if not gate["open"]:
+                summary["gated_categories"][category] = gate["unmet_requirements"]
+                self.log.info(
+                    "mechanism discovery gated: insufficient evidence",
+                    category=category, unmet=gate["unmet_requirements"],
+                )
+                continue
             for episode in group:
                 self.discovery.discover_for_episode(episode)
             self._ensure_ordinary_windows(category, group)
@@ -109,6 +122,28 @@ class EnvironmentalEngine:
         self.factors.merge_similar()
         self.factors.split_overbroad()
         return summary
+
+    def _validation_gate(self, category: str, group: list[dict[str, Any]]) -> dict[str, Any]:
+        """Evidence-sufficiency gate (evidence-bottleneck directive, Phase
+        7): do not run pattern mining for a category until it clears real
+        minimum entity/episode/seasonal-diversity floors. Mirrors the
+        Skeptic Engine's sampling_bias/coincidence checks but runs *before*
+        mining spends any computation, and reports exactly what is missing
+        rather than silently producing candidates that cannot survive
+        validation regardless of pattern quality."""
+        entities = {e["entity"] for e in group}
+        seasons = {_season_of(e["spike_start"].month) for e in group}
+        min_entities = int(self.thresholds["environment"]["gate_min_entities"])
+        min_episodes = int(self.thresholds["environment"]["gate_min_episodes"])
+        min_seasons = int(self.thresholds["environment"]["gate_min_seasons"])
+        unmet = []
+        if len(entities) < min_entities:
+            unmet.append(f"entities {len(entities)}/{min_entities}")
+        if len(group) < min_episodes:
+            unmet.append(f"episodes {len(group)}/{min_episodes}")
+        if len(seasons) < min_seasons:
+            unmet.append(f"seasons {len(seasons)}/{min_seasons}")
+        return {"open": not unmet, "unmet_requirements": unmet}
 
     def _ensure_ordinary_windows(self, category: str, group: list[dict[str, Any]]) -> None:
         """Sample real ordinary periods for the category: weekly instants in

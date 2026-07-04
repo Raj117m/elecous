@@ -40,6 +40,16 @@ environment:
   min_support_episodes: 3
   min_lift: 1.8
   max_signals_per_factor: 5
+  # Validation gate (evidence-bottleneck directive, Phase 7): a category's
+  # evidence must clear these floors before pattern mining runs for it at
+  # all. Mirrors (and runs before) the Skeptic Engine's sampling_bias check
+  # -- catching thin evidence here avoids wasting computation mining
+  # patterns that cannot possibly survive validation regardless of pattern
+  # quality (see the real combinatorial-explosion incident this session,
+  # caused by mining a category with only 3 episodes and 1 entity).
+  gate_min_entities: 5
+  gate_min_episodes: 8
+  gate_min_seasons: 2
 
 mechanisms:
   min_supporting_episodes: 3
