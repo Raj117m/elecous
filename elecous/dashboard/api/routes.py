@@ -183,6 +183,13 @@ def prospective_predictions(request: Request):
     return {"prospective_predictions": rows}
 
 
+@router.get("/validations/benchmark")
+def rolling_benchmark(request: Request):
+    stack = _stack(request)
+    latest = stack.validation.benchmarks.latest("rolling_vs_baseline")
+    return {"latest": latest}
+
+
 # -------------------------------------------------------- 9.16 knowledge evolution
 @router.get("/knowledge/growth")
 def knowledge_growth(request: Request):

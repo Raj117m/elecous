@@ -209,6 +209,19 @@ class MechanismStore:
         days = active_config().load_file("thresholds.yaml")["validation"]["revalidation_days"]
         return int(days.get(lifecycle.value, 14))
 
+    def reschedule_validation(self, mechanism_id: str, lifecycle: Lifecycle) -> None:
+        """Push next_validation_at forward without a lifecycle change, for a
+        VALIDATED/TRUSTED mechanism re-affirmed on fresh historical
+        evidence. Keeps the continuous revalidation loop from re-replaying
+        the same mechanism every tick, at one version per revalidation
+        interval rather than one per tick."""
+        self.new_version(
+            mechanism_id,
+            {"next_validation_at": timeutil.utcnow() + timedelta(days=self._revalidation_days(lifecycle))},
+            actor="validation_engine",
+            reason="revalidation reaffirmed",
+        )
+
     # ------------------------------------------------------------ confidence
     def update_confidence(self, mechanism_id: str, components: dict[str, float], actor: str) -> None:
         current = self.latest(mechanism_id)

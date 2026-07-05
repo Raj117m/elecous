@@ -109,7 +109,18 @@ async function renderObservation() {
 async function renderValidation() {
   const data = await j("/validations?limit=30");
   const rows = data.validations.map(v => row(`${v.object_type} · ${v.method}`, `<span class="pill ${v.outcome==='passed'?'ok':'bad'}">${v.outcome}</span>`)).join("") || row("no validations yet","");
-  return panel("Validation Center", rows, true);
+  const bench = await j("/validations/benchmark");
+  let benchHtml;
+  if (!bench.latest) {
+    benchHtml = row("no rolling benchmark run yet", "");
+  } else {
+    const m = bench.latest.metrics;
+    benchHtml = row("verdict", `<span class="pill ${m.verdict==='outperforms_baseline'?'ok':'warn'}">${m.verdict}</span>`) +
+      row("ELECOUS  F1 / precision / recall", `${m.elecous.f1?.toFixed(3) ?? '?'} / ${m.elecous.precision?.toFixed(3) ?? '?'} / ${m.elecous.recall?.toFixed(3) ?? '?'}`) +
+      row("Baseline F1 / precision / recall", `${m.baseline.f1?.toFixed(3) ?? '?'} / ${m.baseline.precision?.toFixed(3) ?? '?'} / ${m.baseline.recall?.toFixed(3) ?? '?'}`) +
+      row("mechanisms sampled", m.mechanisms_sampled);
+  }
+  return panel("Validation Center", rows, true) + panel("Rolling Benchmark vs. Baseline", benchHtml, true);
 }
 
 async function renderKnowledge() {

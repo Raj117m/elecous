@@ -27,7 +27,10 @@ class EiaElectricityConnector(Connector):
             raise ConnectorSuspended("EIA API key not configured", context={"source": self.source_id})
         now = timeutil.utcnow()
         days = int(self.params.get("backfill_days", 365)) if mode == "backfill" else int(self.params.get("past_days", 7))
-        start = (since or now - timedelta(days=days)).date()
+        # Same since-truncation bug class fixed in wikimedia.py/open_meteo.py:
+        # backfill must always request full configured depth; `since` is a
+        # live-mode incremental optimization only.
+        start = (now - timedelta(days=days)).date() if mode == "backfill" else (since or now - timedelta(days=days)).date()
         regions = self.params.get("regions", ["US48"])
         payload = self.http.get_json(
             EIA_URL,
@@ -83,7 +86,10 @@ class FredSeriesConnector(Connector):
         )
         now = timeutil.utcnow()
         days = int(self.params.get("backfill_days", 1095)) if mode == "backfill" else 90
-        start = (since or now - timedelta(days=days)).date()
+        # Same since-truncation bug class fixed in wikimedia.py/open_meteo.py:
+        # backfill must always request full configured depth; `since` is a
+        # live-mode incremental optimization only.
+        start = (now - timedelta(days=days)).date() if mode == "backfill" else (since or now - timedelta(days=days)).date()
         observations = []
         schema_hash = None
         raw_count = 0

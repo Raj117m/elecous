@@ -64,7 +64,7 @@ class ValidationEngine:
         self.world = world
 
         self.skeptic = SkepticEngine(discovery, episodes, factors)
-        self.replay = HistoricalReplay(extractor, episodes)
+        self.replay = HistoricalReplay(extractor, episodes, config=self.config)
         self.prospective = ProspectiveValidator(episodes, self.databases)
         self.calibration = CalibrationEngine(self.databases, self.config)
         self.drift = ConceptDriftEngine(mechanisms, self.prospective, self.databases, self.config)
@@ -202,6 +202,34 @@ class ValidationEngine:
         min_precision = float(self.thresholds["validation"]["historical_min_precision"])
         precision_ok = replay_report.get("precision") is None or replay_report["precision"] >= min_precision
 
+        # Break the measured confidence deadlock (v1.0 blocker): mechanism
+        # confidence was frozen at its creation-time base*0.6 (~0.30, below
+        # the 0.35 experimental floor) because the ONLY writer of mechanism
+        # confidence was resolve_prospective -- which only runs AFTER a
+        # mechanism reaches VALIDATED, which itself requires confidence
+        # above the floor. Nothing could ever cross it. The "scientific"
+        # confidence dimension (weight 0.2, reserved for exactly this) was
+        # initialised to 0.0 and never written by any code path.
+        #
+        # Fix: real validation evidence now populates it. scientific =
+        # measured historical replay precision, discounted if the mechanism
+        # fails the adversarial skeptic or competing-explanation checks.
+        # This weakens NONE of the six checks below -- they remain the real
+        # gate; it only lets confidence reflect the real evidence validation
+        # already gathered, so a mechanism with genuinely strong history can
+        # cross the floor and a weak one still cannot.
+        scientific = 0.0
+        if replay_report.get("precision") is not None:
+            scientific = float(replay_report["precision"])
+            if not mech_skeptic["survived"]:
+                scientific *= 0.5
+            if not competing["environmental_explanation_survives"]:
+                scientific *= 0.5
+        self.mechanisms.update_confidence(
+            mechanism_id, {"scientific": round(scientific, 4)}, actor="validation_evidence"
+        )
+        mechanism = self.mechanisms.latest(mechanism_id)  # re-read the freshened confidence
+
         checks = {
             "generalizes": len(factor_ids) > 0,
             "repeatable": len(json.loads(mechanism["supporting_episodes"])) >= int(
@@ -223,10 +251,17 @@ class ValidationEngine:
                 Lifecycle.VALIDATED: min_conf["min_confidence_trusted"],
             }.get(current, 0.0)
         )
+        # Historical validation promotes at most to VALIDATED. TRUSTED is
+        # reserved for real prospective (future) confirmation via
+        # resolve_prospective -- reaching it on the same backtest a
+        # mechanism was validated on would be survivorship/overfitting
+        # self-deception (prospective.py: "Only prospective success creates
+        # Trusted Knowledge"). This VALIDATED->TRUSTED path was dormant and
+        # unreachable until the confidence-deadlock fix; capping it here
+        # keeps the scientific separation intact.
         target = {
             Lifecycle.CANDIDATE: Lifecycle.EXPERIMENTAL,
             Lifecycle.EXPERIMENTAL: Lifecycle.VALIDATED,
-            Lifecycle.VALIDATED: Lifecycle.TRUSTED,
         }.get(current)
         outcome = "passed" if (passed and confidence_floor_ok) else "failed"
         if outcome == "passed" and target is not None:
@@ -234,8 +269,13 @@ class ValidationEngine:
                 mechanism_id, target, ValidationStatus.PASSED, actor="validation_engine",
                 evidence={"replay": replay_report, "skeptic": mech_skeptic},
             )
-            if target in (Lifecycle.VALIDATED, Lifecycle.TRUSTED) and not self.prospective.has_open(mechanism_id):
+            if target == Lifecycle.VALIDATED and not self.prospective.has_open(mechanism_id):
                 self.prospective.register(mechanism, activation=1.0)
+        elif outcome == "passed" and current in (Lifecycle.VALIDATED, Lifecycle.TRUSTED):
+            # Re-affirmed on fresh historical evidence: no lifecycle change,
+            # but push the revalidation timer forward so the continuous loop
+            # does not re-replay it every tick.
+            self.mechanisms.reschedule_validation(mechanism_id, current)
         elif outcome == "failed" and current in (Lifecycle.VALIDATED, Lifecycle.TRUSTED):
             self.mechanisms.promote(mechanism_id, Lifecycle.DECLINING, ValidationStatus.FAILED, actor="validation_engine")
         self._record(
@@ -308,3 +348,65 @@ class ValidationEngine:
             elif pass_rate < 0.05:
                 verdict = "too_conservative"
         return {"counts": counts, "pass_rate": pass_rate, "verdict": verdict}
+
+    # --------------------------------------------------- rolling benchmark
+    def run_rolling_benchmark(self, sample_size: int = 30) -> dict[str, Any]:
+        """Final Patch, Task 6: aggregate real walk-forward replay across a
+        bounded, real sample of mechanisms, compared against a real, simple
+        single-signal baseline for the exact same windows -- not a
+        regression check against ELECOUS's own previous version (that's
+        BenchmarkEngine.compare_to_previous, a different real question).
+
+        Sample size is capped, not exhaustive: extractor.changes() was
+        directly measured at 45ms/call; a full 328-mechanism sweep would
+        cost ~30 real minutes, disproportionate to run every cycle on the
+        target hardware (Task 2/7). 30 mechanisms x 2 replays x <=60
+        instants stays under ~3 real minutes.
+
+        The sample is the VALIDATED set (the mechanisms actually used for
+        prediction), ordered by mechanism_id for a stable, reproducible
+        slice. It is deliberately NOT list_latest()[:n]: that orders by
+        current_confidence, and since the confidence-deadlock fix made
+        confidence proportional to replay precision, top-by-confidence
+        would cherry-pick the highest-precision mechanisms and flatter the
+        result -- survivorship bias in the benchmark itself. Measuring the
+        deployed (validated) set answers the honest operational question:
+        do the mechanisms we actually predict with beat their own
+        single-signal baseline?"""
+        validated = [
+            m for m in self.mechanisms.list_latest()
+            if m["lifecycle"] in ("validated", "trusted", "monitoring")
+        ]
+        mechanisms = sorted(validated, key=lambda m: m["mechanism_id"])[:sample_size]
+        if not mechanisms:
+            metrics = {"mechanisms_sampled": 0, "verdict": "no_validated_mechanisms"}
+            self.benchmarks.record("rolling_vs_baseline", metrics)
+            return metrics
+        totals = {"elecous": {"tp": 0, "fp": 0, "fn": 0}, "baseline": {"tp": 0, "fp": 0, "fn": 0}}
+        for mechanism in mechanisms:
+            mech_report = self.replay.replay_mechanism(mechanism)
+            base_report = self.replay.replay_baseline(mechanism)
+            for key, report in (("elecous", mech_report), ("baseline", base_report)):
+                totals[key]["tp"] += report.get("true_positives", 0)
+                totals[key]["fp"] += report.get("false_positives", 0)
+                totals[key]["fn"] += report.get("false_negatives", 0)
+
+        def micro_metrics(t: dict[str, int]) -> dict[str, float | None]:
+            precision = t["tp"] / (t["tp"] + t["fp"]) if (t["tp"] + t["fp"]) else None
+            recall = t["tp"] / (t["tp"] + t["fn"]) if (t["tp"] + t["fn"]) else None
+            f1 = (2 * precision * recall / (precision + recall)) if precision and recall and (precision + recall) else None
+            return {"precision": precision, "recall": recall, "f1": f1, **t}
+
+        metrics = {
+            "mechanisms_sampled": len(mechanisms),
+            "elecous": micro_metrics(totals["elecous"]),
+            "baseline": micro_metrics(totals["baseline"]),
+        }
+        elecous_f1, baseline_f1 = metrics["elecous"]["f1"], metrics["baseline"]["f1"]
+        if elecous_f1 is None or baseline_f1 is None:
+            metrics["verdict"] = "insufficient_evidence"
+        else:
+            metrics["verdict"] = "outperforms_baseline" if elecous_f1 > baseline_f1 else "does_not_outperform_baseline"
+        self.benchmarks.record("rolling_vs_baseline", metrics)
+        self.log.info("rolling benchmark completed", verdict=metrics["verdict"], mechanisms=len(mechanisms))
+        return metrics

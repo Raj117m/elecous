@@ -42,7 +42,14 @@ class OpenMeteoWeatherConnector(Connector):
         today = timeutil.utcnow().date()
         for loc in locations:
             if mode == "backfill":
-                start = (since or timeutil.days_ago(int(self.params.get("backfill_days", 730)))).date()
+                # Backfill always requests its full configured depth — the
+                # same real truncation bug already found and fixed in
+                # wikimedia.py: `since` is the source's newest observation
+                # (~today), so `since or days_ago(...)` short-circuited to
+                # ~today and a deeper re-backfill fetched nothing. `since`
+                # is a live-mode incremental optimization only; the store's
+                # dedup handles any overlap.
+                start = timeutil.days_ago(int(self.params.get("backfill_days", 730))).date()
                 end = today - timedelta(days=3)  # archive availability lags a few days
                 if start >= end:
                     continue

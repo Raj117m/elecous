@@ -45,7 +45,18 @@ class MechanismMatcher:
             overlap = required & active_signals
             if not overlap:
                 continue  # dormant: skip entirely (8.25 resource intelligence)
-            activation = len(overlap) / len(required)
+            # Real bug found via the Final Patch's rolling benchmark (Task
+            # 6): activation measured at the concrete signal:direction:scope
+            # level requires nearly every entity/country variant to fire
+            # simultaneously (mechanisms carry up to 172 concrete signals
+            # for as few as 5 real phenomena -- the same representation
+            # mismatch already fixed in SkepticEngine.challenge_mechanism's
+            # overfitting check this session). A mechanism's real claim is
+            # about the phenomenon, evidenced across whichever entities
+            # currently show it -- not that every entity fires at once.
+            required_phenomena = {":".join(s.split(":")[:2]) for s in required}
+            active_phenomena = {":".join(s.split(":")[:2]) for s in overlap}
+            activation = len(active_phenomena) / len(required_phenomena)
             conditions = mechanism.get("world_conditions", [])
             if isinstance(conditions, str):
                 conditions = json.loads(conditions)

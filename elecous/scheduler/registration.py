@@ -56,6 +56,13 @@ def register_all_schedules(stack: ElecousStack) -> None:
     scheduler.register(
         "validation:drift", "validation", stack.validation.drift.scan_all, timedelta(days=1), priority=5
     )
+    # Final Patch, Task 6: rolling benchmark against a real, simple
+    # baseline. Bounded sample (measured at ~0.3s/mechanism for both
+    # replays) keeps this well under the daily cadence's real cost budget.
+    scheduler.register(
+        "validation:rolling_benchmark", "validation",
+        lambda: stack.validation.run_rolling_benchmark(sample_size=30), timedelta(days=1), priority=6,
+    )
 
     # Knowledge: sync graph, snapshot world state, age confidence.
     scheduler.register("knowledge:sync", "knowledge", stack.knowledge.sync, timedelta(hours=1), priority=4)
