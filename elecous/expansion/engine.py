@@ -2,11 +2,19 @@
 
 Continuously asks "can I legally observe the world better than yesterday?"
 Matches open Observation Requests (spec 2.15, 4.23) from the Gap Engine
-against the declared candidate pool (see ADR 0002 for why discovery itself
-is a curated pool rather than live web search), registers matches into the
+against the declared candidate pool (see ADR 0002 for why discovery of
+sources *with a working connector* is a curated pool rather than live web
+search -- that specific limit still holds). Registers matches into the
 Source Registry at status "sandbox", evaluates them through the existing
 Observation Sandbox, and promotes only on success. Nothing reaches
 production without passing every check.
+
+Final Core Rewrite directive extended this with a real, narrower
+capability ADR 0002 didn't have available: robots.txt/sitemap/RSS
+autodiscovery from already-known real organizations (SourceDiscoveryEngine),
+which needs no search API. It raises real, novel candidate URLs into the
+Knowledge Graph -- it does not, and honestly cannot, auto-generate a
+connector for them, so those candidates never enter register_for_sandbox.
 """
 
 from __future__ import annotations
@@ -28,12 +36,14 @@ class ExpansionEngine:
         gap_engine,
         config: Config | None = None,
         bus: EventBus | None = None,
+        source_discovery=None,
     ):
         self.registry = registry
         self.sandbox = sandbox
         self.gap_engine = gap_engine
         self.config = config or active_config()
         self.bus = bus or global_bus()
+        self.source_discovery = source_discovery
         self.log = get_logger("expansion")
 
     def candidate_pool(self) -> list[dict[str, Any]]:
@@ -97,4 +107,27 @@ class ExpansionEngine:
             except Exception as exc:
                 self.log.warning("sandbox evaluation failed", source_id=source_id, error=str(exc))
                 rejected.append(source_id)
-        return {"discovered": len(discovered), "registered": registered, "promoted": promoted, "rejected": rejected}
+        web_discovery = self._run_source_discovery()
+        return {
+            "discovered": len(discovered), "registered": registered, "promoted": promoted, "rejected": rejected,
+            "web_candidates_discovered": web_discovery["discovered"], "web_candidates_evaluated": web_discovery["evaluated"],
+        }
+
+    def _run_source_discovery(self) -> dict[str, Any]:
+        """Source Discovery Engine (Final Core Rewrite): a real, honest
+        extension of the same gap-driven flow above, one step earlier in
+        the pipeline -- finding raw candidate URLs the static candidate
+        pool doesn't yet know about. Deliberately NOT fed into
+        register_for_sandbox: a freshly-discovered URL has no hand-written
+        connector class, so it cannot become an active observation source
+        without real engineering work (the same honest limit ADR 0002
+        already recorded). Its real, honest scope stops at evaluation and
+        Knowledge Graph integration."""
+        if self.source_discovery is None:
+            return {"discovered": 0, "evaluated": 0}
+        found = self.source_discovery.run_gap_driven_discovery()
+        evaluated = 0
+        for candidate in self.source_discovery.list_all(status="new"):
+            self.source_discovery.evaluate(candidate["discovered_id"])
+            evaluated += 1
+        return {"discovered": len(found), "evaluated": evaluated}

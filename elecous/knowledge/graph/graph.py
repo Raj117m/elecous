@@ -197,6 +197,24 @@ class KnowledgeGraph:
             "source", source_row["source_id"], source_row["name"], confidence=float(source_row["health"])
         )
 
+    def sync_discovered_source(self, discovered_row: dict[str, Any], seed_node_id: str | None = None) -> str:
+        """Source Discovery Engine node (Final Core Rewrite, Principle 5):
+        a real candidate source becomes a real graph node the moment it has
+        been evaluated with real metadata -- confidence is the same
+        quality_score computed from real HTTP headers, never asserted.
+        DERIVED_FROM links it back to the known organization it was found
+        on, so the graph records *how* it was discovered, not just that it
+        was. Distinct from sync_source: this node has no registry entry
+        (no connector exists for it yet) -- object_ref is the URL itself."""
+        node_id = self.upsert_node(
+            "source", discovered_row["url"], discovered_row["url"],
+            confidence=float(discovered_row.get("quality_score") or 0.0),
+            quality={"kind": discovered_row["kind"], "trigger_reason": discovered_row["trigger_reason"], "status": discovered_row["status"]},
+        )
+        if seed_node_id:
+            self.link(node_id, seed_node_id, Relationship.DERIVED_FROM)
+        return node_id
+
     def sync_research_question(self, question_row: dict[str, Any]) -> str:
         """Research Question node (rewrite directive, Level 2 scientific
         memory). Links OBSERVED_BY to the source nodes named in its evidence

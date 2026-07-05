@@ -30,6 +30,7 @@ from elecous.environment.concept_discovery import ConceptDiscoveryEngine
 from elecous.environment.signal_discovery.extractor import EnvironmentalSignalExtractor
 from elecous.environment.state_discovery import EnvironmentalStateDiscovery
 from elecous.environment.world_state import WorldStateBuilder
+from elecous.infrastructure.cache import TTLCache
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
@@ -62,6 +63,16 @@ class EnvironmentalEngine:
         self.states = EnvironmentalStateDiscovery(self.databases)
         self.concepts = ConceptDiscoveryEngine(self.databases, self.config)
         self.world = WorldStateBuilder(self.extractor, self.databases, self.bus)
+        # Real bottleneck found profiling research_cycle() (Final
+        # Implementation Phase, Task 2): counterfactual() is called once
+        # per mined pattern (100+ per category) and re-ran the same
+        # per-category episode/ordinary-window queries every time. Cached
+        # by category, same TTLCache already used for this exact reason
+        # elsewhere (EnvironmentalSignalExtractor, SkepticEngine) -- the
+        # query's real scope (all non-negative episodes for the category,
+        # deliberately broader than research_cycle()'s confidence-floor-
+        # filtered set) is unchanged, only its repetition is removed.
+        self._counterfactual_cache = TTLCache(ttl_seconds=30.0, max_entries=64)
         self.ontology = Ontology(self.config)
         self.thresholds = self.config.load_file("thresholds.yaml")
 
@@ -229,16 +240,11 @@ class EnvironmentalEngine:
         if factor is None:
             return {}
         phenomena = {self.discovery.phenomenon_of(k) for k in json.loads(factor["signals"])}
-        all_episodes = [
-            e
-            for e in self.episodes.list_latest(category=category, include_controls=False)
-            if not e["is_negative"]
-        ]
-        episode_ids = [e["episode_id"] for e in all_episodes]
-        episode_sets = self.discovery.episode_phenomenon_sets(episode_ids)
+        episode_count, episode_sets, ordinary = self._counterfactual_cache.get_or_compute(
+            category, lambda: self._counterfactual_population(category)
+        )
         spikes_with = sum(1 for _, s in episode_sets.items() if phenomena <= s)
-        spikes_without = len(all_episodes) - spikes_with
-        ordinary = self.discovery.ordinary_phenomenon_sets(category)
+        spikes_without = episode_count - spikes_with
         ordinary_with = sum(1 for s in ordinary if phenomena <= s)
         ordinary_without = len(ordinary) - ordinary_with
         p_spike_given_factor = spikes_with / max(spikes_with + ordinary_with, 1)
@@ -258,6 +264,22 @@ class EnvironmentalEngine:
         }
         self.factors.new_version(factor_id, {"counterfactual": json.dumps(result)}, actor="counterfactual_engine")
         return result
+
+    def _counterfactual_population(self, category: str) -> tuple[int, dict[str, set[str]], list[set[str]]]:
+        """The real, per-category population counterfactual() tests against
+        -- deliberately the full set of non-negative episodes for the
+        category (not research_cycle()'s narrower confidence-floor-filtered
+        set), computed once and cached per category instead of once per
+        mined pattern."""
+        all_episodes = [
+            e
+            for e in self.episodes.list_latest(category=category, include_controls=False)
+            if not e["is_negative"]
+        ]
+        episode_ids = [e["episode_id"] for e in all_episodes]
+        episode_sets = self.discovery.episode_phenomenon_sets(episode_ids)
+        ordinary = self.discovery.ordinary_phenomenon_sets(category)
+        return len(all_episodes), episode_sets, ordinary
 
     # ------------------------------------------------------ negative episodes
     def detect_negative_episodes(self, detector, catalog: list[dict[str, Any]]) -> int:

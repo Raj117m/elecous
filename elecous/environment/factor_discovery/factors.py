@@ -17,7 +17,7 @@ from elecous.common import timeutil
 from elecous.common.ids import new_id
 from elecous.common.vocabulary import Lifecycle, ValidationStatus
 from elecous.environment.pattern_engine.mining import MinedPattern
-from elecous.environment.schema import ENVIRONMENT_MIGRATION
+from elecous.environment.schema import ENVIRONMENT_MIGRATION, FACTOR_SIGNALS_INDEX_MIGRATION
 from elecous.governance import constitution
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
@@ -30,6 +30,7 @@ class FactorStore:
     def __init__(self, databases: DatabaseManager | None = None, bus: EventBus | None = None):
         self.databases = databases or global_databases()
         self.databases.register_schema(ENVIRONMENT_MIGRATION)
+        self.databases.register_schema(FACTOR_SIGNALS_INDEX_MIGRATION)
         self.db = self.databases.get("environment")
         self.bus = bus or global_bus()
         self.log = get_logger("environment")

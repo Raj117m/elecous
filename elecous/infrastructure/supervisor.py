@@ -114,19 +114,62 @@ class AutonomousSupervisor:
     def _repair_observation(self, report: HealthReport) -> bool:
         """Connector self-healing (spec 12.5): retry once immediately; if
         still failing, suspend for the Expansion Engine's source-replacement
-        search rather than continuing to burn budget on a dead source."""
+        search rather than continuing to burn budget on a dead source.
+
+        Final Implementation Directive, Stage 6/7: for an auto-generated
+        connector specifically (Final Missing Capability directive), a
+        real, previously-working extraction can start failing because the
+        source's real structure changed -- not just because the source is
+        gone. Before suspending one of those, re-run Stages 1-4
+        (ConnectorEvolutionEngine.attempt) against the same real URL: if a
+        new extraction spec is found, swap the connector_config in place
+        (repair) instead of suspending it as if the source had vanished."""
         repaired = True
         for source_id in report.detail.get("failing", []):
             result = self.stack.observation.run_source(source_id)
             if result["success"]:
                 self.stack.observation.registry.set_status(source_id, "active", reason="self-healed")
-            else:
-                self.stack.observation.registry.set_status(
-                    source_id, "suspended", reason="repeated failure; awaiting alternative source"
-                )
-                self.stack.gap.record_gaps()
-                repaired = False
+                continue
+            if self._try_regenerate_connector(source_id):
+                continue
+            self.stack.observation.registry.set_status(
+                source_id, "suspended", reason="repeated failure; awaiting alternative source"
+            )
+            self.stack.gap.record_gaps()
+            repaired = False
         return repaired
+
+    def _try_regenerate_connector(self, source_id: str) -> bool:
+        source = self.stack.observation.registry.get(source_id)
+        if source is None or source["connector"] != "elecous.observation.connectors.auto.AutoConnector":
+            return False
+        import json as json_module
+
+        params = json_module.loads(source["connector_config"])
+        try:
+            response = self.stack.source_discovery.http.get(params["url"])
+        except Exception as exc:
+            self.log.info("connector regeneration fetch failed", source_id=source_id, error=str(exc))
+            return False
+        attempt = self.stack.connector_evolution.attempt(
+            params["url"], response.headers.get("Content-Type", ""), response.content,
+        )
+        if attempt["outcome"] != "generated":
+            return False
+        new_candidate = json_module.loads(attempt["best_candidate"])
+        new_config = {**params, "path": new_candidate["path"], "field_roles": new_candidate["field_roles"]}
+        if new_config == params:
+            return False  # same spec still fails -- not a structural change, don't pretend to have fixed it
+        self.stack.observation.registry.db.execute(
+            "UPDATE source_registry SET connector_config = ?, failure_count = 0, updated_at = ? WHERE source_id = ?",
+            [json_module.dumps(new_config), timeutil.utcnow(), source_id],
+        )
+        retry = self.stack.observation.run_source(source_id)
+        if retry["success"]:
+            self.stack.observation.registry.set_status(source_id, "active", reason="connector regenerated")
+            self.log.info("auto-connector regenerated after real structure change", source_id=source_id)
+            return True
+        return False
 
     def _repair_knowledge(self, report: HealthReport) -> bool:
         after = self.stack.knowledge.self_heal()

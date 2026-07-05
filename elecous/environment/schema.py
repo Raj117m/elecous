@@ -197,3 +197,17 @@ CONCEPT_MIGRATION = Migration(
         "CREATE INDEX IF NOT EXISTS idx_concepts_status ON candidate_concepts (status)",
     ),
 )
+
+#: Real bottleneck found in the Final Implementation Phase: environment.duckdb
+#: grew to 2.5GB across 75,695 real factor-version rows for only 3,078
+#: distinct factor_ids (~25 versions each, from many real research cycles
+#: this session). find_by_signals() -- called on every single mined pattern
+#: -- filters WHERE signals = ? with no index on that column, forcing a
+#: real full-table scan every call (measured at 51ms/call). A missing
+#: index, not a redundant-query bug; fixed the same way the schema's own
+#: existing idx_factor_lifecycle index already does for a different column.
+FACTOR_SIGNALS_INDEX_MIGRATION = Migration(
+    "environment.0006.add_factor_signals_index",
+    "environment",
+    ("CREATE INDEX IF NOT EXISTS idx_factor_signals ON environmental_factors (signals)",),
+)

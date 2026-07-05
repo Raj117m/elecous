@@ -34,7 +34,7 @@
 <main id="app"></main>
 <script>
 const API = "/api";
-const views = ["home", "opportunities", "mechanisms", "factors", "episodes", "observation", "validation", "knowledge", "unknowns", "resources"];
+const views = ["home", "opportunities", "mechanisms", "factors", "concepts", "experiments", "episodes", "observation", "discovery", "validation", "knowledge", "timeline", "unknowns", "resources"];
 let current = "home";
 
 async function j(path) {
@@ -131,11 +131,56 @@ async function renderResources() {
   return panel("Resource Dashboard", rows, true) + panel("Storage Tiers", `<pre>${JSON.stringify(data.tiers, null, 2)}</pre>`, true);
 }
 
+async function renderConcepts() {
+  const data = await j("/concepts");
+  const rows = data.concepts.map(c => row(
+    `${c.label} <span class="pill ${c.status==='promoted'?'ok':c.status==='retired'?'bad':'warn'}">${c.status}</span>`,
+    `conf ${(c.confidence*100).toFixed(0)}% · explains ${c.evidence_explained_count}`
+  )).join("") || row("no candidate concepts yet","");
+  return panel("Concept Discovery", rows, true);
+}
+
+async function renderExperiments() {
+  const data = await j("/experiments");
+  const section = (title, list) => panel(title, list.map(e => row(e.statement, e.status)).join("") || row("none",""), true);
+  return section(`Running (${data.counts.open||0})`, data.running) +
+         section(`Completed (${data.completed.length})`, data.completed) +
+         section(`Failed (${data.failed.length})`, data.failed);
+}
+
+async function renderDiscovery() {
+  const data = await j("/discovery");
+  const discovered = data.discovered_sources.map(d => row(
+    `${d.url} <span class="pill ${d.status==='evaluated'?'ok':d.status==='rejected'?'bad':'warn'}">${d.status}</span>`,
+    `${d.kind} · quality ${d.quality_score ?? '?'}`
+  )).join("") || row("no sources discovered yet","");
+  const attempts = data.connector_generation_attempts.map(a => row(
+    `${a.url} <span class="pill ${a.outcome==='generated'?'ok':'bad'}">${a.outcome}</span>`, a.kind
+  )).join("") || row("no connector generation attempts yet","");
+  const autoConn = data.auto_generated_connectors.map(c => row(
+    `${c.name} <span class="pill ${c.status==='active'?'ok':'warn'}">${c.status}</span>`,
+    `health ${(c.health*100).toFixed(0)}% · failures ${c.failure_count}`
+  )).join("") || row("no auto-generated connectors yet","");
+  const outcomes = Object.entries(data.outcome_counts).map(([k,v]) => row(k, v)).join("");
+  return panel("Discovered Sources", discovered, true) +
+         panel("Connector Generation Attempts", attempts, true) +
+         panel("Auto-Generated Connectors", autoConn, true) +
+         panel("Outcome Counts", outcomes);
+}
+
+async function renderTimeline() {
+  const data = await j("/timeline");
+  const past = data.past.map(e => row(`${e.entity} (${e.category})`, `score ${e.demand_score}`)).join("") || row("nothing yet today","");
+  const future = data.future.map(o => row(o.categories.join(", "), `${(o.confidence.overall*100).toFixed(0)}% · ${o.stage}`)).join("") || row("no active predictions",  "");
+  return panel("Past — Research Episodes", past, true) + panel("Future — Active Predictions", future, true);
+}
+
 const renderers = {
   home: renderHome, opportunities: renderOpportunities, mechanisms: renderMechanisms,
-  factors: renderFactors, episodes: renderEpisodes, observation: renderObservation,
-  validation: renderValidation, knowledge: renderKnowledge, unknowns: renderUnknowns,
-  resources: renderResources,
+  factors: renderFactors, concepts: renderConcepts, experiments: renderExperiments,
+  episodes: renderEpisodes, observation: renderObservation, discovery: renderDiscovery,
+  validation: renderValidation, knowledge: renderKnowledge, timeline: renderTimeline,
+  unknowns: renderUnknowns, resources: renderResources,
 };
 
 async function render(view) {

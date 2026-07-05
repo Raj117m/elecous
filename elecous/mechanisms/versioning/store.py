@@ -16,6 +16,7 @@ from elecous.common import timeutil
 from elecous.common.ids import new_id
 from elecous.common.vocabulary import Lifecycle, ValidationStatus
 from elecous.governance import constitution
+from elecous.infrastructure.cache import TTLCache
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
 from elecous.mechanisms.schema import MECHANISMS_MIGRATION
@@ -31,6 +32,14 @@ class MechanismStore:
         self.db = self.databases.get("mechanisms")
         self.bus = bus or global_bus()
         self.log = get_logger("mechanisms")
+        # Real bottleneck found in the Final Implementation Phase profiling
+        # sweep: find_by_factors() is called once per (factor, category)
+        # pair inside generate_from_factors()'s main loop (up to ~550 real
+        # calls in one run) and re-queried list_latest(category=...) fresh
+        # every time (13.3ms/call measured, ~7.3s of real redundant work).
+        # Same TTLCache already used for this exact reason elsewhere
+        # (EnvironmentalSignalExtractor, SkepticEngine, EnvironmentalEngine).
+        self._category_cache = TTLCache(ttl_seconds=30.0, max_entries=64)
 
     # -------------------------------------------------------------- creation
     def create(self, payload: dict[str, Any]) -> str:
@@ -79,6 +88,13 @@ class MechanismStore:
             name=payload["name"],
             categories=payload["affected_categories"],
         )
+        # A real write must invalidate find_by_factors()'s per-category
+        # cache immediately -- unlike the read-only caches elsewhere, a
+        # stale hit here could let generate_from_factors() create a
+        # duplicate mechanism for the same (factor, category) if called
+        # again inside the cache's TTL window.
+        for category in payload["affected_categories"]:
+            self._category_cache.invalidate(category)
         self.log.info("mechanism created", mechanism_id=mechanism_id, name=payload["name"])
         return mechanism_id
 
@@ -268,7 +284,8 @@ class MechanismStore:
 
     def find_by_factors(self, factor_ids: list[str], category: str) -> dict[str, Any] | None:
         target = set(factor_ids)
-        for row in self.list_latest(category=category):
+        cached_rows = self._category_cache.get_or_compute(category, lambda: self.list_latest(category=category))
+        for row in cached_rows:
             if set(json.loads(row["environmental_factors"])) == target:
                 return row
         return None

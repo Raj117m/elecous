@@ -21,6 +21,7 @@ from elecous.common.ids import (
 )
 from elecous.common.vocabulary import Lifecycle, ValidationStatus, is_legal_promotion
 from elecous.governance import constitution
+from elecous.infrastructure.config import active_config
 from elecous.infrastructure.event_bus import EventBus, EventType
 from elecous.scheduler.budget import ObservationBudget
 from elecous.scheduler.scheduler import Scheduler
@@ -134,6 +135,33 @@ def test_scheduler_runs_due_tasks_and_backs_off(isolated_config):
     assert report["bad"]["consecutive_failures"] == 1
     # failed task backed off beyond one interval
     assert report["bad"]["next_run"] > report["ok"]["next_run"]
+
+
+def test_scheduler_background_thread_runs_unattended(isolated_config):
+    """Final Implementation Phase, Task 3/7: the real continuous-operation
+    mechanism (elecous run's background thread) must actually tick and
+    execute due tasks without any manual call to run_pending() -- the one
+    real gap found in this session's scheduler test coverage (run_pending()
+    itself was already tested; start()/stop()'s threading wrapper was not).
+    Uses only safe, fast, fake tasks -- no real network/observation source
+    is touched."""
+    import time
+
+    config = active_config()
+    config._root = dict(config._root)
+    config._root["scheduler"] = {**config._root.get("scheduler", {}), "tick_seconds": 0.05}
+    scheduler = Scheduler(config=config)
+    runs: list[int] = []
+    scheduler.register("fast", "test", lambda: runs.append(1), timedelta(seconds=60), run_immediately=True)
+    scheduler.start()
+    try:
+        deadline = time.monotonic() + 2.0
+        while not runs and time.monotonic() < deadline:
+            time.sleep(0.05)
+    finally:
+        scheduler.stop()
+    assert runs == [1]  # the background thread executed the due task on its own
+    assert not scheduler._thread.is_alive()  # stop() actually joins/stops the real thread
 
 
 def test_budget_follows_value_not_habit(isolated_config):

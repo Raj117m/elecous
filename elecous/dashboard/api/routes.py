@@ -235,6 +235,54 @@ def run_expansion(request: Request):
     return _stack(request).expansion.run_expansion_cycle()
 
 
+# ------------------------------------------------- Source Discovery / Connector Evolution
+@router.get("/discovery")
+def discovery(request: Request):
+    stack = _stack(request)
+    discovered = [_parse(r, ()) for r in stack.source_discovery.list_all()]
+    attempts = [_parse(r, ("structure", "best_candidate", "test_result")) for r in stack.connector_evolution.list_all()]
+    auto_sources = [
+        s for s in stack.observation.registry.list()
+        if s["connector"] == "elecous.observation.connectors.auto.AutoConnector"
+    ]
+    return {
+        "discovered_sources": discovered,
+        "connector_generation_attempts": attempts,
+        "auto_generated_connectors": [
+            {"source_id": s["source_id"], "name": s["name"], "status": s["status"], "health": s["health"],
+             "failure_count": s["failure_count"]} for s in auto_sources
+        ],
+        "outcome_counts": {
+            outcome: len(stack.connector_evolution.list_all(outcome=outcome))
+            for outcome in ("generated", "rejected_no_value_field", "rejected_low_quality", "unsupported_kind")
+        },
+    }
+
+
+# ------------------------------------------------------------------- concepts
+@router.get("/concepts")
+def concepts(request: Request, status: str | None = None):
+    # list_all() already fully decodes its JSON columns (ConceptDiscoveryEngine._decode)
+    return {"concepts": _stack(request).environment.concepts.list_all(status=status)}
+
+
+# ----------------------------------------------------------------- experiments
+@router.get("/experiments")
+def experiments(request: Request):
+    stack = _stack(request)
+    rows = stack.research.questions.list(status=None, limit=500)
+    experiment_rows = [_parse(r, ("expected_evidence", "strategy")) for r in rows if r["kind"] == "experiment"]
+    by_status: dict[str, list[dict[str, Any]]] = {}
+    for row in experiment_rows:
+        by_status.setdefault(row["status"], []).append(row)
+    return {
+        "running": by_status.get("open", []),
+        "completed": [r for r in by_status.get("resolved", []) if r.get("strategy", {}).get("outcome") != "failed"],
+        "failed": [r for r in by_status.get("resolved", []) if r.get("strategy", {}).get("outcome") == "failed"],
+        "counts": {status: len(rows) for status, rows in by_status.items()},
+    }
+
+
 # ----------------------------------------------------------------- 9.19 system health
 @router.get("/health/system")
 def system_health(request: Request):

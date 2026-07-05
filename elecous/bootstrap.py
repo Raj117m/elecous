@@ -13,8 +13,10 @@ from dataclasses import dataclass
 
 from elecous.demand.engine import DemandEngine
 from elecous.environment.engine import EnvironmentalEngine
+from elecous.expansion.connector_evolution import ConnectorEvolutionEngine
 from elecous.expansion.curiosity import CuriosityEngine
 from elecous.expansion.engine import ExpansionEngine
+from elecous.expansion.source_discovery import SourceDiscoveryEngine
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.resources import ResourceManager
@@ -52,6 +54,8 @@ class ElecousStack:
     prediction: PredictionEngine
     scheduler: Scheduler
     expansion: ExpansionEngine
+    source_discovery: SourceDiscoveryEngine
+    connector_evolution: ConnectorEvolutionEngine
     curiosity: CuriosityEngine
     research: ResearchEngine
     experiments: ExperimentEngine
@@ -91,7 +95,13 @@ def build_stack(config: Config | None = None) -> ElecousStack:
 
     scheduler = Scheduler(config=config, pause_check=resources.should_pause)
     sandbox = ObservationSandbox(observation.registry, config=config)
-    expansion = ExpansionEngine(observation.registry, sandbox, gap, config=config, bus=bus)
+    connector_evolution = ConnectorEvolutionEngine(observation.registry, sandbox=sandbox, knowledge=knowledge.graph)
+    source_discovery = SourceDiscoveryEngine(
+        observation.registry, gap, knowledge=knowledge.graph, connector_evolution=connector_evolution, config=config,
+    )
+    expansion = ExpansionEngine(
+        observation.registry, sandbox, gap, config=config, bus=bus, source_discovery=source_discovery,
+    )
     curiosity = CuriosityEngine(knowledge, mechanisms.store, environment.factors, gap)
 
     # Research Intelligence (rewrite directive, Stage 2): Level-2 memory of
@@ -122,6 +132,7 @@ def build_stack(config: Config | None = None) -> ElecousStack:
         observation=observation, gap=gap, demand=demand, environment=environment,
         mechanisms=mechanisms, validation=validation, knowledge=knowledge,
         prediction=prediction, scheduler=scheduler, expansion=expansion,
+        source_discovery=source_discovery, connector_evolution=connector_evolution,
         curiosity=curiosity, research=research, experiments=experiments,
         supervisor=None,  # type: ignore[arg-type]
     )
