@@ -35,6 +35,15 @@ class GdeltMediaVolumeConnector(Connector):
         if self.params.get("include_topics", True):
             for topic in entities_config.get("topics", []):
                 themes.append({"entity": topic["entity"], "query": f'"{topic["entity"].lower()}"'})
+        # Resumable deep backfill: a killed all-or-nothing ~60-minute sweep
+        # was measured to lose its entire in-memory batch (real incident:
+        # the 2017 deep backfill died with zero rows landed). The driver
+        # (scripts/deep_backfill_gdelt.py) sweeps in chunks via this
+        # filter, ingesting after each chunk, and derives resume state
+        # from real per-entity coverage already in the database.
+        entity_filter = set(self.params.get("entity_filter") or [])
+        if entity_filter:
+            themes = [t for t in themes if t["entity"] in entity_filter]
         observations = []
         schema_hash = None
         raw_count = 0
