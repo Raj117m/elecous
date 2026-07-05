@@ -45,7 +45,7 @@ class TierManager:
         days = [
             r[0]
             for r in observations_db.query(
-                "SELECT DISTINCT CAST(timestamp AS DATE) AS d FROM observations WHERE CAST(timestamp AS DATE) < ? ORDER BY d",
+                "SELECT DISTINCT CAST(timestamp AT TIME ZONE 'UTC' AS DATE) AS d FROM observations WHERE CAST(timestamp AT TIME ZONE 'UTC' AS DATE) < ? ORDER BY d",
                 [cutoff],
             )
         ]
@@ -53,10 +53,10 @@ class TierManager:
         for day in days:
             target = self.warm_path(day)
             observations_db.execute(
-                f"COPY (SELECT * FROM observations WHERE CAST(timestamp AS DATE) = ?) TO '{target}' (FORMAT PARQUET, COMPRESSION SNAPPY)",
+                f"COPY (SELECT * FROM observations WHERE CAST(timestamp AT TIME ZONE 'UTC' AS DATE) = ?) TO '{target}' (FORMAT PARQUET, COMPRESSION SNAPPY)",
                 [day],
             )
-            observations_db.execute("DELETE FROM observations WHERE CAST(timestamp AS DATE) = ?", [day])
+            observations_db.execute("DELETE FROM observations WHERE CAST(timestamp AT TIME ZONE 'UTC' AS DATE) = ?", [day])
             moved += 1
             self.log.info("tier migration hot->warm", day=str(day), file=str(target))
         return moved

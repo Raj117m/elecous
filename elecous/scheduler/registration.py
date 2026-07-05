@@ -63,6 +63,11 @@ def register_all_schedules(stack: ElecousStack) -> None:
         "validation:rolling_benchmark", "validation",
         lambda: stack.validation.run_rolling_benchmark(sample_size=30), timedelta(days=1), priority=6,
     )
+    # v1.0 directive: candidates with >=3 recorded all-failed validation
+    # attempts stop consuming revalidation compute forever.
+    scheduler.register(
+        "validation:retire", "validation", stack.validation.retire_persistent_failures, timedelta(days=1), priority=6,
+    )
 
     # Knowledge: sync graph, snapshot world state, age confidence.
     scheduler.register("knowledge:sync", "knowledge", stack.knowledge.sync, timedelta(hours=1), priority=4)
@@ -75,6 +80,11 @@ def register_all_schedules(stack: ElecousStack) -> None:
 
     # Prediction: rebuild opportunities against the live World State.
     scheduler.register("prediction:predict", "prediction", stack.prediction.predict, timedelta(minutes=15), priority=2)
+    # v1.0 directive: every stored prediction is automatically revisited
+    # after its own lead-time horizon and judged against real episodes.
+    scheduler.register(
+        "prediction:resolve", "prediction", stack.prediction.resolve_due, timedelta(hours=6), priority=3
+    )
     scheduler.register(
         "prediction:advance_stages", "prediction", stack.prediction.advance_stages, timedelta(hours=1), priority=4
     )

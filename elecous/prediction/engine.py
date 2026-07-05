@@ -10,7 +10,7 @@ promotes mechanisms — it only *applies* validated knowledge (8.1-8.2).
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from elecous.common import timeutil
@@ -221,3 +221,61 @@ class PredictionEngine:
                 self.opportunities.update_stage(opp["opportunity_id"], OpportunityStage.EXPIRED)
                 moved += 1
         return moved
+
+    # ------------------------------------------------------------ resolution
+    def resolve_due(self, tolerance_days: float = 3.0) -> list[dict[str, Any]]:
+        """Prediction-level outcome verification (v1.0 directive; the
+        predictions schema has always declared outcome as "filled by
+        resolve" but no resolver existed anywhere -- stored predictions
+        were never checked against reality). Distinct from mechanism-level
+        ProspectiveValidator: this judges the *product output* -- did the
+        predicted categories actually see a genuine demand episode within
+        the prediction's own lead-time horizon?
+
+        Outcomes: "correct" (episode in every predicted category),
+        "partially_correct" (some categories), "incorrect" (window closed,
+        none) -- a still-open window is skipped, not judged early. Each
+        verdict feeds the existing CalibrationEngine under the
+        "prediction" kind, so stated confidence is disciplined by real
+        outcomes over time. Every prediction row is kept forever."""
+        from elecous.validation.calibration.calibration import CalibrationEngine
+
+        calibration = CalibrationEngine(self.databases, self.config)
+        now = timeutil.utcnow()
+        resolved = []
+        for row in self.db.query_dicts("SELECT * FROM predictions WHERE outcome IS NULL"):
+            created = timeutil.ensure_utc(row["created_at"])
+            horizon = float(row["lead_time_days"] or 14.0) + tolerance_days
+            deadline = created + timedelta(days=horizon)
+            if now < deadline:
+                continue  # window still open -- too early to judge
+            opportunity = self.opportunities.latest(row["opportunity_id"])
+            categories = json.loads(opportunity["categories"]) if opportunity else []
+            hit_categories = []
+            for category in categories:
+                episodes = [
+                    e for e in self.prospective.episodes.list_latest(category=category, include_controls=False)
+                    if not e["is_negative"] and created <= timeutil.ensure_utc(e["spike_start"]) <= deadline
+                ]
+                if episodes:
+                    hit_categories.append(category)
+            if not categories:
+                outcome = "insufficient_evidence"
+            elif len(hit_categories) == len(categories):
+                outcome = "correct"
+            elif hit_categories:
+                outcome = "partially_correct"
+            else:
+                outcome = "incorrect"
+            detail = {"outcome": outcome, "resolved_at": timeutil.to_iso(now),
+                      "hit_categories": hit_categories, "categories": categories}
+            self.db.execute(
+                "UPDATE predictions SET outcome = ?, validation_status = ? WHERE prediction_id = ?",
+                [json.dumps(detail), outcome, row["prediction_id"]],
+            )
+            if outcome != "insufficient_evidence":
+                calibration.record("prediction", float(row["confidence"]), outcome == "correct")
+            resolved.append({"prediction_id": row["prediction_id"], **detail})
+        if resolved:
+            self.log.info("predictions resolved against reality", count=len(resolved))
+        return resolved

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import threading
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable
@@ -56,6 +57,14 @@ class Scheduler:
         self._thread: threading.Thread | None = None
         # pause_check returns True when the Resource Manager wants us to back off
         self._pause_check = pause_check or (lambda: False)
+        # Performance directive: bounded concurrency, sized for the target
+        # MacBook -- enough to overlap network-bound connectors with CPU
+        # work without monopolizing the machine.
+        self._pool = ThreadPoolExecutor(
+            max_workers=int(self.config.get("scheduler.max_workers", 4)), thread_name_prefix="elecous-task"
+        )
+        self._running: set[str] = set()
+        self._subsystem_locks: dict[str, threading.Lock] = {}
 
     # ------------------------------------------------------------ registration
     def register(
@@ -88,19 +97,49 @@ class Scheduler:
             self._tasks[name].enabled = enabled
 
     # ---------------------------------------------------------------- running
-    def run_pending(self, now: datetime | None = None) -> int:
-        """Execute all due tasks in priority order. Returns tasks executed."""
+    def run_pending(self, now: datetime | None = None, wait: bool = True) -> int:
+        """Execute all due tasks. Returns tasks dispatched.
+
+        Performance directive: sequential execution meant one
+        network-bound connector (a real GDELT sweep is ~300 requests x 6s
+        legally-required politeness ~= 30 real minutes) starved every
+        other subsystem for its whole duration. Due tasks are now
+        dispatched to a bounded worker pool: subsystems proceed
+        concurrently, while tasks *within* one subsystem stay serialized
+        (per-subsystem lock) so heavy same-domain jobs never overlap
+        themselves. Safe by construction: every Database call is already
+        RLock-wrapped and HTTP politeness is per-host.
+
+        wait=True (default) preserves the historical synchronous contract
+        (tests, manual driving): the batch runs concurrently but the call
+        returns only when it finishes. The background loop passes
+        wait=False so a still-running long task never blocks the next
+        tick from dispatching other, newly-due work."""
         now = now or timeutil.utcnow()
         if self._pause_check():
             self.log.warning("scheduler paused by resource manager")
             return 0
         with self._lock:
-            due = sorted((t for t in self._tasks.values() if t.due(now)), key=lambda t: t.priority)
-        executed = 0
-        for task in due:
-            self._execute(task, now)
-            executed += 1
-        return executed
+            due = sorted(
+                (t for t in self._tasks.values() if t.due(now) and t.name not in self._running),
+                key=lambda t: t.priority,
+            )
+            for task in due:
+                self._running.add(task.name)
+        futures = [self._pool.submit(self._execute_locked, task, now) for task in due]
+        if wait:
+            for future in futures:
+                future.result()
+        return len(due)
+
+    def _execute_locked(self, task: ScheduledTask, now: datetime) -> None:
+        subsystem_lock = self._subsystem_locks.setdefault(task.subsystem, threading.Lock())
+        try:
+            with subsystem_lock:
+                self._execute(task, now)
+        finally:
+            with self._lock:
+                self._running.discard(task.name)
 
     def _execute(self, task: ScheduledTask, now: datetime) -> None:
         task.last_run = now
@@ -136,7 +175,7 @@ class Scheduler:
         def loop() -> None:
             while not self._stop.wait(tick):
                 try:
-                    self.run_pending()
+                    self.run_pending(wait=False)
                 except Exception:
                     self.log.exception("scheduler tick failed")
 
@@ -151,6 +190,20 @@ class Scheduler:
         self.log.info("scheduler stopped")
 
     # ------------------------------------------------------------- reporting
+    def telemetry(self) -> dict[str, Any]:
+        """Performance directive: live worker/queue state for the
+        dashboard's mission-control view -- real counters, not estimates."""
+        with self._lock:
+            running = sorted(self._running)
+            now = timeutil.utcnow()
+            due_waiting = [t.name for t in self._tasks.values() if t.due(now) and t.name not in self._running]
+        return {
+            "max_workers": self._pool._max_workers,
+            "running_tasks": running,
+            "due_waiting": due_waiting,
+            "registered": len(self._tasks),
+        }
+
     def report(self) -> list[dict[str, Any]]:
         with self._lock:
             return [

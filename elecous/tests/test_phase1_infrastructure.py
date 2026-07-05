@@ -164,6 +164,45 @@ def test_scheduler_background_thread_runs_unattended(isolated_config):
     assert not scheduler._thread.is_alive()  # stop() actually joins/stops the real thread
 
 
+def test_scheduler_runs_independent_subsystems_concurrently(isolated_config):
+    """Performance directive: one slow, network-bound task must not starve
+    other subsystems. Measured, not asserted: two 0.4s tasks in DIFFERENT
+    subsystems complete in ~max (concurrent), two in the SAME subsystem in
+    ~sum (serialized -- heavy same-domain jobs never overlap themselves),
+    and a still-running long task never blocks the next tick's dispatch."""
+    import time
+
+    scheduler = Scheduler()
+    scheduler.register("obs", "observation", lambda: time.sleep(0.4), timedelta(seconds=60), run_immediately=True)
+    scheduler.register("val", "validation", lambda: time.sleep(0.4), timedelta(seconds=60), run_immediately=True)
+    t0 = time.monotonic()
+    assert scheduler.run_pending() == 2
+    concurrent_wall = time.monotonic() - t0
+    assert concurrent_wall < 0.7, f"different subsystems should overlap, took {concurrent_wall:.2f}s"
+
+    scheduler.register("env_a", "environment", lambda: time.sleep(0.4), timedelta(seconds=60), run_immediately=True)
+    scheduler.register("env_b", "environment", lambda: time.sleep(0.4), timedelta(seconds=60), run_immediately=True)
+    t0 = time.monotonic()
+    assert scheduler.run_pending() == 2
+    serialized_wall = time.monotonic() - t0
+    assert serialized_wall >= 0.75, f"same subsystem must serialize, took {serialized_wall:.2f}s"
+
+    # A long-running task must not block the next tick from dispatching
+    # newly-due work (wait=False), and must not be double-dispatched.
+    ran: list[str] = []
+    scheduler.register("slow", "observe", lambda: (time.sleep(0.8), ran.append("slow")), timedelta(seconds=60), run_immediately=True)
+    assert scheduler.run_pending(wait=False) == 1
+    scheduler.register("quick", "prediction", lambda: ran.append("quick"), timedelta(seconds=60), run_immediately=True)
+    t0 = time.monotonic()
+    assert scheduler.run_pending(wait=True) == 1  # dispatches quick only; slow already running, not re-dispatched
+    assert time.monotonic() - t0 < 0.5
+    assert "quick" in ran and "slow" not in ran  # quick finished while slow still sleeps
+    deadline = time.monotonic() + 3
+    while "slow" not in ran and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert "slow" in ran
+
+
 def test_budget_follows_value_not_habit(isolated_config):
     budget = ObservationBudget()
     allocations = budget.allocate(

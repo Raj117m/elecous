@@ -190,6 +190,29 @@ def rolling_benchmark(request: Request):
     return {"latest": latest}
 
 
+@router.get("/predictions/accuracy")
+def prediction_accuracy(request: Request):
+    """v1.0 directive Task 8: live prediction-outcome ledger. Every number
+    here is a real row -- resolved outcomes come from PredictionEngine.
+    resolve_due's judgments against real episodes, never estimated."""
+    stack = _stack(request)
+    rows = stack.prediction.db.query_dicts(
+        "SELECT validation_status, count(*) AS n FROM predictions GROUP BY validation_status"
+    )
+    counts = {r["validation_status"]: r["n"] for r in rows}
+    judged = sum(v for k, v in counts.items() if k in ("correct", "incorrect", "partially_correct"))
+    recent = stack.prediction.db.query_dicts(
+        "SELECT prediction_id, opportunity_id, confidence, lead_time_days, validation_status, outcome, created_at "
+        "FROM predictions ORDER BY created_at DESC LIMIT 30"
+    )
+    return {
+        "counts": counts,
+        "accuracy": round(counts.get("correct", 0) / judged, 4) if judged else None,
+        "judged": judged,
+        "recent": [_parse(r, ("outcome",)) for r in recent],
+    }
+
+
 # -------------------------------------------------------- 9.16 knowledge evolution
 @router.get("/knowledge/growth")
 def knowledge_growth(request: Request):
@@ -301,6 +324,7 @@ def system_health(request: Request):
         "mechanisms": stack.mechanisms.store.counts(),
         "validation": stack.validation.self_audit(),
         "scheduler": stack.scheduler.report(),
+        "scheduler_telemetry": stack.scheduler.telemetry(),
         "databases": stack.databases.integrity_report(),
     }
 

@@ -120,7 +120,12 @@ async function renderValidation() {
       row("Baseline F1 / precision / recall", `${m.baseline.f1?.toFixed(3) ?? '?'} / ${m.baseline.precision?.toFixed(3) ?? '?'} / ${m.baseline.recall?.toFixed(3) ?? '?'}`) +
       row("mechanisms sampled", m.mechanisms_sampled);
   }
-  return panel("Validation Center", rows, true) + panel("Rolling Benchmark vs. Baseline", benchHtml, true);
+  const acc = await j("/predictions/accuracy");
+  const accHtml = row("resolved predictions", acc.judged) +
+    row("accuracy (correct / judged)", acc.accuracy === null ? "no outcomes yet" : (acc.accuracy*100).toFixed(1) + "%") +
+    Object.entries(acc.counts).map(([k,v]) => row(k, v)).join("");
+  return panel("Validation Center", rows, true) + panel("Rolling Benchmark vs. Baseline", benchHtml, true) +
+         panel("Prediction Outcomes", accHtml, true);
 }
 
 async function renderKnowledge() {

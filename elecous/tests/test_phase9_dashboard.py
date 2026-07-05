@@ -29,6 +29,8 @@ def test_home_and_core_panels_return_200_without_data(client):
         "/api/world-map", "/api/validations", "/api/validations/prospective", "/api/knowledge/growth",
         "/api/knowledge/search", "/api/health/self-healing", "/api/expansion", "/api/health/system",
         "/api/health/resources", "/api/search?q=camping", "/api/unknowns", "/api/notifications",
+        "/api/discovery", "/api/concepts", "/api/experiments", "/api/validations/benchmark",
+        "/api/predictions/accuracy",
     ):
         response = test_client.get(endpoint)
         assert response.status_code == 200, f"{endpoint}: {response.text}"

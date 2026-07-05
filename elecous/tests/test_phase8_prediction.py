@@ -139,3 +139,68 @@ def test_opportunity_formation_stage_and_clustering(isolated_config):
 
     clusters = opp_store.cluster([opp_store.latest(opportunity_id)])
     assert clusters and opportunity_id in clusters[0]
+
+
+def test_prediction_outcomes_resolve_against_reality(isolated_config):
+    """v1.0 directive: every stored prediction is revisited after its own
+    lead-time horizon and judged correct/incorrect against real episodes;
+    a still-open window is never judged early. Pure-logic test: the
+    episode reader is a stub (no fabricated observations claimed as real),
+    prediction rows are real rows in the isolated database."""
+    from datetime import timedelta
+
+    from elecous.common import timeutil
+    from elecous.environment.signal_discovery.extractor import EnvironmentalSignalExtractor
+    from elecous.environment.world_state import WorldStateBuilder
+    from elecous.observation.store import ObservationStore
+    from elecous.prediction.engine import PredictionEngine
+    from elecous.validation.prospective.prospective import ProspectiveValidator
+
+    now = timeutil.utcnow()
+
+    class EpisodeReadStub:
+        def list_latest(self, category=None, include_controls=False, entity=None):
+            if category == "cooling":  # one genuine episode 5 days after the old prediction
+                return [{"is_negative": False, "spike_start": now - timedelta(days=25), "episode_id": "epi_hit"}]
+            return []
+
+    store = ObservationStore()
+    extractor = EnvironmentalSignalExtractor(store)
+    mechanisms = MechanismStore()
+    engine = PredictionEngine(mechanisms, WorldStateBuilder(extractor), ProspectiveValidator(EpisodeReadStub()))
+
+    def insert_prediction(pid, opportunity_id, created_at, lead_days=7.0):
+        engine.db.execute(
+            "INSERT INTO predictions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [pid, "wst_1", opportunity_id, "[]", 0.7, lead_days, "{}", None, "pending", created_at],
+        )
+
+    # Real opportunity rows so the resolver reads real categories.
+    mechanism_id = mechanisms.create(_mechanism_payload("cool mech", ["thermal_stress:up:US"], ["cooling"]))
+    mechanism = mechanisms.latest(mechanism_id)
+    from elecous.prediction.world_matching.matching import MatchResult
+
+    match = MatchResult(mechanism_id, mechanism["version"], 0.9, ["thermal_stress:up:US"], [], True)
+    activated = [{"mechanism": mechanism, "match": match, "lead_time": {"earliest": 4, "most_probable": 7, "latest": 10, "confidence": 0.8}}]
+    scores = ScoringEngine().opportunity_scores(activated, {mechanism_id: 0.8})
+    unc = UncertaintyEngine().assess(match, mechanism, activated[0]["lead_time"])
+    opp_cooling = engine.opportunities.form("wst_1", activated, scores, {"overall": 0.75}, unc, {})
+
+    insert_prediction("pred_hit", opp_cooling, now - timedelta(days=30))          # episode inside window -> correct
+    insert_prediction("pred_open", opp_cooling, now - timedelta(days=2))          # window still open -> untouched
+    heating_id = mechanisms.create(_mechanism_payload("heat mech", ["cold_stress:up:US"], ["heating"]))
+    heating = mechanisms.latest(heating_id)
+    match_h = MatchResult(heating_id, heating["version"], 0.9, ["cold_stress:up:US"], [], True)
+    activated_h = [{"mechanism": heating, "match": match_h, "lead_time": {"earliest": 4, "most_probable": 7, "latest": 10, "confidence": 0.8}}]
+    opp_heating = engine.opportunities.form(
+        "wst_1", activated_h, ScoringEngine().opportunity_scores(activated_h, {heating_id: 0.8}),
+        {"overall": 0.6}, UncertaintyEngine().assess(match_h, heating, activated_h[0]["lead_time"]), {},
+    )
+    insert_prediction("pred_miss", opp_heating, now - timedelta(days=30))         # no heating episode -> incorrect
+
+    outcomes = {r["prediction_id"]: r["outcome"] for r in engine.resolve_due()}
+    assert outcomes == {"pred_hit": "correct", "pred_miss": "incorrect"}
+    rows = {r["prediction_id"]: r for r in engine.db.query_dicts("SELECT * FROM predictions")}
+    assert rows["pred_open"]["outcome"] is None  # never judged early
+    assert rows["pred_hit"]["validation_status"] == "correct"
+    assert rows["pred_miss"]["validation_status"] == "incorrect"

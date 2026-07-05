@@ -87,7 +87,15 @@ class EnvironmentalSignalExtractor:
             """
             SELECT observation_type, category,
                    coalesce(country, CASE WHEN category IN ('media','attention') THEN entity ELSE 'global' END) AS scope,
-                   CAST(timestamp AS DATE) AS day,
+                   -- Real leakage bug caught by the constitution guard on
+                   -- the 2015-deep backfill: a bare CAST(ts AS DATE) uses
+                   -- the SESSION timezone (+05:30 here), so a 23:59-UTC
+                   -- observation lands on the NEXT day, which line ~104
+                   -- then reconstructs as midnight UTC -- one minute past
+                   -- the observation's real time and past window_end.
+                   -- AT TIME ZONE 'UTC' makes day boundaries UTC, matching
+                   -- how every timestamp in ELECOUS is stored and compared.
+                   CAST(timestamp AT TIME ZONE 'UTC' AS DATE) AS day,
                    avg(value) AS value
             FROM observations
             WHERE timestamp >= ? AND timestamp <= ? AND category IN ({})

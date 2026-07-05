@@ -102,6 +102,47 @@ def test_concept_drift_demotes_trusted_mechanism(isolated_config):
     assert mechanisms.latest(mechanism_id)["lifecycle"] == "declining"
 
 
+def test_persistent_failures_retire_candidates(isolated_config):
+    """v1.0 directive: a candidate with >=3 recorded, all-failed validation
+    attempts is retired instead of consuming revalidation compute forever;
+    one recorded pass or fewer than 3 attempts protects it."""
+    from elecous.demand.episodes.episodes import EpisodeStore
+    from elecous.environment.factor_discovery.factors import FactorStore
+    from elecous.environment.signal_discovery.discovery import EpisodeSignalDiscovery
+    from elecous.environment.signal_discovery.extractor import EnvironmentalSignalExtractor
+    from elecous.environment.world_state import WorldStateBuilder
+    from elecous.observation.store import ObservationStore
+    from elecous.signals.library import SignalLibrary
+    from elecous.validation.engine import ValidationEngine
+
+    store = ObservationStore()
+    episodes = EpisodeStore()
+    library = SignalLibrary()
+    discovery = EpisodeSignalDiscovery(store, library)
+    extractor = EnvironmentalSignalExtractor(store)
+    mechanisms = MechanismStore()
+    engine = ValidationEngine(
+        library, FactorStore(), mechanisms, episodes, discovery, extractor,
+        WorldStateBuilder(extractor),
+    )
+
+    doomed = mechanisms.create(_mechanism_payload("doomed"))
+    spared_few = mechanisms.create(_mechanism_payload("spared: only two failures"))
+    spared_pass = mechanisms.create(_mechanism_payload("spared: has one recorded pass"))
+    for _ in range(3):
+        engine._record("mechanism", doomed, 1, "mechanism_validation", {}, "failed")
+    for _ in range(2):
+        engine._record("mechanism", spared_few, 1, "mechanism_validation", {}, "failed")
+    for outcome in ("failed", "failed", "failed", "passed"):
+        engine._record("mechanism", spared_pass, 1, "mechanism_validation", {}, outcome)
+
+    retired = engine.retire_persistent_failures(min_failures=3)
+    assert retired == [doomed]
+    assert mechanisms.latest(doomed)["lifecycle"] == "retired"
+    assert mechanisms.latest(spared_few)["lifecycle"] == "candidate"
+    assert mechanisms.latest(spared_pass)["lifecycle"] == "candidate"
+
+
 @pytest.mark.network
 @pytest.mark.slow
 def test_full_validation_chain_on_real_data(tmp_path_factory):

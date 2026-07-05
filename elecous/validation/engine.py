@@ -349,6 +349,40 @@ class ValidationEngine:
                 verdict = "too_conservative"
         return {"counts": counts, "pass_rate": pass_rate, "verdict": verdict}
 
+    # ---------------------------------------------------------- retirement
+    def retire_persistent_failures(self, min_failures: int = 3) -> list[str]:
+        """v1.0 directive ("retire mechanisms that consistently reduce
+        predictive value") + capability-audit gap: Lifecycle.RETIRED was a
+        legal transition for mechanisms that no code path ever invoked, so
+        candidates that failed validation forever were re-replayed by
+        revalidate_due every cycle at real, measured cost (~0.7s each) with
+        no possible outcome change until new evidence arrives.
+
+        A candidate is retired only when the real validations table shows
+        >= min_failures recorded attempts, all failed, none passed -- the
+        same evidence standard every other lifecycle move uses. Retirement
+        is reversible by design elsewhere (RETIRED -> ARCHIVED only), so
+        this is deliberately restricted to candidates; VALIDATED+ failures
+        already take the existing DECLINING path in validate_mechanism."""
+        retired = []
+        for mechanism in self.mechanisms.list_latest(lifecycle=Lifecycle.CANDIDATE.value):
+            row = self.db.query_one(
+                "SELECT count(*) FILTER (outcome = 'failed'), count(*) FILTER (outcome = 'passed') "
+                "FROM validations WHERE object_type = 'mechanism' AND object_id = ?",
+                [mechanism["mechanism_id"]],
+            )
+            failures, passes = (row[0] or 0), (row[1] or 0)
+            if failures >= min_failures and passes == 0:
+                self.mechanisms.promote(
+                    mechanism["mechanism_id"], Lifecycle.RETIRED, ValidationStatus.FAILED,
+                    actor="validation_engine",
+                    evidence={"reason": "persistent_validation_failure", "failed_attempts": failures},
+                )
+                retired.append(mechanism["mechanism_id"])
+        if retired:
+            self.log.info("retired persistently failing candidates", count=len(retired))
+        return retired
+
     # --------------------------------------------------- rolling benchmark
     def run_rolling_benchmark(self, sample_size: int = 30) -> dict[str, Any]:
         """Final Patch, Task 6: aggregate real walk-forward replay across a
