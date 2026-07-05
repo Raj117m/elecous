@@ -185,6 +185,41 @@ class KnowledgeGraph:
             self.link(node_id, target["node_id"], relationship)
         return node_id
 
+    def sync_source(self, source_row: dict[str, Any]) -> str:
+        """Source node (rewrite directive, Level 2 source intelligence).
+        ``ObjectType.SOURCE`` has existed in the vocabulary since spec 2.5,
+        but no code path ever created a graph node for it -- sources were
+        tracked only in the registry, invisible to the graph that otherwise
+        records every other object's relationships. confidence=health keeps
+        this consistent with how every other node's confidence is derived
+        from its own store's evidence, not asserted."""
+        return self.upsert_node(
+            "source", source_row["source_id"], source_row["name"], confidence=float(source_row["health"])
+        )
+
+    def sync_research_question(self, question_row: dict[str, Any]) -> str:
+        """Research Question node (rewrite directive, Level 2 scientific
+        memory). Links OBSERVED_BY to the source nodes named in its evidence
+        plan (already-defined-but-previously-unused relationship, spec
+        7.15) and DEPENDS_ON to its subject (the factor/mechanism it targets,
+        if any) -- reusing existing vocabulary rather than inventing new
+        edge types for what the graph already has a name for."""
+        node_id = self.upsert_node(
+            "research_question",
+            question_row["question_id"],
+            question_row["statement"],
+            confidence=float(question_row.get("priority") or 0.0),
+        )
+        if question_row.get("subject_type") and question_row.get("subject_ref"):
+            subject = self.node_for(question_row["subject_type"], question_row["subject_ref"])
+            if subject:
+                self.link(node_id, subject["node_id"], Relationship.DEPENDS_ON)
+        for source_id in question_row.get("expected_evidence", {}).get("sources", []):
+            source_node = self.node_for("source", source_id)
+            if source_node:
+                self.link(node_id, source_node["node_id"], Relationship.OBSERVED_BY)
+        return node_id
+
     def rebuild_from_stores(
         self,
         signal_library,
@@ -192,12 +227,16 @@ class KnowledgeGraph:
         mechanism_store,
         episode_store=None,
         validation_rows: list[dict[str, Any]] | None = None,
+        source_rows: list[dict[str, Any]] | None = None,
+        research_rows: list[dict[str, Any]] | None = None,
     ) -> dict[str, int]:
         """Incremental sync (spec 10.19): re-derives nodes/edges from the
         authoritative versioned stores. Cheap because each store already
-        holds only the latest version per object. ``episode_store`` and
-        ``validation_rows`` are optional so existing callers that only need
-        signal/factor/mechanism sync are unaffected."""
+        holds only the latest version per object. ``episode_store``,
+        ``validation_rows``, ``source_rows`` and ``research_rows`` are all
+        optional so existing callers that only need signal/factor/mechanism
+        sync are unaffected (same additive pattern used to add
+        ``episode_store``/``validation_rows`` previously)."""
         signal_nodes = {s["signal_key"]: self.sync_signal(s) for s in signal_library.list_latest()}
         factor_nodes = {}
         for factor in factor_store.list_latest():
@@ -223,12 +262,28 @@ class KnowledgeGraph:
                 self.sync_validation(row)
                 validation_count += 1
 
+        source_count = 0
+        if source_rows:
+            for row in source_rows:
+                self.sync_source(row)
+                source_count += 1
+
+        research_count = 0
+        if research_rows:
+            # Sources must be synced first (above) so OBSERVED_BY edges have
+            # a target node to link to.
+            for row in research_rows:
+                self.sync_research_question(row)
+                research_count += 1
+
         return {
             "signals": len(signal_nodes),
             "factors": len(factor_nodes),
             "mechanisms": mechanism_count,
             "products": product_count,
             "validations": validation_count,
+            "sources": source_count,
+            "research_questions": research_count,
         }
 
     # -------------------------------------------------------------- search

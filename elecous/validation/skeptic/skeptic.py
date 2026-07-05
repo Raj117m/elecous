@@ -125,5 +125,79 @@ class SkepticEngine:
             "passed": len(scopes) >= 2 or not countries or len(countries) >= 2 or "global" in scopes,
             "scopes": sorted(scopes),
         }
+        # Reject weak mechanisms (rewrite directive Stage 4, Requirement 6):
+        # a reusable mechanism must survive across multiple real products
+        # AND multiple real years, not just multiple episodes of the same
+        # product in the same year. Real years/entities read directly from
+        # the mechanism's own real supporting episodes.
+        real_episodes = [self.episodes.latest(eid) for eid in episodes]
+        real_episodes = [e for e in real_episodes if e is not None]
+        years = {e["spike_start"].year for e in real_episodes}
+        entities = {e["entity"] for e in real_episodes}
+        challenges["generalization"] = {
+            "passed": len(years) >= 2 and len(entities) >= 2,
+            "years": sorted(years),
+            "entities": sorted(entities),
+        }
         survived = all(c["passed"] for c in challenges.values())
         return {"survived": survived, "challenges": challenges}
+
+    #: Alternative explanations ELECOUS's real, currently-collected data
+    #: cannot test at all (no marketing-spend, pricing, or supply-chain
+    #: source exists anywhere in the observation network). Named here so
+    #: the report says so explicitly rather than silently omitting them.
+    UNTESTABLE_EXPLANATIONS = ("marketing_campaign", "pricing", "supply_shortage")
+
+    def competing_explanations(
+        self, mechanism: dict[str, Any], mechanism_report: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Requirement 7: for every mechanism, attempt to falsify the
+        preferred (environmental) explanation against real alternatives.
+        Reuses challenges already computed in ``mechanism_report`` rather
+        than recomputing them -- "coincidence" and "seasonality" already
+        ARE the random-coincidence and seasonality alternative explanations;
+        this method does not duplicate that logic, it interprets it."""
+        challenges = mechanism_report.get("challenges", {})
+        signals = json.loads(mechanism["supporting_signals"])
+        phenomena = {k.split(":")[0] for k in signals}
+        attention_only = phenomena and phenomena <= {"media_attention", "public_attention"}
+
+        verdicts = {
+            "random_coincidence": {
+                "ruled_out": challenges.get("factor_survival", {}).get("passed", False),
+                "basis": "factor-level coincidence/lift check",
+            },
+            "seasonality": {
+                # Seasonality is checked at the factor level (spread across
+                # calendar weeks); a mechanism inherits it via factor_survival.
+                "ruled_out": challenges.get("factor_survival", {}).get("passed", False),
+                "basis": "factor-level seasonality spread check",
+            },
+            "media_event_only": {
+                "ruled_out": not attention_only,
+                "basis": (
+                    "every signal is a pure attention phenomenon (media_attention/public_attention) "
+                    "with no independent environmental/economic/calendar signal -- indistinguishable "
+                    "from a self-referential media cycle" if attention_only
+                    else "at least one non-attention phenomenon is present"
+                ),
+            },
+            "regional_marketing_push": {
+                "ruled_out": challenges.get("regional_bias", {}).get("passed", False),
+                "basis": "spans multiple real regions -- a single-market marketing push cannot explain that",
+            },
+            "not_reusable": {
+                "ruled_out": challenges.get("generalization", {}).get("passed", False),
+                "basis": "spans multiple real products and years" if challenges.get("generalization", {}).get("passed")
+                else "confined to too few real products/years to call reusable",
+            },
+        }
+        for untestable in self.UNTESTABLE_EXPLANATIONS:
+            verdicts[untestable] = {
+                "ruled_out": None,
+                "basis": "no real data source exists in ELECOUS's observation network to test this",
+            }
+        environmental_explanation_survives = all(
+            v["ruled_out"] is not False for k, v in verdicts.items() if k not in self.UNTESTABLE_EXPLANATIONS
+        )
+        return {"verdicts": verdicts, "environmental_explanation_survives": environmental_explanation_survives}

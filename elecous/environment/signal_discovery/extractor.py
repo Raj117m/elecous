@@ -46,6 +46,11 @@ class SignalChange:
     z: float
     first_crossed_at: datetime | None
     observation_types: tuple[str, ...]
+    # Provenance (rewrite directive, Level 2 source intelligence): which
+    # source_ids' observations fell inside the window that produced this
+    # change. Defaulted so existing callers constructing SignalChange by
+    # keyword are unaffected. Does not participate in the z-score math.
+    contributing_sources: tuple[str, ...] = ()
 
 
 class EnvironmentalSignalExtractor:
@@ -99,6 +104,25 @@ class EnvironmentalSignalExtractor:
             ts = datetime(day.year, day.month, day.day, tzinfo=timeutil.UTC)
             series.setdefault(key, []).append((ts, float(row["value"])))
 
+        # Provenance side-query (Level 2 source intelligence): which sources
+        # actually produced the observations inside the anomaly window
+        # itself (not the baseline). Kept separate from the z-score
+        # aggregation above so the statistical computation is untouched.
+        source_rows = self.store.db.query_dicts(
+            """
+            SELECT observation_type,
+                   coalesce(country, CASE WHEN category IN ('media','attention') THEN entity ELSE 'global' END) AS scope,
+                   list(DISTINCT source_id) AS source_ids
+            FROM observations
+            WHERE timestamp >= ? AND timestamp <= ? AND category IN ({})
+            GROUP BY 1, 2
+            """.format(",".join("?" * len(ENVIRONMENTAL_CATEGORIES))),
+            [window_start, window_end, *ENVIRONMENTAL_CATEGORIES],
+        )
+        sources_by_key: dict[tuple[str, str], tuple[str, ...]] = {
+            (row["observation_type"], str(row["scope"])): tuple(sorted(row["source_ids"])) for row in source_rows
+        }
+
         changes: list[SignalChange] = []
         for (obs_type, scope), points in series.items():
             phenomenon = self.normalizer.phenomenon_for(obs_type)
@@ -131,6 +155,7 @@ class EnvironmentalSignalExtractor:
                     z=round(float(peak_z), 3),
                     first_crossed_at=min(crossings) if crossings else peak_ts,
                     observation_types=(obs_type,),
+                    contributing_sources=sources_by_key.get((obs_type, scope), ()),
                 )
             )
         # Merge changes of the same signal key arising from different
@@ -154,6 +179,9 @@ class EnvironmentalSignalExtractor:
                     if (existing.first_crossed_at or change.first_crossed_at)
                     else None,
                     observation_types=tuple(sorted(set(existing.observation_types) | set(change.observation_types))),
+                    contributing_sources=tuple(
+                        sorted(set(existing.contributing_sources) | set(change.contributing_sources))
+                    ),
                 )
         return sorted(merged.values(), key=lambda c: -abs(c.z))
 

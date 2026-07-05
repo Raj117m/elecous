@@ -6,6 +6,7 @@ extraction and world-state construction from real weather/media data."""
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 
 import pytest
 
@@ -108,6 +109,101 @@ def test_ontology_and_semantics(isolated_config):
     assert unified["Heavy Rain"] == "rainfall_intensity"
     assert unified["heatwave"] == "thermal_stress"
     assert semantic.describe_signal("thermal_stress:up:US") == "thermal stress rising in US"
+
+
+def test_signal_change_carries_contributing_source_lineage(isolated_config):
+    """Rewrite directive, Level 2 source intelligence: source_id must
+    survive into a SignalChange so a Source Value Ledger can later credit
+    the right source. Rows are inserted directly against the real
+    observations schema (same technique test_phase7_knowledge.py uses for
+    edge rows) to isolate the extractor's aggregation logic from network
+    collection -- no fabricated scientific claim is being tested, only that
+    the SQL correctly threads source_id through."""
+    from elecous.environment.signal_discovery.extractor import EnvironmentalSignalExtractor
+    from elecous.observation.store import ObservationStore
+
+    store = ObservationStore()
+    now = timeutil.utcnow()
+
+    def insert(day_offset: int, value: float, source_id: str) -> None:
+        ts = now - timedelta(days=day_offset)
+        store.db.execute(
+            "INSERT INTO observations VALUES (" + ", ".join("?" * 21) + ")",
+            [
+                f"obs_{day_offset}_{source_id}",
+                f"dedup_{day_offset}_{source_id}",
+                ts,
+                "US",
+                "weather",
+                "temperature_max_c",
+                value,
+                "celsius",
+                None,
+                "US",
+                None,
+                None,
+                None,
+                True,
+                1.0,
+                source_id,
+                "{}",
+                1,
+                "chk",
+                1,
+                ts,
+            ],
+        )
+
+    # Baseline: 10 calm days from source_a. Window: 3 hot days from source_b.
+    for day in range(10, 20):
+        insert(day, 20.0, "source_a")
+    for day in range(0, 3):
+        insert(day, 40.0, "source_b")
+
+    extractor = EnvironmentalSignalExtractor(store)
+    changes = extractor.changes(window_end=now, window_days=5, baseline_days=15)
+    thermal = next(c for c in changes if c.phenomenon == "thermal_stress")
+    assert thermal.direction == "up"
+    # Only the source active during the anomalous window is attributed --
+    # the baseline-only source must not be credited for the change.
+    assert thermal.contributing_sources == ("source_b",)
+
+
+def test_sources_for_signals_derives_lineage_for_mechanisms(isolated_config):
+    """Rewrite directive, Level 2: mechanisms.evidence_links['observations']
+    is populated via this derivation rather than a stored column (the
+    factor/mechanism rows already carry signals + supporting_episodes;
+    deriving avoids a migration on the highest-traffic environment table)."""
+    from elecous.environment.schema import ENVIRONMENT_MIGRATION, ENVIRONMENT_PROVENANCE_MIGRATION
+    from elecous.storage.database import global_databases
+
+    databases = global_databases()
+    databases.register_schema(ENVIRONMENT_MIGRATION)
+    databases.register_schema(ENVIRONMENT_PROVENANCE_MIGRATION)
+    db = databases.get("environment")
+    now = timeutil.utcnow()
+    db.execute(
+        "INSERT INTO episode_signals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ["epi_1", "thermal_stress:up:US", "thermal_stress", "up", "US", 2.0, now, 3.0,
+         json.dumps(["temperature_max_c"]), now, json.dumps(["open_meteo_weather"])],
+    )
+    db.execute(
+        "INSERT INTO episode_signals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ["epi_2", "thermal_stress:up:US", "thermal_stress", "up", "US", 1.8, now, 2.0,
+         json.dumps(["temperature_max_c"]), now, json.dumps(["open_meteo_weather", "nws_alerts"])],
+    )
+    from elecous.environment.signal_discovery.discovery import EpisodeSignalDiscovery
+    from elecous.environment.signal_discovery.extractor import EnvironmentalSignalExtractor
+    from elecous.observation.store import ObservationStore
+    from elecous.signals.library import SignalLibrary
+
+    discovery = EpisodeSignalDiscovery(
+        EnvironmentalSignalExtractor(ObservationStore()), SignalLibrary(), databases=databases
+    )
+    sources = discovery.sources_for_signals(["epi_1", "epi_2"], ["thermal_stress:up:US"])
+    assert sources == ["nws_alerts", "open_meteo_weather"]
+    # A signal key never observed contributes nothing.
+    assert discovery.sources_for_signals(["epi_1"], ["rainfall_intensity:up:US"]) == []
 
 
 @pytest.mark.network

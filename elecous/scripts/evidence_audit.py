@@ -23,7 +23,7 @@ from collections import Counter, defaultdict
 from typing import Any
 
 from elecous.bootstrap import build_stack
-from elecous.environment.engine import _season_of
+from elecous.common import timeutil
 from elecous.environment.ontology.ontology import CATEGORY_FAMILIES
 
 # Minimum evidence a category needs before mechanism discovery on it is
@@ -86,7 +86,7 @@ class EvidenceAuditor:
         phenomena_detail = []
         for category, group in sorted(by_cat_episodes.items()):
             entities = {e["entity"] for e in group}
-            seasons = {_season_of(e["spike_start"].month) for e in group}
+            seasons = {timeutil.season_of(e["spike_start"].month) for e in group}
             years = {e["spike_start"].year for e in group}
             countries_seen = {e["country"] for e in group if e.get("country")}
             phenomena_detail.append(

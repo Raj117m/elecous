@@ -34,6 +34,8 @@ class MechanismEngine:
         observations: ObservationStore,
         config: Config | None = None,
         databases: DatabaseManager | None = None,
+        states=None,
+        concepts=None,
     ):
         self.config = config or active_config()
         self.databases = databases or global_databases()
@@ -41,6 +43,14 @@ class MechanismEngine:
         self.episodes = episodes
         self.discovery = discovery
         self.observations = observations
+        # Optional (Stage 4): real discovered environmental states, when
+        # available, name the mechanism's Environmental State layer instead
+        # of describing raw signals only. Optional so existing callers
+        # that predate state discovery are unaffected.
+        self.states = states
+        # Optional (Stage 6): candidate-concept discovery over real
+        # mechanisms once they exist -- optional for the same reason.
+        self.concepts = concepts
         self.store = MechanismStore(self.databases)
         self.reasoner = BehaviouralReasoner(self.config)
         self.ontology = Ontology(self.config)
@@ -78,7 +88,50 @@ class MechanismEngine:
                 created.append(self._create_mechanism(factor, category, control_check))
         self._assign_hierarchy()
         self._update_interactions()
+        if self.concepts is not None and self.states is not None:
+            # Stage 6: mechanisms must exist before their real residual
+            # evidence (relative to their assigned state) can be clustered
+            # into candidate concepts -- runs after generation, not inside
+            # research_cycle(), which executes before any mechanism exists.
+            self._backfill_state_links()
+            all_mechanisms = self.store.list_latest()
+            all_states = self.states.list_all()
+            self.concepts.discover(all_mechanisms, all_states)
+            self.concepts.evolve(all_mechanisms, all_states)
         return created
+
+    def _backfill_state_links(self) -> int:
+        """Real, non-destructive metadata correction (same category as the
+        Stage 2 source-lineage backfill): mechanisms created before state
+        discovery existed have no real state_id in evidence_links, even
+        though their own factor may now belong to a real discovered state.
+        Direct UPDATE on the current version's evidence_links, not a new
+        mechanism version -- this is retroactive linkage, not a scientific
+        revision, so it does not belong in the revision history."""
+        if self.states is None:
+            return 0
+        # One real pass to build factor_id -> state_id, reused for every
+        # mechanism (Task 8: avoid a fresh query per mechanism/factor pair).
+        factor_to_state: dict[str, str] = {}
+        for state in self.states.list_all():
+            for factor_id in state["member_factor_ids"]:
+                factor_to_state[factor_id] = state["state_id"]
+        updated = 0
+        for mechanism in self.store.list_latest():
+            links = json.loads(mechanism["evidence_links"])
+            if links.get("state_id"):
+                continue
+            factor_ids = json.loads(mechanism["environmental_factors"])
+            state_id = next((factor_to_state[fid] for fid in factor_ids if fid in factor_to_state), None)
+            if state_id is None:
+                continue
+            links["state_id"] = state_id
+            self.store.db.execute(
+                "UPDATE mechanisms SET evidence_links = ? WHERE mechanism_id = ? AND version = ?",
+                [json.dumps(links), mechanism["mechanism_id"], mechanism["version"]],
+            )
+            updated += 1
+        return updated
 
     def _control_comparison(self, factor: dict[str, Any], category: str) -> dict[str, Any]:
         """Control comparison (5.17): in the factor's supporting episodes,
@@ -108,7 +161,8 @@ class MechanismEngine:
 
     def _create_mechanism(self, factor: dict[str, Any], category: str, control_check: dict[str, Any]) -> str:
         signal_keys = json.loads(factor["signals"])
-        chain = self.reasoner.chain(signal_keys, category)
+        state = self.states.for_factor(factor["factor_id"]) if self.states else None
+        chain = self.reasoner.chain(signal_keys, category, state_label=state["label"] if state else None)
         traits = self._traits_for_category(category)
         countries = sorted({s for s in json.loads(factor["regions"]) if len(s) == 2})
         climate_zones = self._climate_zones(countries)
@@ -145,9 +199,52 @@ class MechanismEngine:
                 "signals": signal_keys,
                 "episodes": episode_ids,
                 "counterfactual": json.loads(factor["counterfactual"]) if factor["counterfactual"] else None,
+                # Rewrite directive, Level 2 source intelligence: which
+                # source_ids actually produced this mechanism's evidence --
+                # previously promised by this schema's comment but never
+                # populated (source_id was discarded before a signal even
+                # existed). Enables crediting sources when this mechanism
+                # later validates or fails (source_value.py, stage 2+).
+                "observations": self.discovery.sources_for_signals(episode_ids, signal_keys),
+                # Rewrite directive, Stage 4, Requirement 1/8: which real
+                # discovered environmental state (if any) this mechanism's
+                # Environmental State layer is grounded in, and how much of
+                # the causal chain is actually evidenced vs theorized --
+                # both real, computed, not asserted.
+                "state_id": state["state_id"] if state else None,
+                "evidence_completeness": self.reasoner.evidence_completeness(chain),
             },
         }
         return self.store.create(payload)
+
+    # ------------------------------------------------------------ mechanism memory
+    def explained_and_unexplained(self, state_id: str) -> dict[str, Any]:
+        """Rewrite directive Stage 4, Requirement 8: which real catalog
+        entities does this discovered state actually explain (a real
+        mechanism grounded in it, backed by real episodes), and which
+        entities share the state's real categories but have no such
+        mechanism at all -- a real, honest gap, not a fabricated claim
+        that everything is explained."""
+        state = self.states.get(state_id) if self.states else None
+        if state is None:
+            return {"explained": [], "unexplained": [], "state": None}
+        explained: set[str] = set()
+        for factor_id in state["member_factor_ids"]:
+            factor = self.factors.latest(factor_id)
+            if factor is None:
+                continue
+            for episode_id in json.loads(factor["supporting_episodes"]):
+                episode = self.episodes.latest(episode_id)
+                if episode is not None:
+                    explained.add(episode["entity"])
+        topics = self.config.load_file("entities.yaml").get("topics", [])
+        catalog_in_scope = {t["entity"] for t in topics if t.get("category") in state["categories"]}
+        return {
+            "state": state["label"],
+            "categories": state["categories"],
+            "explained": sorted(explained),
+            "unexplained": sorted(catalog_in_scope - explained),
+        }
 
     # ----------------------------------------------------------------- traits
     def _traits_for_category(self, category: str) -> list[str]:

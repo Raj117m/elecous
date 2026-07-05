@@ -29,6 +29,12 @@ class ObjectType(StrEnum):
     VALIDATION = "validation"
     WORLD_STATE = "world_state"
     UNKNOWN = "unknown"  # Unknown Memory objects, spec 7.19 / 12.21
+    # Level-2 scientific memory (rewrite directive): the system's experience
+    # of doing research, distinct from RESEARCH_EPISODE (a demand event) and
+    # KNOWLEDGE (a Level-1 fact).
+    RESEARCH_QUESTION = "research_question"
+    RESEARCH_EXPERIENCE = "research_experience"
+    RESEARCH_LESSON = "research_lesson"
 
 
 class Lifecycle(StrEnum):

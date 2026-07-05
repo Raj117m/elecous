@@ -59,6 +59,33 @@ def test_graph_product_and_validation_evidence_chain(isolated_config):
     assert contradicts and contradicts[0]["target_node"] == factor_node
 
 
+def test_graph_source_and_research_question_nodes(isolated_config):
+    """Rewrite directive, Level 2: ObjectType.SOURCE has existed in the
+    vocabulary since spec 2.5 but no code path ever created a graph node for
+    it. sync_source/sync_research_question put OBSERVED_BY and DEPENDS_ON
+    (already-defined, previously-unused relationships) to work for the
+    first time."""
+    graph = KnowledgeGraph()
+    factor_node = graph.upsert_node("environmental_factor", "fac_1", "Heat Factor", confidence=0.6)
+    source_node = graph.sync_source({"source_id": "open_meteo_weather", "name": "Open-Meteo Weather", "health": 0.8})
+    assert graph.node_for("source", "open_meteo_weather")["confidence"] == 0.8
+
+    question_node = graph.sync_research_question(
+        {
+            "question_id": "rsq_1",
+            "statement": "does heat drive cooling demand?",
+            "priority": 0.7,
+            "subject_type": "environmental_factor",
+            "subject_ref": "fac_1",
+            "expected_evidence": {"sources": ["open_meteo_weather"]},
+        }
+    )
+    depends = graph.neighbors(question_node, Relationship.DEPENDS_ON)
+    assert depends and depends[0]["target_node"] == factor_node
+    observed = graph.neighbors(question_node, Relationship.OBSERVED_BY)
+    assert observed and observed[0]["target_node"] == source_node
+
+
 def test_governance_blocks_manual_edits_and_missing_evidence():
     with pytest.raises(ConstitutionViolation):
         governance.forbid_manual_edit("human")

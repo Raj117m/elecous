@@ -39,6 +39,9 @@ _PREFIXES = {
     "unknown": "unk",
     "event": "evt",
     "task": "tsk",
+    "research_question": "rsq",
+    "research_experience": "rex",
+    "research_lesson": "rsl",
 }
 
 

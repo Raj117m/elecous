@@ -72,6 +72,19 @@ def register_all_schedules(stack: ElecousStack) -> None:
         "prediction:advance_stages", "prediction", stack.prediction.advance_stages, timedelta(hours=1), priority=4
     )
 
+    # Research Intelligence (rewrite directive, Stage 2): plan and collect
+    # only the evidence open questions actually need, within a real budget.
+    # Priority 4, hourly -- same tier as knowledge:sync, since planning
+    # depends on validation outcomes that land at that cadence.
+    scheduler.register("research:cycle", "research", stack.research.tick, timedelta(hours=1), priority=4)
+    # Autonomous Scientific Experimentation (rewrite directive, Stage 7):
+    # design falsifiable experiments for real active hypotheses and
+    # resolve any past their real deadline -- runs after research:cycle at
+    # the same real cadence tier since it depends on the same evidence.
+    scheduler.register(
+        "research:experiments", "research", stack.experiments.run_scientific_cycle, timedelta(hours=6), priority=4
+    )
+
     # Autonomy: self-healing, expansion, curiosity (spec ch.12).
     scheduler.register(
         "supervisor:self_heal", "supervisor", stack.supervisor.self_heal, timedelta(minutes=30), priority=1

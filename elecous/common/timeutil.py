@@ -48,3 +48,12 @@ def date_range(start: date, end: date) -> list[date]:
     if end < start:
         raise ValueError("end before start")
     return [start + timedelta(days=i) for i in range((end - start).days + 1)]
+
+
+def season_of(month: int) -> str:
+    """Meteorological (northern-hemisphere-convention) season for a
+    calendar month. Consolidated here (rewrite directive cleanup) from two
+    independent redefinitions in environment/engine.py and
+    scripts/evidence_report.py."""
+    return ["winter", "winter", "spring", "spring", "spring", "summer",
+            "summer", "summer", "autumn", "autumn", "autumn", "winter"][month - 1]

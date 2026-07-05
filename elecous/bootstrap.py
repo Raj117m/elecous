@@ -16,7 +16,7 @@ from elecous.environment.engine import EnvironmentalEngine
 from elecous.expansion.curiosity import CuriosityEngine
 from elecous.expansion.engine import ExpansionEngine
 from elecous.infrastructure.config import Config, active_config
-from elecous.infrastructure.event_bus import EventBus, global_bus
+from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.resources import ResourceManager
 from elecous.infrastructure.supervisor import AutonomousSupervisor
 from elecous.knowledge.engine import KnowledgeEngine
@@ -25,6 +25,10 @@ from elecous.observation.gap import ObservationGapEngine
 from elecous.observation.network import ObservationNetwork
 from elecous.observation.sandbox.sandbox import ObservationSandbox
 from elecous.prediction.engine import PredictionEngine
+from elecous.research.engine import ResearchEngine
+from elecous.research.experiments import ExperimentEngine
+from elecous.research.questions import ResearchQuestionStore
+from elecous.research.source_value import SourceValueLedger
 from elecous.scheduler.scheduler import Scheduler
 from elecous.storage.database import DatabaseManager, global_databases
 from elecous.storage.tiers import TierManager
@@ -49,6 +53,8 @@ class ElecousStack:
     scheduler: Scheduler
     expansion: ExpansionEngine
     curiosity: CuriosityEngine
+    research: ResearchEngine
+    experiments: ExperimentEngine
     supervisor: AutonomousSupervisor
 
 
@@ -67,7 +73,7 @@ def build_stack(config: Config | None = None) -> ElecousStack:
     environment = EnvironmentalEngine(observation.store, demand.episodes, config=config, databases=databases, bus=bus)
     mechanisms = MechanismEngine(
         environment.factors, demand.episodes, environment.discovery, observation.store,
-        config=config, databases=databases,
+        config=config, databases=databases, states=environment.states, concepts=environment.concepts,
     )
     validation = ValidationEngine(
         environment.library, environment.factors, mechanisms.store, demand.episodes,
@@ -88,12 +94,45 @@ def build_stack(config: Config | None = None) -> ElecousStack:
     expansion = ExpansionEngine(observation.registry, sandbox, gap, config=config, bus=bus)
     curiosity = CuriosityEngine(knowledge, mechanisms.store, environment.factors, gap)
 
+    # Research Intelligence (rewrite directive, Stage 2): Level-2 memory of
+    # how to do research, layered on top of the pipeline above rather than
+    # replacing any of it -- see docs/decisions/0004.
+    research_questions = ResearchQuestionStore(databases=databases, config=config)
+    source_value = SourceValueLedger(
+        databases=databases, config=config,
+        factors=environment.factors, mechanisms=mechanisms.store,
+        discovery=environment.discovery, registry=observation.registry,
+    )
+    research = ResearchEngine(
+        research_questions, source_value, research_questions.experience,
+        observation, observation.health, observation.registry,
+        resources=resources, config=config, databases=databases,
+    )
+    # Autonomous Scientific Experimentation (rewrite directive, Stage 7):
+    # composes the real objects already built above -- no new store, no
+    # new engine, only the missing falsifiable-prediction behavior on top
+    # of ResearchQuestion.
+    experiments = ExperimentEngine(
+        research_questions, environment.states, environment.concepts, demand.episodes,
+        environment.factors, mechanisms,
+    )
+
     stack = ElecousStack(
         config=config, databases=databases, bus=bus, resources=resources, tiers=tiers,
         observation=observation, gap=gap, demand=demand, environment=environment,
         mechanisms=mechanisms, validation=validation, knowledge=knowledge,
         prediction=prediction, scheduler=scheduler, expansion=expansion,
-        curiosity=curiosity, supervisor=None,  # type: ignore[arg-type]
+        curiosity=curiosity, research=research, experiments=experiments,
+        supervisor=None,  # type: ignore[arg-type]
     )
     stack.supervisor = AutonomousSupervisor(stack)
+
+    # Additive listeners (Stage 2): VALIDATION_COMPLETED has fired since
+    # Phase 6 with zero subscribers -- these are its first two real
+    # consumers, both read-only with respect to validation's own authority.
+    bus.subscribe(EventType.VALIDATION_COMPLETED, source_value.on_validation_completed)
+    bus.subscribe(EventType.VALIDATION_COMPLETED, research.on_validation_completed)
+    # Active question generation: every surfaced unknown becomes a real,
+    # budgeted question instead of sitting inert in the Unknown Repository.
+    bus.subscribe(EventType.UNKNOWN_RECORDED, research.on_unknown_recorded)
     return stack

@@ -18,6 +18,7 @@ from urllib.parse import quote
 from elecous.common import timeutil
 from elecous.common.errors import ConnectorError
 from elecous.observation.connectors.base import CollectionResult, Connector
+from elecous.research.progress import ProgressReporter
 
 BASE = "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article"
 
@@ -51,7 +52,13 @@ class WikimediaPageviewsConnector(Connector):
         observations = []
         schema_hash = None
         raw_count = 0
+        # Real, measured cost (Stage 2.5, Requirement 1): this loop sweeps
+        # every catalog topic (~288) with a politeness wait between
+        # requests -- minutes of wall-clock time with no other visible
+        # output. Report real progress instead of a silent gap.
+        progress = ProgressReporter(len(topics), f"wikimedia:{mode}")
         for topic in topics:
+            progress.tick()
             article = quote(topic["article"].replace(" ", "_"), safe="")
             url = f"{BASE}/{project}/all-access/user/{article}/daily/{start:%Y%m%d}00/{end:%Y%m%d}00"
             try:

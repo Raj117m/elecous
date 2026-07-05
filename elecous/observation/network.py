@@ -147,14 +147,20 @@ class ObservationNetwork:
         hourly unit budget across capabilities and adjust per-source cadence
         proportionally."""
         capabilities = self.registry.capabilities()
-        contribution = {
-            s["observation_capability"]: max(
-                float(s["historical_contribution"] or 0.0),
-                # keep already-known contribution at capability granularity
-                0.0,
+        # Mean across every source sharing a capability, not last-source-wins
+        # (real bug found once Stage 2 makes historical_contribution
+        # non-zero: a dict comprehension previously overwrote all but one
+        # source's contribution per capability -- invisible while the field
+        # was always 0.0, silently wrong the moment it became real evidence).
+        contribution_sums: dict[str, float] = {}
+        contribution_counts: dict[str, int] = {}
+        for s in self.registry.list():
+            capability = s["observation_capability"]
+            contribution_sums[capability] = contribution_sums.get(capability, 0.0) + max(
+                float(s["historical_contribution"] or 0.0), 0.0
             )
-            for s in self.registry.list()
-        }
+            contribution_counts[capability] = contribution_counts.get(capability, 0) + 1
+        contribution = {cap: contribution_sums[cap] / contribution_counts[cap] for cap in contribution_sums}
         health = self.health.capability_health()
         allocations = {a.capability: a for a in self.budget.allocate(capabilities, contribution, health)}
         cadence: dict[str, float] = {}

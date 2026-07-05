@@ -95,12 +95,27 @@ def test_competition_and_failure_records(isolated_config):
 
 
 def test_behavioural_chain_composition(isolated_config):
+    """Rewrite directive Stage 4: the chain is now the full explicit layer
+    sequence (Environmental State -> Human Need -> Human Behaviour ->
+    Attention -> Purchase Intent -> Demand -> Sales), each layer marked
+    evidenced or explicitly theorized -- never fabricated content."""
     reasoner = BehaviouralReasoner()
     chain = reasoner.chain(["thermal_stress:up:US", "calendar_event:up:US"], "cooling")
-    steps = [s["step"] for s in chain]
-    assert steps.count("world_change") == 2
-    assert "human_consequence" in steps
-    assert steps[-2:] == ["need", "demand"]
+    layers = [s["layer"] for s in chain]
+    assert layers.count("environmental_state") == 2
+    assert "human_behaviour" in layers
+    assert layers[-3:] == ["attention", "purchase_intent", "demand"] or "sales" in layers
+    assert layers[-1] == "sales"
+
+    sales_step = next(s for s in chain if s["layer"] == "sales")
+    assert sales_step["evidenced"] is False  # never fabricated -- no real sales data exists
+
+    purchase_intent_step = next(s for s in chain if s["layer"] == "purchase_intent")
+    assert purchase_intent_step["evidenced"] is False  # always an attention proxy, stated honestly
+
     text = reasoner.describe(chain)
     assert "thermal stress rises in US" in text
-    assert "cooling demand accelerates" in text
+    assert "cooling demand-proxy signal accelerates" in text
+
+    completeness = reasoner.evidence_completeness(chain)
+    assert 0.0 < completeness < 1.0  # some layers real, some theorized -- never all-or-nothing

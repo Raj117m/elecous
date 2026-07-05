@@ -28,6 +28,7 @@ databases:
     - predictions
     - validation
     - dashboard
+    - research
 
 logging:
   dir: logs
@@ -44,6 +45,7 @@ logging:
     - prediction
     - dashboard
     - expansion
+    - research
     - scheduler
     - governance
     - infrastructure
@@ -61,6 +63,12 @@ scheduler:
     medium_minutes: 60
     low_minutes: 1440
     very_low_minutes: 10080
+
+research:
+  # Rewrite directive Stage 2, Requirement 4: a real, bounded unit budget
+  # per ResearchEngine.tick(), reusing the same "observation units" currency
+  # as scheduler.observation_units_per_hour rather than inventing a new one.
+  units_per_cycle: 20
 
 resources:
   # Resource Manager targets (spec 10.24): stay responsive on a MacBook.

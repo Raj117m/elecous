@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from elecous.common import timeutil
 from elecous.common.errors import ConnectorError
 from elecous.observation.connectors.base import CollectionResult, Connector
+from elecous.research.progress import ProgressReporter
 
 URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 
@@ -49,7 +50,15 @@ class GdeltMediaVolumeConnector(Connector):
         else:
             span = {"timespan": self.params.get("timespan", "7d")}
         failures = 0
+        # Real, measured cost (Stage 2.5, Requirement 1): mode="live" sweeps
+        # every theme AND every catalog topic (include_topics=True), each
+        # behind a real 6s per-host politeness wait -- ~290 requests,
+        # ~30 minutes wall-clock for a single "live" call. Reporting real
+        # progress here replaces what was previously a silent multi-minute
+        # gap (found by direct ps/lsof diagnosis, not assumption).
+        progress = ProgressReporter(len(themes), f"gdelt:{mode}")
         for theme in themes:
+            progress.tick()
             try:
                 payload = self.http.get_json(
                     URL,

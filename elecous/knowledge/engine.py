@@ -155,7 +155,20 @@ class KnowledgeEngine:
 
     def record_unknown(self, kind: str, description: str, context: dict[str, Any], research_priority: float = 0.5) -> str:
         unknown_id = self.memory.record_unknown(kind, description, context, research_priority)
-        self.bus.emit(EventType.UNKNOWN_RECORDED, source="knowledge", kind=kind, description=description)
+        # unknown_id/context/research_priority added to the payload (rewrite
+        # directive, Level 2): a future Research Question bridge needs these
+        # to turn a surfaced anomaly into a prioritized, budgeted question --
+        # the previous payload (kind, description only) carried too little
+        # to act on.
+        self.bus.emit(
+            EventType.UNKNOWN_RECORDED,
+            source="knowledge",
+            kind=kind,
+            description=description,
+            unknown_id=unknown_id,
+            context=context,
+            research_priority=research_priority,
+        )
         return unknown_id
 
     def research_agenda(self) -> list[dict[str, Any]]:

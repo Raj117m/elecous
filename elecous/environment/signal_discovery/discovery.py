@@ -14,7 +14,7 @@ from typing import Any
 
 from elecous.common import timeutil
 from elecous.common.ids import new_id
-from elecous.environment.schema import ENVIRONMENT_MIGRATION
+from elecous.environment.schema import ENVIRONMENT_MIGRATION, ENVIRONMENT_PROVENANCE_MIGRATION
 from elecous.environment.signal_discovery.extractor import EnvironmentalSignalExtractor, SignalChange
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.logging import get_logger
@@ -34,6 +34,7 @@ class EpisodeSignalDiscovery:
         self.library = library
         self.databases = databases or global_databases()
         self.databases.register_schema(ENVIRONMENT_MIGRATION)
+        self.databases.register_schema(ENVIRONMENT_PROVENANCE_MIGRATION)
         self.db = self.databases.get("environment")
         self.config = config or active_config()
         self.log = get_logger("environment")
@@ -53,7 +54,7 @@ class EpisodeSignalDiscovery:
                 else None
             )
             self.db.execute(
-                "INSERT INTO episode_signals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO episode_signals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     episode_id,
                     change.signal_key,
@@ -65,6 +66,7 @@ class EpisodeSignalDiscovery:
                     days_before,
                     json.dumps(list(change.observation_types)),
                     timeutil.utcnow(),
+                    json.dumps(list(change.contributing_sources)),
                 ],
             )
             self.library.observe_candidate(
@@ -120,6 +122,26 @@ class EpisodeSignalDiscovery:
                 if phenomenon in wanted:
                     result[phenomenon].add(key)
         return {p: sorted(keys) for p, keys in result.items()}
+
+    def sources_for_signals(self, episode_ids: list[str], signal_keys: list[str]) -> list[str]:
+        """Which source_ids fed the given concrete signal keys across the
+        given episodes (rewrite directive, Level 2 source intelligence) --
+        the derivation step that finally answers "which source contributed
+        to this validated factor/mechanism", used to populate
+        ``mechanisms.evidence_links['observations']``."""
+        if not episode_ids or not signal_keys:
+            return []
+        ep_placeholders = ",".join("?" * len(episode_ids))
+        key_placeholders = ",".join("?" * len(signal_keys))
+        rows = self.db.query(
+            f"SELECT source_ids FROM episode_signals WHERE episode_id IN ({ep_placeholders}) "
+            f"AND signal_key IN ({key_placeholders}) AND source_ids IS NOT NULL",
+            [*episode_ids, *signal_keys],
+        )
+        sources: set[str] = set()
+        for (raw,) in rows:
+            sources.update(json.loads(raw))
+        return sorted(sources)
 
     def episode_lead_times(self, episode_ids: list[str]) -> dict[str, dict[str, float]]:
         """episode -> signal_key -> days before spike."""
@@ -177,4 +199,6 @@ class EpisodeSignalDiscovery:
             z=row["z"],
             first_crossed_at=timeutil.ensure_utc(row["first_crossed_at"]) if row["first_crossed_at"] else None,
             observation_types=tuple(json.loads(row["observation_types"])),
+            # Rows cached before the provenance migration have no source_ids.
+            contributing_sources=tuple(json.loads(row["source_ids"])) if row.get("source_ids") else (),
         )

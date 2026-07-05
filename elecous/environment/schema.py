@@ -104,3 +104,96 @@ ENVIRONMENT_MIGRATION = Migration(
         "CREATE INDEX IF NOT EXISTS idx_world_states_asof ON world_states (as_of)",
     ),
 )
+
+#: Additive lineage fix (rewrite directive, Level 2 source intelligence).
+#: ``source_id`` was discarded at the very first aggregation step in
+#: ``EnvironmentalSignalExtractor._compute_changes`` -- there was no code
+#: path from a validated factor/mechanism back to which source produced it.
+#: This column captures which sources' observations fell inside the window
+#: that produced each cached signal change, without touching the z-score
+#: computation itself (still computed at phenomenon:scope granularity).
+ENVIRONMENT_PROVENANCE_MIGRATION = Migration(
+    "environment.0002.add_signal_provenance",
+    "environment",
+    ("ALTER TABLE episode_signals ADD COLUMN IF NOT EXISTS source_ids VARCHAR",),
+)
+
+#: Discovered environmental states (rewrite directive Stage 4, Requirement
+#: 2) -- real clusters of already-mined factors grouped by real phenomenon
+#: overlap, not a fixed enum of state names.
+STATE_MIGRATION = Migration(
+    "environment.0003.create_environmental_states",
+    "environment",
+    (
+        """
+        CREATE TABLE IF NOT EXISTS environmental_states (
+            state_id VARCHAR PRIMARY KEY,
+            label VARCHAR NOT NULL,                 -- derived from real dominant phenomena
+            dominant_phenomena VARCHAR NOT NULL,    -- JSON list of phenomenon:direction
+            member_factor_ids VARCHAR NOT NULL,     -- JSON list of real factor_ids in this cluster
+            categories VARCHAR NOT NULL,            -- JSON list of real affected categories
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+        """,
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_states_label ON environmental_states (label)",
+    ),
+)
+
+#: Mechanism-hypothesis fields (rewrite directive Stage 5). A discovered
+#: state becomes a real mechanism hypothesis once it has an inferred human
+#: problem, a solution group, a generalization score and contradiction
+#: counts -- all recomputed from real evidence, never asserted.
+STATE_HYPOTHESIS_MIGRATION = Migration(
+    "environment.0004.add_mechanism_hypothesis_fields",
+    "environment",
+    (
+        # JSON-typed columns (solution_group, generalized_group,
+        # contradictions, unknowns) store serialized lists/dicts; status is
+        # active|retired.
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS human_problem_statement VARCHAR",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS human_problem_confidence DOUBLE",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS solution_group VARCHAR",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS generalized_group VARCHAR",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS generality_score DOUBLE",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS contradictions VARCHAR",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS confidence DOUBLE",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS unknowns VARCHAR",
+        "ALTER TABLE environmental_states ADD COLUMN IF NOT EXISTS status VARCHAR",
+    ),
+)
+
+#: Candidate concepts (rewrite directive Stage 6): recurring, real
+#: UNEXPLAINED residual evidence across mechanisms -- evidence current
+#: states/vocabulary cannot describe. Provisional labels (CONCEPT-NNN),
+#: never a permanent name, until/unless promoted.
+CONCEPT_MIGRATION = Migration(
+    "environment.0005.create_candidate_concepts",
+    "environment",
+    (
+        """
+        CREATE TABLE IF NOT EXISTS candidate_concepts (
+            concept_id VARCHAR PRIMARY KEY,
+            label VARCHAR NOT NULL,                      -- provisional "CONCEPT-NNN"
+            sequence_number INTEGER NOT NULL,
+            residual_phenomena VARCHAR NOT NULL,          -- JSON list of phenomenon:direction
+            supporting_mechanism_ids VARCHAR NOT NULL,    -- JSON list
+            contradicting_mechanism_ids VARCHAR NOT NULL, -- JSON list
+            origin VARCHAR NOT NULL,                      -- JSON: how/why this concept was created
+            confidence DOUBLE NOT NULL,
+            confidence_history VARCHAR NOT NULL,          -- JSON list of {at, value}
+            transferability_families VARCHAR NOT NULL,   -- JSON list of real Ontology families spanned
+            evidence_explained_count INTEGER NOT NULL,
+            competing_state_id VARCHAR,
+            competition_result VARCHAR,
+            unknowns VARCHAR NOT NULL,                    -- JSON list
+            status VARCHAR NOT NULL,                       -- candidate|promoted|retired|merged|split
+            retirement_reason VARCHAR,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+        """,
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_concepts_label ON candidate_concepts (label)",
+        "CREATE INDEX IF NOT EXISTS idx_concepts_status ON candidate_concepts (status)",
+    ),
+)

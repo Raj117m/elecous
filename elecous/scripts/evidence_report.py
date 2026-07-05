@@ -21,6 +21,7 @@ from collections import defaultdict
 from typing import Any
 
 from elecous.bootstrap import build_stack
+from elecous.common import timeutil
 
 #: Minimum independent entities per category before a mechanism claim can
 #: even in principle be distinguished from "this is idiosyncratic to one
@@ -29,11 +30,6 @@ from elecous.bootstrap import build_stack
 MIN_ENTITIES_FOR_POWER = 3
 MIN_EPISODES_FOR_POWER = 5
 MIN_SEASONS_FOR_POWER = 2  # distinct calendar quarters represented
-
-
-def _season_of(month: int) -> str:
-    return ["winter", "winter", "spring", "spring", "spring", "summer",
-            "summer", "summer", "autumn", "autumn", "autumn", "winter"][month - 1]
 
 
 def build_report() -> dict[str, Any]:
@@ -49,7 +45,7 @@ def build_report() -> dict[str, Any]:
     phenomena_report = []
     for category, group in sorted(by_category.items()):
         entities = {e["entity"] for e in group}
-        seasons = {_season_of(e["spike_start"].month) for e in group}
+        seasons = {timeutil.season_of(e["spike_start"].month) for e in group}
         countries = {e["country"] for e in group if e.get("country")}
         confidences = [float(e["overall_confidence"]) for e in group]
         years = {e["spike_start"].year for e in group}

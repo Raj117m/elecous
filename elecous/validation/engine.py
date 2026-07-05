@@ -194,6 +194,9 @@ class ValidationEngine:
             if factor:
                 factor_reports.append(self.skeptic.challenge_factor(factor))
         mech_skeptic = self.skeptic.challenge_mechanism(mechanism, factor_reports)
+        # Requirement 7: attempt to falsify the preferred (environmental)
+        # explanation against real alternatives before trusting it.
+        competing = self.skeptic.competing_explanations(mechanism, mech_skeptic)
 
         replay_report = self.replay.replay_mechanism(mechanism)
         min_precision = float(self.thresholds["validation"]["historical_min_precision"])
@@ -208,6 +211,7 @@ class ValidationEngine:
             <= max(3.0, json.loads(mechanism["lead_time"]).get("avg") or 3.0),
             "skeptic_survives": mech_skeptic["survived"],
             "historical_precision_ok": precision_ok,
+            "survives_competing_explanations": competing["environmental_explanation_survives"],
         }
         passed = all(checks.values())
         current = Lifecycle(mechanism["lifecycle"])
@@ -236,9 +240,12 @@ class ValidationEngine:
             self.mechanisms.promote(mechanism_id, Lifecycle.DECLINING, ValidationStatus.FAILED, actor="validation_engine")
         self._record(
             "mechanism", mechanism_id, mechanism["version"], "mechanism_validation",
-            {"checks": checks, "replay": replay_report}, outcome, controls=mech_skeptic,
+            {"checks": checks, "replay": replay_report, "competing_explanations": competing}, outcome, controls=mech_skeptic,
         )
-        return {"outcome": outcome, "checks": checks, "replay": replay_report, "skeptic": mech_skeptic}
+        return {
+            "outcome": outcome, "checks": checks, "replay": replay_report, "skeptic": mech_skeptic,
+            "competing_explanations": competing,
+        }
 
     # -------------------------------------------------------- prospective
     def resolve_prospective(self) -> list[dict[str, Any]]:

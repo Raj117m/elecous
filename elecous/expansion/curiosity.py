@@ -39,7 +39,33 @@ class CuriosityEngine:
         surfaced += self._surface_declining_mechanisms()
         surfaced += self._surface_contradicted_factors()
         surfaced += self._surface_persistent_gaps()
+        surfaced += self._surface_recent_failed_validations()
         return surfaced
+
+    def _surface_recent_failed_validations(self) -> int:
+        """Active question generation: a failed validation is itself an
+        unexplained result worth investigating, not just a dead end."""
+        validation_db = self.knowledge.databases.get("validation")
+        rows = validation_db.query_dicts(
+            "SELECT validation_id, object_type, object_id, method FROM validations "
+            "WHERE outcome = 'failed' ORDER BY created_at DESC LIMIT 20"
+        )
+        count = 0
+        for row in rows:
+            existing = self.knowledge.memory.db.query_one(
+                "SELECT 1 FROM unknown_memory WHERE kind = 'failed_validation' AND context LIKE ? AND status = 'open'",
+                [f'%{row["validation_id"]}%'],
+            )
+            if existing:
+                continue
+            self.knowledge.record_unknown(
+                "failed_validation",
+                f"Why did {row['method']} fail for {row['object_type']} {row['object_id']}?",
+                {"validation_id": row["validation_id"], "object_type": row["object_type"], "object_id": row["object_id"]},
+                research_priority=0.55,
+            )
+            count += 1
+        return count
 
     def _surface_declining_mechanisms(self) -> int:
         count = 0

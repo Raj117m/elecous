@@ -26,7 +26,9 @@ from elecous.environment.interaction.interaction import InteractionDiscovery
 from elecous.environment.ontology.ontology import Ontology
 from elecous.environment.pattern_engine.mining import PatternMiner
 from elecous.environment.signal_discovery.discovery import EpisodeSignalDiscovery
+from elecous.environment.concept_discovery import ConceptDiscoveryEngine
 from elecous.environment.signal_discovery.extractor import EnvironmentalSignalExtractor
+from elecous.environment.state_discovery import EnvironmentalStateDiscovery
 from elecous.environment.world_state import WorldStateBuilder
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
@@ -34,11 +36,6 @@ from elecous.infrastructure.logging import get_logger
 from elecous.observation.store import ObservationStore
 from elecous.signals.library import SignalLibrary
 from elecous.storage.database import DatabaseManager, global_databases
-
-
-def _season_of(month: int) -> str:
-    return ["winter", "winter", "spring", "spring", "spring", "summer",
-            "summer", "summer", "autumn", "autumn", "autumn", "winter"][month - 1]
 
 
 class EnvironmentalEngine:
@@ -62,6 +59,8 @@ class EnvironmentalEngine:
         self.miner = PatternMiner(self.config)
         self.factors = FactorStore(self.databases, self.bus)
         self.interactions = InteractionDiscovery(self.databases)
+        self.states = EnvironmentalStateDiscovery(self.databases)
+        self.concepts = ConceptDiscoveryEngine(self.databases, self.config)
         self.world = WorldStateBuilder(self.extractor, self.databases, self.bus)
         self.ontology = Ontology(self.config)
         self.thresholds = self.config.load_file("thresholds.yaml")
@@ -121,6 +120,21 @@ class EnvironmentalEngine:
             )
         self.factors.merge_similar()
         self.factors.split_overbroad()
+        # Discover states, not signals (rewrite directive, Stage 4,
+        # Requirement 2): cluster all real, currently-live factors by real
+        # phenomenon overlap into named states -- runs over every category's
+        # factors together so a state discovered under one category can be
+        # recognized as shared by another (Requirement 4/5).
+        discovered_states = self.states.discover(self.factors.list_latest())
+        summary["states"] = [{"label": s["label"], "categories": s["categories"]} for s in discovered_states]
+        # Mechanism hypotheses (rewrite directive, Stage 5): for every real
+        # discovered state, test category-blind generalization, detect
+        # real contradictions, and recompute confidence -- retiring states
+        # that no longer earn one.
+        hypotheses = self.states.generalize_all(self.factors, self.episodes)
+        summary["mechanism_hypotheses"] = [
+            {"label": h["label"], "confidence": h["confidence"], "status": h["status"]} for h in hypotheses
+        ]
         return summary
 
     def _validation_gate(self, category: str, group: list[dict[str, Any]]) -> dict[str, Any]:
@@ -132,7 +146,7 @@ class EnvironmentalEngine:
         rather than silently producing candidates that cannot survive
         validation regardless of pattern quality."""
         entities = {e["entity"] for e in group}
-        seasons = {_season_of(e["spike_start"].month) for e in group}
+        seasons = {timeutil.season_of(e["spike_start"].month) for e in group}
         min_entities = int(self.thresholds["environment"]["gate_min_entities"])
         min_episodes = int(self.thresholds["environment"]["gate_min_episodes"])
         min_seasons = int(self.thresholds["environment"]["gate_min_seasons"])
