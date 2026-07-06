@@ -133,7 +133,12 @@
       "Bash(ps -p 42982 -o pid,etime,time,pcpu,stat)",
       "Bash(kill -0 43107)",
       "Bash(ps -p 43107 -o pid,etime,time,pcpu,stat)",
-      "Bash(git commit -m 'Update session run history in settings.local.json *)"
+      "Bash(git commit -m 'Update session run history in settings.local.json *)",
+      "Bash(mkdir -p /Users/rajdeepmalladeb/ELECOUS/docs/master/diagrams)",
+      "Bash(git commit -m 'docs: ELECOUS Master Bible — complete reference manual for permanent continuation *)",
+      "Bash(.venv/bin/python -m pytest elecous/tests -m \"not network\" -q --tb=no)",
+      "Bash(grep \"\\\\.md$\")",
+      "Bash(git commit -m 'Final session cleanup: update settings.local.json with final run history *)"
     ]
   }
 }
