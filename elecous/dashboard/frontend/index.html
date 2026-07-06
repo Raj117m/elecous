@@ -76,15 +76,21 @@ const pct=x=>x==null?"—":(x*100).toFixed(1)+"%";
 const pill=(txt,cls)=>`<span class="pill ${cls}">${txt}</span>`;
 
 async function renderOverview(){
-  const [home,acc,bench,disc,sys]=await Promise.all([j("/home"),j("/predictions/accuracy"),j("/validations/benchmark"),j("/discovery"),j("/health/system")]);
+  const [home,acc,bench,disc,sys,act]=await Promise.all([j("/home"),j("/predictions/accuracy"),j("/validations/benchmark"),j("/discovery"),j("/health/system"),j("/activity")]);
   const m=sys.mechanisms||{}, tele=sys.scheduler_telemetry||{};
   const bm=bench.latest?bench.latest.metrics:null;
-  const kpis=kpi(home.opportunities.length,"active opportunities","accent")
-    +kpi((m.validated||0),"validated mechanisms",m.validated?"good":"")
-    +kpi(acc.counts&&acc.counts.pending||0,"predictions awaiting reality")
-    +kpi(acc.accuracy==null?"—":pct(acc.accuracy),"resolved accuracy",acc.accuracy>0.5?"good":"")
-    +kpi(bm?bm.verdict==="outperforms_baseline"?"ABOVE":"BELOW":"—","vs. naive baseline",bm&&bm.verdict==="outperforms_baseline"?"good":"warn")
-    +kpi(tele.running_tasks?tele.running_tasks.length:0,"tasks running now","accent");
+  // Live-first: rates and deltas before lifetime totals.
+  const w=(o,l)=>kpi(o.hour>0?"+"+o.hour:o.day>0?"+"+o.day+"<span style='font-size:13px;color:var(--faint)'>/day</span>":"0",
+    l+(o.hour>0?" · past hour":o.day>0?" · past day":" · quiet"),o.hour>0?"accent":o.day>0?"":"");
+  const pulse=(act.running_now||[]).length
+    ? `Working now: <b style="color:var(--accent)">${act.running_now.join(", ")}</b>`
+    : `Quiet — next work: ${(act.next_work||[]).map(n=>`<b>${n.task}</b> at ${n.at?.slice(11,16)||n.at}`).join(" · ")||"none scheduled"}`;
+  const kpis=w(act.observations,"observations")+w(act.validations,"validations")
+    +w(act.episodes,"episodes")+w(act.predictions,"predictions")
+    +kpi(home.opportunities.length,"active opportunities","accent")
+    +kpi(bm?bm.verdict==="outperforms_baseline"?"ABOVE":"BELOW":"—","vs. naive baseline",bm&&bm.verdict==="outperforms_baseline"?"good":"warn");
+  const pulseBar=`<div class="panel full" style="margin-bottom:14px;border-color:var(--accent-dim);display:flex;justify-content:space-between;gap:20px">
+    <span>${pulse}</span><span class="muted">lifetime: ${act.observations.total.toLocaleString()} obs · ${act.episodes.total.toLocaleString()} episodes · ${(m.validated||0)} validated mechanisms · ${act.predictions.total} predictions</span></div>`;
   const opps=home.opportunities.slice(0,7).map(o=>{
     const conf=o.confidence&&o.confidence.overall||0;
     return `<div class="pred"><div class="head"><span class="title">${(o.categories||[]).join(", ")}</span>
@@ -97,7 +103,7 @@ async function renderOverview(){
   const benchRows=bm&&bm.elecous?row("ELECOUS  F1 / P / R",`${bm.elecous.f1?.toFixed(3)} / ${bm.elecous.precision?.toFixed(3)} / ${bm.elecous.recall?.toFixed(3)}`)
     +row("baseline F1 / P / R",`${bm.baseline.f1?.toFixed(3)} / ${bm.baseline.precision?.toFixed(3)} / ${bm.baseline.recall?.toFixed(3)}`)
     +row("mechanisms sampled",bm.mechanisms_sampled):"";
-  return `<div class="kpis">${kpis}</div><div class="grid">`
+  return pulseBar+`<div class="kpis">${kpis}</div><div class="grid">`
     +panel("Opportunities demanding attention",opps)
     +panel("Environment — strongest live signals",signals)
     +panel("Working right now",running+row("registered tasks",tele.registered||"—")+row("workers",tele.max_workers||"—"))

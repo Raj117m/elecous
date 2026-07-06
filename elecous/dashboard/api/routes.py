@@ -190,6 +190,35 @@ def rolling_benchmark(request: Request):
     return {"latest": latest}
 
 
+@router.get("/activity")
+def activity(request: Request):
+    """Live-operations directive: what changed in the last minute / hour /
+    day / week, from real timestamped rows -- rates before totals. Also
+    explains quiet periods: the next scheduled work and when it fires."""
+    stack = _stack(request)
+
+    def windows(db, table, col):
+        row = db.query_one(
+            f"SELECT count(*) FILTER ({col} >= now() - INTERVAL 1 MINUTE),"
+            f" count(*) FILTER ({col} >= now() - INTERVAL 1 HOUR),"
+            f" count(*) FILTER ({col} >= now() - INTERVAL 1 DAY),"
+            f" count(*) FILTER ({col} >= now() - INTERVAL 7 DAY), count(*) FROM {table}"
+        )
+        return {"minute": row[0], "hour": row[1], "day": row[2], "week": row[3], "total": row[4]}
+
+    tele = stack.scheduler.telemetry()
+    report = stack.scheduler.report()
+    upcoming = sorted((t for t in report if t["enabled"]), key=lambda t: t["next_run"])[:3]
+    return {
+        "observations": windows(stack.observation.store.db, "observations", "collection_time"),
+        "episodes": windows(stack.demand.episodes.db, "research_episodes", "created_at"),
+        "validations": windows(stack.validation.db, "validations", "created_at"),
+        "predictions": windows(stack.prediction.db, "predictions", "created_at"),
+        "running_now": tele.get("running_tasks", []),
+        "next_work": [{"task": t["name"], "at": t["next_run"]} for t in upcoming],
+    }
+
+
 @router.get("/predictions/accuracy")
 def prediction_accuracy(request: Request):
     """v1.0 directive Task 8: live prediction-outcome ledger. Every number
