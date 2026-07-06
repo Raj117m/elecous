@@ -51,6 +51,11 @@ class SignalChange:
     # change. Defaulted so existing callers constructing SignalChange by
     # keyword are unaffected. Does not participate in the z-score math.
     contributing_sources: tuple[str, ...] = ()
+    # Multi-mode extraction (Phase 2): which detection mode(s) produced this
+    # change. A phenomenon can register via more than one mode; all that
+    # agreed on direction are recorded. Defaulted to ("spike",) so existing
+    # callers/tests constructing SignalChange directly are unaffected.
+    modes: tuple[str, ...] = ("spike",)
 
 
 class EnvironmentalSignalExtractor:
@@ -131,6 +136,10 @@ class EnvironmentalSignalExtractor:
             (row["observation_type"], str(row["scope"])): tuple(sorted(row["source_ids"])) for row in source_rows
         }
 
+        trend_min_slope_z = float(self.thresholds.get("trend_min_slope_z", 0.8))
+        trend_min_corr = float(self.thresholds.get("trend_min_correlation", 0.6))
+        level_percentile = float(self.thresholds.get("level_percentile", 0.85))
+
         changes: list[SignalChange] = []
         for (obs_type, scope), points in series.items():
             phenomenon = self.normalizer.phenomenon_for(obs_type)
@@ -148,24 +157,91 @@ class EnvironmentalSignalExtractor:
             if scale <= 1e-12:
                 std = float(np.std(baseline_values))
                 scale = std if std > 1e-12 else max(abs(median), 1.0) * 0.05
+
+            candidates: dict[str, tuple[float, datetime | None, str]] = {}  # direction -> (|magnitude|, at, mode)
+
+            def register(direction: str, magnitude: float, at: datetime | None, mode: str) -> None:
+                current = candidates.get(direction)
+                if current is None or magnitude > current[0]:
+                    candidates[direction] = (magnitude, at, mode)
+                elif current is not None:
+                    candidates[direction] = (current[0], current[1], current[2] + "+" + mode)
+
+            # Mode 1 -- Spike (original, unchanged logic): a single point
+            # deviates sharply from the recent baseline. Fires for volatile
+            # phenomena (weather, media); rarely fires for slow-moving ones.
             zs = [(ts, (v - median) / scale) for ts, v in window_points]
             peak_ts, peak_z = max(zs, key=lambda t: abs(t[1]))
-            if abs(peak_z) < change_z:
-                continue
-            direction = "up" if peak_z > 0 else "down"
-            crossings = [ts for ts, z in zs if (z >= change_z if direction == "up" else z <= -change_z)]
-            changes.append(
-                SignalChange(
-                    signal_key=f"{phenomenon}:{direction}:{scope}",
-                    phenomenon=phenomenon,
-                    direction=direction,
-                    scope=scope,
-                    z=round(float(peak_z), 3),
-                    first_crossed_at=min(crossings) if crossings else peak_ts,
-                    observation_types=(obs_type,),
-                    contributing_sources=sources_by_key.get((obs_type, scope), ()),
+            if abs(peak_z) >= change_z:
+                direction = "up" if peak_z > 0 else "down"
+                crossings = [ts for ts, z in zs if (z >= change_z if direction == "up" else z <= -change_z)]
+                register(direction, abs(peak_z), min(crossings) if crossings else peak_ts, "spike")
+
+            # Mode 2 -- Trend: root cause of the measured weather/media bias
+            # (docs/manual/AUDIT_environmental_bias.md) was that phenomena
+            # like inflation or energy demand move persistently without any
+            # single day spiking. A significant, consistent slope over the
+            # whole fetched series (baseline+window) is a real, distinct
+            # kind of environmental change from a spike.
+            all_points = sorted(points, key=lambda p: p[0])
+            if len(all_points) >= 10:
+                idx = np.arange(len(all_points), dtype=float)
+                vals = np.array([v for _, v in all_points], dtype=float)
+                slope = float(np.polyfit(idx, vals, 1)[0])
+                corr = float(np.corrcoef(idx, vals)[0, 1]) if np.std(vals) > 1e-12 else 0.0
+                slope_z = slope * len(all_points) / scale  # total real movement over the series, in baseline-scale units
+                if abs(slope_z) >= trend_min_slope_z and abs(corr) >= trend_min_corr:
+                    direction = "up" if slope > 0 else "down"
+                    register(direction, abs(slope_z), all_points[-1][0], "trend")
+
+            # Mode 3 -- Level: some phenomena matter not because they moved,
+            # but because they are currently extreme (high inflation, low
+            # air quality) relative to what's been observed historically.
+            # Real bug caught by measuring against live data before shipping:
+            # an earlier version ranked the window mean against a
+            # distribution that INCLUDED the window itself, which is
+            # self-referential -- any naturally decaying series (a Wikipedia
+            # article's pageviews falling from an initial burst toward zero,
+            # extremely common in real data) always ranks its own tail as
+            # "extreme," flooding media_attention with spurious level
+            # signals. Fixed to rank against ONLY the baseline period (the
+            # same reference spike/trend already use), so "extreme" means
+            # relative to the prior period, not to a distribution the
+            # candidate value itself is part of. Honest scope note: this is
+            # extreme-vs-the-last-~58-days, not multi-year regime -- a
+            # longer-history query is future work (see AUDIT doc).
+            window_mean = float(np.mean([v for _, v in window_points]))
+            if baseline_values.size >= 10:
+                rank = float((baseline_values < window_mean).mean())
+                # Second real bug caught by measuring, not assuming: rank
+                # alone still floods on sparse/near-zero baselines (tail
+                # Wikipedia articles with mostly-zero pageviews) -- any
+                # nonzero window value trivially outranks "100% of a
+                # near-all-zero baseline" despite being a trivial absolute
+                # change. Require the deviation to also clear the SAME
+                # baseline-scale magnitude spike detection uses, so "extreme
+                # rank" also means "a real amount of movement."
+                effect_size = abs(window_mean - median) / scale
+                if effect_size >= change_z:
+                    if rank >= level_percentile:
+                        register("up", rank * effect_size, window_points[-1][0], "level")
+                    elif rank <= (1.0 - level_percentile):
+                        register("down", (1.0 - rank) * effect_size, window_points[-1][0], "level")
+
+            for direction, (magnitude, at, modes) in candidates.items():
+                changes.append(
+                    SignalChange(
+                        signal_key=f"{phenomenon}:{direction}:{scope}",
+                        phenomenon=phenomenon,
+                        direction=direction,
+                        scope=scope,
+                        z=round(magnitude, 3),
+                        first_crossed_at=at,
+                        observation_types=(obs_type,),
+                        contributing_sources=sources_by_key.get((obs_type, scope), ()),
+                        modes=tuple(modes.split("+")),
+                    )
                 )
-            )
         # Merge changes of the same signal key arising from different
         # observation types (e.g. two providers measuring the same
         # phenomenon): strongest z wins, evidence types union.
@@ -190,6 +266,7 @@ class EnvironmentalSignalExtractor:
                     contributing_sources=tuple(
                         sorted(set(existing.contributing_sources) | set(change.contributing_sources))
                     ),
+                    modes=tuple(sorted(set(existing.modes) | set(change.modes))),
                 )
         return sorted(merged.values(), key=lambda c: -abs(c.z))
 

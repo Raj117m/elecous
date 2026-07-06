@@ -35,6 +35,15 @@ environment:
   lookback_days: 30
   # A signal is "changed" when |robust z| exceeds this before the episode.
   change_z: 1.5
+  # Multi-mode extraction (Phase 2, root-caused in docs/manual/AUDIT_environmental_bias.md):
+  # spike detection alone only fires for volatile phenomena (weather, media).
+  # Slow-moving phenomena (economics, energy, calendar) rarely spike but do
+  # trend or sit at an extreme level -- these thresholds let them register
+  # as real signals via the SAME signal_key format, so nothing downstream
+  # (pattern mining, factors, mechanisms) needs to change.
+  trend_min_slope_z: 0.8      # normalized slope magnitude to call a trend
+  trend_min_correlation: 0.6  # |corr(index, value)| required -- rejects noisy zigzags
+  level_percentile: 0.85      # window mean must clear this percentile of the fetched distribution
   # Pattern mining (4.9): a combination must appear before at least this
   # share of episodes vs its base rate in ordinary periods.
   min_support_episodes: 3
