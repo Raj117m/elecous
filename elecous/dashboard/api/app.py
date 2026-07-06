@@ -36,9 +36,21 @@ def create_app(stack: ElecousStack | None = None) -> FastAPI:
 def main() -> None:
     import uvicorn
 
+    from elecous.scheduler.registration import register_all_schedules
+
     config = active_config()
     app = create_app()
-    uvicorn.run(app, host=config.get("dashboard.host", "127.0.0.1"), port=int(config.get("dashboard.port", 8321)))
+    # Live Autonomy directive: the dashboard entry point is a full living
+    # instance, not a passive viewer -- previously only `elecous run`
+    # registered the 38 scheduled tasks, so a dashboard-only process
+    # honestly reported "nothing running / none scheduled" forever.
+    stack = app.state.stack
+    register_all_schedules(stack)
+    stack.scheduler.start()
+    try:
+        uvicorn.run(app, host=config.get("dashboard.host", "127.0.0.1"), port=int(config.get("dashboard.port", 8321)))
+    finally:
+        stack.scheduler.stop()
 
 
 if __name__ == "__main__":
