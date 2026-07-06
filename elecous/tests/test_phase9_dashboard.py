@@ -30,7 +30,7 @@ def test_home_and_core_panels_return_200_without_data(client):
         "/api/knowledge/search", "/api/health/self-healing", "/api/expansion", "/api/health/system",
         "/api/health/resources", "/api/search?q=camping", "/api/unknowns", "/api/notifications",
         "/api/discovery", "/api/concepts", "/api/experiments", "/api/validations/benchmark",
-        "/api/predictions/accuracy", "/api/activity",
+        "/api/predictions/accuracy", "/api/activity", "/api/products", "/api/products/air-conditioner",
     ):
         response = test_client.get(endpoint)
         assert response.status_code == 200, f"{endpoint}: {response.text}"
@@ -43,6 +43,22 @@ def test_home_reflects_zero_state_honestly(client):
     assert data["opportunities"] == []
     assert data["knowledge_growth"]["factors"] == 0
     assert data["observation_network"]["sources"] > 0  # sources registered even with no runs yet
+
+
+def test_products_rank_monitored_catalog_without_fabricating_opportunities(client):
+    test_client, _ = client
+    data = test_client.get("/api/products").json()
+    assert data["count"] > 0
+    assert data["products"][0]["rank"] == 1
+    assert all(product["future_opportunity_count"] == 0 for product in data["products"])
+
+    detail = test_client.get("/api/products/air-conditioner").json()
+    assert detail["product"] == "Air conditioner"
+    assert detail["status"] == "monitored"
+
+    search = test_client.get("/api/search", params={"q": "cooling", "kind": "product"}).json()
+    assert "products" in search
+    assert any(product["category"] == "cooling" for product in search["products"])
 
 
 def test_404_for_unknown_ids(client):
