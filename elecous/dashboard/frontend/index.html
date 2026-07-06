@@ -69,6 +69,24 @@ const VIEWS=[["overview","Mission Control"],["predictions","Predictions"],["oppo
 let current="overview", timer=null;
 
 async function j(p){ const r=await fetch(API+p); if(!r.ok) throw new Error(p+": "+r.status); return r.json(); }
+// Human translation layer (UX directive): internal names never surface
+// untranslated; the raw name stays available in tooltips for drill-down.
+const TASK_WORDS={observe:"Collecting",demand:"Scanning demand for",environment:"Studying environment:",
+  mechanisms:"Learning mechanisms:",validation:"Validating:",knowledge:"Organizing knowledge:",
+  prediction:"Predicting:",research:"Researching:",curiosity:"Asking questions:",expansion:"Discovering sources:"};
+const TASK_NAMES={"observe:gdelt_media":"Scanning global news volume","observe:nager_holidays":"Collecting holiday calendars",
+  "observe:nws_alerts":"Collecting weather alerts","observe:open_meteo_air_quality":"Measuring air quality",
+  "observe:open_meteo_weather":"Collecting weather forecasts","observe:usgs_earthquakes":"Monitoring seismic activity",
+  "observe:wikimedia_pageviews":"Measuring public attention","observe:worldbank_macro":"Tracking economic indicators",
+  "demand:scan":"Scanning for demand spikes","environment:research_cycle":"Discovering environmental patterns",
+  "mechanisms:generate":"Forming causal hypotheses","validation:revalidate":"Re-testing mechanisms against history",
+  "validation:prospective":"Checking predictions against reality","validation:rolling_benchmark":"Benchmarking against baseline",
+  "validation:retire":"Retiring weak hypotheses","prediction:predict":"Generating predictions",
+  "prediction:resolve":"Judging past predictions","knowledge:sync":"Updating the knowledge graph",
+  "research:cycle":"Planning evidence collection","research:experiments":"Running experiments",
+  "curiosity:hourly_question":"Investigating open questions"};
+const humanTask=t=>`<span title="${t}">${TASK_NAMES[t]||((TASK_WORDS[t.split(":")[0]]||"Working on")+" "+t.split(":").slice(1).join(" ").replace(/_/g," "))}</span>`;
+const humanSignal=s=>{const[p,d,scope]=s.split(":");return `<span title="${s}">${(p||"").replace(/_/g," ")} ${d==="up"?"rising":"falling"}${scope?` · ${scope}`:""}</span>`;};
 const row=(k,v)=>`<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
 const panel=(t,inner,full=false)=>`<div class="panel ${full?"full":""}"><h2>${t}</h2>${inner||'<div class="muted">nothing yet</div>'}</div>`;
 const kpi=(v,l,cls="")=>`<div class="kpi"><div class="v ${cls}">${v}</div><div class="l">${l}</div></div>`;
@@ -83,8 +101,8 @@ async function renderOverview(){
   const w=(o,l)=>kpi(o.hour>0?"+"+o.hour:o.day>0?"+"+o.day+"<span style='font-size:13px;color:var(--faint)'>/day</span>":"0",
     l+(o.hour>0?" · past hour":o.day>0?" · past day":" · quiet"),o.hour>0?"accent":o.day>0?"":"");
   const pulse=(act.running_now||[]).length
-    ? `Working now: <b style="color:var(--accent)">${act.running_now.join(", ")}</b>`
-    : `Quiet — next work: ${(act.next_work||[]).map(n=>`<b>${n.task}</b> at ${n.at?.slice(11,16)||n.at}`).join(" · ")||"none scheduled"}`;
+    ? `Working now: <b style="color:var(--accent)">${act.running_now.map(humanTask).join(", ")}</b>`
+    : `Quiet — next work: ${(act.next_work||[]).map(n=>`<b>${humanTask(n.task)}</b> at ${n.at?.slice(11,16)||n.at}`).join(" · ")||"none scheduled"}`;
   const kpis=w(act.observations,"observations")+w(act.validations,"validations")
     +w(act.episodes,"episodes")+w(act.predictions,"predictions")
     +kpi(home.opportunities.length,"active opportunities","accent")
@@ -97,8 +115,8 @@ async function renderOverview(){
       ${pill(o.stage,"neutral")}</div>
       <div class="meta">confidence ${(conf*100).toFixed(0)}%</div><div class="bar"><i style="width:${conf*100}%"></i></div></div>`;
   }).join("")||'<div class="muted">no active opportunities — the environment is quiet</div>';
-  const signals=(home.world_state.signals||[]).slice(0,9).map(s=>row(s.signal_key,(s.z>0?"+":"")+s.z)).join("");
-  const running=(tele.running_tasks||[]).map(t=>row(t,pill("running","ok"))).join("")||'<div class="muted">scheduler idle this tick</div>';
+  const signals=(home.world_state.signals||[]).slice(0,9).map(s=>row(humanSignal(s.signal_key),(s.z>0?"+":"")+s.z)).join("");
+  const running=(tele.running_tasks||[]).map(t=>row(humanTask(t),pill("running","ok"))).join("")||'<div class="muted">scheduler idle this tick</div>';
   const discovered=(disc.auto_generated_connectors||[]).map(c=>row(c.source_id,pill(c.status,c.status==="active"?"ok":"warn"))).join("");
   const benchRows=bm&&bm.elecous?row("ELECOUS  F1 / P / R",`${bm.elecous.f1?.toFixed(3)} / ${bm.elecous.precision?.toFixed(3)} / ${bm.elecous.recall?.toFixed(3)}`)
     +row("baseline F1 / P / R",`${bm.baseline.f1?.toFixed(3)} / ${bm.baseline.precision?.toFixed(3)} / ${bm.baseline.recall?.toFixed(3)}`)
@@ -156,7 +174,7 @@ async function renderEpisodes(){
 }
 async function renderEnvironment(){
   const w=await j("/world-state");
-  return panel("World state — active signals",(w.signals||[]).map(s=>row(s.signal_key,(s.z>0?"+":"")+s.z)).join(""),true)
+  return panel("World state — active signals",(w.signals||[]).map(s=>row(humanSignal(s.signal_key),(s.z>0?"+":"")+s.z)).join(""),true)
 }
 async function renderObservation(){
   const d=await j("/observation/sources");
@@ -231,10 +249,10 @@ async function renderOperations(){
   const kpis=kpi(sm.process_memory_mb?.toFixed(0)+"M","process memory")+kpi(sm.system_cpu_percent+"%","system cpu")
     +kpi(sm.disk_free_gb?.toFixed(0)+"G","disk free")+kpi((sm.data_dir_mb/1024).toFixed(1)+"G","knowledge base");
   const tasks=(s.scheduler||[]).sort((a,b)=>a.next_run<b.next_run?-1:1).slice(0,18)
-    .map(t=>row(`${t.name} ${t.consecutive_failures?pill(t.consecutive_failures+" fails","bad"):""}`,`${t.total_runs} runs`)).join("");
+    .map(t=>row(`${humanTask(t.name)} ${t.consecutive_failures?pill(t.consecutive_failures+" fails","bad"):""}`,`${t.total_runs} runs`)).join("");
   return `<div class="kpis">${kpis}</div><div class="grid">`
     +panel("Scheduler — next up",tasks)
-    +panel("Live workers",(tele.running_tasks||[]).map(t=>row(t,pill("running","ok"))).join("")
+    +panel("Live workers",(tele.running_tasks||[]).map(t=>row(humanTask(t),pill("running","ok"))).join("")
       +row("due waiting",(tele.due_waiting||[]).length)+row("max workers",tele.max_workers||"—"))+`</div>`;
 }
 
