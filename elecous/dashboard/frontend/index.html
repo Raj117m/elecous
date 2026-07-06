@@ -65,7 +65,7 @@ const API="/api";
 const VIEWS=[["overview","Mission Control"],["predictions","Predictions"],["opportunities","Opportunities"],["mechanisms","Mechanisms"],
   ["factors","Factors"],["concepts","Concepts"],["experiments","Experiments"],["episodes","Episodes"],
   ["environment","Environment"],["observation","Sources"],["discovery","Discovery"],["validation","Validation"],
-  ["knowledge","Knowledge"],["operations","Operations"]];
+  ["knowledge","Knowledge"],["timeline","Timeline"],["operations","Operations"]];
 let current="overview", timer=null;
 
 async function j(p){ const r=await fetch(API+p); if(!r.ok) throw new Error(p+": "+r.status); return r.json(); }
@@ -181,6 +181,31 @@ async function renderKnowledge(){
     +panel("Compression — knowledge per byte",row("observations per mechanism",c.observations_per_mechanism)
       +row("observations per factor",c.observations_per_factor),true);
 }
+let tlZoom="year";
+async function renderTimeline(){
+  const [eps,acc,vals]=await Promise.all([j("/episodes"),j("/predictions/accuracy"),j("/validations?limit=200")]);
+  const events=[];
+  (eps.episodes||[]).forEach(e=>events.push({at:e.spike_start,kind:"spike",label:`${e.entity} demand spike (${e.category})`,cls:"accent"}));
+  (acc.recent||[]).forEach(p=>events.push({at:p.created_at,kind:"prediction",label:`prediction ${(p.confidence*100).toFixed(0)}% · ${p.validation_status}`,cls:p.validation_status==="correct"?"ok":p.validation_status==="incorrect"?"bad":"neutral"}));
+  (vals.validations||[]).forEach(v=>events.push({at:v.created_at,kind:"validation",label:`${v.object_type} validation ${v.outcome}`,cls:v.outcome==="passed"?"ok":"bad"}));
+  events.forEach(e=>e.d=new Date(e.at));
+  events.sort((a,b)=>b.d-a.d);
+  const bucket=d=>tlZoom==="year"?d.getFullYear():tlZoom==="month"?d.toISOString().slice(0,7):d.toISOString().slice(0,10);
+  const groups={};
+  events.forEach(e=>{const b=bucket(e.d);(groups[b]=groups[b]||[]).push(e)});
+  const zoomBar=["year","month","day"].map(z=>`<button onclick="tlZoom='${z}';render('timeline')" style="background:${z===tlZoom?'var(--accent-dim)':'none'};border:1px solid var(--line);color:var(--text);border-radius:6px;padding:4px 12px;cursor:pointer;margin-right:6px;font-size:12px">${z}</button>`).join("");
+  const max=Math.max(...Object.values(groups).map(g=>g.length));
+  const strips=Object.entries(groups).slice(0,tlZoom==="year"?12:24).map(([b,g])=>{
+    const spikes=g.filter(e=>e.kind==="spike").length, preds=g.filter(e=>e.kind==="prediction").length;
+    return `<div class="row"><span class="k" style="font-family:var(--mono)">${b}</span>
+      <span style="flex:1;margin:0 12px"><span class="bar"><i style="width:${g.length/max*100}%"></i></span></span>
+      <span class="v">${g.length} events · ${spikes} spikes${preds?` · ${preds} predictions`:""}</span></div>`;
+  }).join("");
+  const recent=events.slice(0,25).map(e=>row(`${e.label}`,`<span class="muted">${e.at?.slice(0,10)}</span> ${pill(e.kind,e.cls==="accent"?"neutral":e.cls)}`)).join("");
+  return `<div style="margin-bottom:14px">${zoomBar}</div><div class="grid">`
+    +panel(`Intelligence timeline — events per ${tlZoom} (${events.length} total)`,strips,true)
+    +panel("Most recent intelligence events",recent,true)+`</div>`;
+}
 async function renderOperations(){
   const [r,s]=await Promise.all([j("/health/resources"),j("/health/system")]);
   const sm=r.sample||{}, tele=s.scheduler_telemetry||{};
@@ -197,7 +222,7 @@ async function renderOperations(){
 const renderers={overview:renderOverview,predictions:renderPredictions,opportunities:renderOpportunities,
   mechanisms:renderMechanisms,factors:renderFactors,concepts:renderConcepts,experiments:renderExperiments,
   episodes:renderEpisodes,environment:renderEnvironment,observation:renderObservation,discovery:renderDiscovery,
-  validation:renderValidation,knowledge:renderKnowledge,operations:renderOperations};
+  validation:renderValidation,knowledge:renderKnowledge,timeline:renderTimeline,operations:renderOperations};
 
 async function render(view,soft=false){
   current=view;
