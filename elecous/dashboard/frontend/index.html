@@ -5,9 +5,9 @@
 <title>ELECOUS — Intelligence Platform</title>
 <style>
   :root {
-    --bg:#07090c; --surface:#0d1117; --card:#11161d; --line:#1c2530; --line-soft:#151c25;
-    --text:#e8eef5; --dim:#8494a7; --faint:#54637a;
-    --accent:#4fd1c5; --accent-dim:#2a6f68; --good:#5fd68a; --warn:#e0b23a; --bad:#e06a6a;
+    --bg:#050505; --surface:#0c0c0e; --card:#111114; --line:#232328; --line-soft:#1a1a1e;
+    --text:#ece9e2; --dim:#9a958a; --faint:#5c584f;
+    --accent:#c9a35c; --accent-dim:#6e5a33; --good:#b8c9a3; --warn:#c9a35c; --bad:#c97b6a;
     --mono:"SF Mono",ui-monospace,Menlo,monospace;
   }
   * { box-sizing:border-box; margin:0; }
@@ -202,8 +202,21 @@ async function renderTimeline(){
       <span class="v">${g.length} events · ${spikes} spikes${preds?` · ${preds} predictions`:""}</span></div>`;
   }).join("");
   const recent=events.slice(0,25).map(e=>row(`${e.label}`,`<span class="muted">${e.at?.slice(0,10)}</span> ${pill(e.kind,e.cls==="accent"?"neutral":e.cls)}`)).join("");
+  // Future continuum: pending predictions projected to their expected
+  // spike window (created_at + lead_time_days) -- real fields, no invention.
+  const now=new Date();
+  const future=(acc.recent||[]).filter(p=>p.validation_status==="pending"&&p.lead_time_days!=null).map(p=>{
+    const due=new Date(new Date(p.created_at).getTime()+p.lead_time_days*864e5);
+    return {due,days:Math.ceil((due-now)/864e5),conf:p.confidence,id:p.prediction_id};
+  }).filter(f=>f.days>-3).sort((a,b)=>a.due-b.due);
+  const futureRows=future.map(f=>row(
+    `expected demand spike <span class="muted">${f.id.slice(0,18)}</span>`,
+    `${f.due.toISOString().slice(0,10)} · ${f.days<=0?"due now":"in "+f.days+"d"} · <span style="opacity:${0.4+f.conf*0.6}">${(f.conf*100).toFixed(0)}%</span>`
+  )).join("");
   return `<div style="margin-bottom:14px">${zoomBar}</div><div class="grid">`
     +panel(`Intelligence timeline — events per ${tlZoom} (${events.length} total)`,strips,true)
+    +`<div class="panel full" style="border-color:var(--accent-dim)"><h2 style="color:var(--accent)">Today — where knowledge becomes prediction</h2>${
+       futureRows||'<div class="muted">no pending predictions with open windows</div>'}</div>`
     +panel("Most recent intelligence events",recent,true)+`</div>`;
 }
 async function renderOperations(){
