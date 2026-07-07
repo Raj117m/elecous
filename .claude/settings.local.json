@@ -138,7 +138,9 @@
       "Bash(git commit -m 'docs: ELECOUS Master Bible — complete reference manual for permanent continuation *)",
       "Bash(.venv/bin/python -m pytest elecous/tests -m \"not network\" -q --tb=no)",
       "Bash(grep \"\\\\.md$\")",
-      "Bash(git commit -m 'Final session cleanup: update settings.local.json with final run history *)"
+      "Bash(git commit -m 'Final session cleanup: update settings.local.json with final run history *)",
+      "Bash(.venv/bin/python -m pytest elecous/tests -m \"not network\" --collect-only -q)",
+      "Bash(.venv/bin/python -m pytest elecous/tests -m \"not network\" -q --tb=short)"
     ]
   }
 }

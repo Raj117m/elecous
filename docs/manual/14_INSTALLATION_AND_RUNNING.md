@@ -35,7 +35,7 @@ Dashboard: **http://127.0.0.1:8321** (host/port from `configs/elecous.yaml`
 
 ```bash
 unset ELECOUS_DATA_DIR   # use isolated test DBs, never the real data dir
-.venv/bin/python -m pytest elecous/tests -m "not network" -q   # 106 tests
+.venv/bin/python -m pytest elecous/tests -m "not network" -q   # 107 tests
 ```
 
 Network-dependent tests are marked `@pytest.mark.network` and deselected by

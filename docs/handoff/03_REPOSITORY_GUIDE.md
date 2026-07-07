@@ -30,7 +30,7 @@ elecous/
   scripts/                      — cli.py, rerun_pipeline.py, deep_backfill_gdelt.py, backfill_source_value.py
   configs/                       — sources.yaml, candidate_sources.yaml, entities.yaml,
                                   thresholds.yaml, semantics.yaml, elecous.yaml
-  tests/                          — pytest, 106 non-network tests + network-marked tests
+  tests/                          — pytest, 107 non-network tests + network-marked tests
   data/                            — runtime DuckDB files, ~5.6 GB
   docs/                             — decisions/ (ADRs), manual/ (prior session), handoff/ (this)
 ```

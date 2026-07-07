@@ -26,7 +26,7 @@ per-package inspection below. Session 2026-07-06.*
 | `dashboard/` | FastAPI app + routes + single-file frontend + notifications | `api/app.py`, `api/routes.py`, `frontend/index.html`, `monitor/notifications.py`, `schema.py` |
 | `scripts/` | CLI + operational drivers (backfill, rerun pipeline, deep GDELT backfill, audits) | `cli.py`, `rerun_pipeline.py`, `deep_backfill_gdelt.py`, `backfill_source_value.py` |
 | `configs/` | YAML: sources, candidate_sources, entities, thresholds, elecous.yaml | see doc 13 |
-| `tests/` | pytest suites per phase (106 non-network tests) | `test_phase*.py`, `test_research.py` |
+| `tests/` | pytest suites per phase (107 non-network tests) | `test_phase*.py`, `test_research.py` |
 | `data/` | DuckDB files (one per domain) — runtime, ~5.6 GB | `databases/*.duckdb` |
 | `docs/` | ADRs + this manual | `decisions/`, `manual/` |
 

@@ -57,10 +57,12 @@ trend/level.
 ### 5. Dashboard: full decision-first redesign
 Landed this session: decision-first opportunity cards, coverage-honesty note,
 human-language task/signal names, cinematic palette, live pulse bar.
-**Not done**: per-prediction "Why?" panels composed from `behavioural_chain`,
-visual evidence bars, factor encyclopedia pages, product intelligence pages,
-Action Center recommendations, replay UI over `/api/predict/replay`,
-interactive knowledge graph.
+Continuation landed: a user-facing Today view, unified intelligence timeline,
+global search, continuous product ranking and read-only product intelligence
+pages composed from existing opportunity/prediction/episode/mechanism rows.
+**Not done**: deep per-prediction "Why?" panels over `/api/audit/{prediction_id}`,
+factor encyclopedia pages, replay UI over `/api/predict/replay`, interactive
+knowledge graph and true product-lifecycle/adaptive-attention modeling.
 **Difficulty**: high (real multi-day frontend design work).
 **Expected impact**: high for user trust/usability; zero for prediction
 quality (pure presentation layer).
