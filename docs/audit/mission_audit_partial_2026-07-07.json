@@ -1,0 +1,93 @@
+{
+ "run_id": "wf_bd113a4f-8ef",
+ "completed_dimensions": [
+  "demand-first architecture"
+ ],
+ "failed_dimensions": [
+  "dashboard-vs-vision",
+  "validation-learning-loop",
+  "environmental-breadth",
+  "continuous-learning-selfaudit",
+  "prediction-quality"
+ ],
+ "failure_reason": "session rate limit, resets 15:00 Asia/Calcutta 2026-07-07; re-run pending",
+ "verification_note": "adversarial verification of the completed dimension also hit the limit \u2014 findings below are UNVERIFIED single-auditor claims",
+ "reports": [
+  {
+   "dimension": "demand-first architecture",
+   "summary": "ELECOUS is category-aware but not demand-first: no demand-pressure or demand-shift quantity is modeled anywhere in the data model. The pipeline jumps from per-product attention signals (Wikipedia pageviews + media volume for each catalog entity) directly to binary per-product spike episodes \u2014 demand measurement literally begins at products, inverting the mission flow World\u2192Forces\u2192Pressure\u2192Shift\u2192Categories\u2192Products. The middle layers exist only as dashboard arithmetic: 'expected_demand_pressure' shown to users is max(opportunity probability) computed in the route handler, not a measured quantity. The back half of the pipeline genuinely is category-keyed with products attached last, but that attachment is degenerate: every opportunity ships the full static category roster from entities.yaml with identical scores (the only product-ranking code path is dead, called only in tests), and prediction resolution judges only category-level hits, so per-product claims are never falsified. Substantial existing machinery \u2014 per-entity robust-z baselines, learned per-category signal weights and windows, category-keyed factors/mechanisms, per-category ordinary windows \u2014 could be reused nearly unchanged to compute a real (category, region, time) demand-pressure series and make demand shift the first-class detected event.",
+   "findings": [
+    {
+     "claim": "No demand-pressure or demand-shift quantity is modeled anywhere; the demand data model contains only per-entity artifacts (baselines, binary spike episodes with a frozen demand_score) and the string 'demand_pressure' appears in the codebase exclusively in dashboard display code where it is computed as max(opportunity probability).",
+     "evidence": "elecous/demand/schema.py:14-109 defines all six demand tables (demand_signal_registry, baselines keyed (entity, signal_type), research_episodes keyed on entity, signal_weights, learned_windows, demand_failures) \u2014 none holds a pressure/shift quantity at any level; grep for 'demand_pressure|demand_shift' across elecous/ hits only elecous/dashboard/api/routes.py:129 ('\"expected_demand_pressure\": 0.0') and routes.py:185 ('item[\"expected_demand_pressure\"] = max(item[\"expected_demand_pressure\"], probability)'); routes.py:327 labels this to users as 'ranked by strongest active demand pressure from current opportunities'.",
+     "severity": "high",
+     "mission_principle": "Demand pressure and demand shift must be first-class modeled quantities (World \u2192 External Forces \u2192 Demand Pressure \u2192 Demand Shift \u2192 Categories \u2192 Products); never fake \u2014 the interface implies a pressure quantity that does not exist upstream.",
+     "fix_direction": "Introduce a demand_pressure table keyed (category, region, as_of): a continuous aggregate of per-entity robust z-scores (already computed in SpikeDetector.evaluate via DynamicBaseline) weighted by the existing learned signal_weights; define demand shift as the derivative crossing the existing stage thresholds (detector.py:23 STAGES) at category level, with per-entity attribution afterwards. The dashboard's expected_demand_pressure should then read this measured series instead of opportunity probability.",
+     "verdict": null
+    },
+    {
+     "claim": "Demand detection is product-first, not demand-first: the scan iterates the per-product entity catalog and measures each product's own attention signals, so episodes/baselines are keyed on individual products from birth and 'category' is only a static YAML label copied onto the episode.",
+     "evidence": "elecous/demand/engine.py:63 'for topic in self.controls.entity_catalog():' iterating configs/entities.yaml topics (Air conditioner, Tent, Space heater...); detector.py:59 'DEMAND_SIGNAL_TYPES = (\"pageviews_daily\", \"media_volume_pct\")' evaluated per entity via store.series(entity, signal_type, ...) at detector.py:87; demand/schema.py:47-78 research_episodes carries entity NOT NULL with index idx_episode_entity (entity, spike_start); demand/engine.py:100-105 copies category from the topic dict into entity_meta.",
+     "severity": "high",
+     "mission_principle": "Demand first, products last: demand pressure should be derived from external forces and environmental intelligence, with products only at the end \u2014 here products are the entry point of demand measurement (demand = attention to the product's Wikipedia article).",
+     "fix_direction": "Invert the detection unit: detect category-level pressure episodes first (aggregate the same per-entity z series across category members, reusing DynamicBaseline and learned weights), then attribute to entities by measured contribution. Per-entity series remain as attribution evidence, not as the definition of demand.",
+     "verdict": null
+    },
+    {
+     "claim": "Product attribution at the output layer is wholesale category expansion with zero product-level differentiation: every opportunity attaches every entities.yaml topic in its categories, and the only code that differentiates products (rank_products) is dead in production \u2014 called only from a test.",
+     "evidence": "elecous/prediction/opportunities/opportunities.py:33-35 products_for() returns '[t[\"entity\"] for t in topics if t.get(\"category\") in categories]' and opportunities.py:47 'products = self.products_for(categories)'; ranking.py:53-76 rank_products gives every category member category_relevance=1.0 hence identical scores, and its only caller is elecous/tests/test_phase8_prediction.py:108; live API /api/opportunities returned 141 opportunities each carrying the full roster, e.g. {\"id\": \"opp_019f3a78afcbbc3b3a243149c286\", \"categories\": [\"heating\"], \"n_products\": 17, \"probability\": 0.8515} whose products include 'Heat transfer', 'Joule heating', 'Passive house' \u2014 encyclopedia concepts, not products.",
+     "severity": "medium",
+     "mission_principle": "Fewer but MORE RELIABLE predictions; products last should mean products earned by evidence, not enumerated by config membership \u2014 wholesale expansion inflates the prediction surface (live benchmark precision 0.4606 vs baseline 0.4676).",
+     "fix_direction": "Attach only products with measured evidence: wire rank_products (or a replacement using per-entity contribution to the category pressure/episodes) into OpportunityStore.form(), and threshold membership instead of copying the whole category roster.",
+     "verdict": null
+    },
+    {
+     "claim": "Predictions are resolved only at category granularity \u2014 'correct' means any non-negative episode occurred in each predicted category \u2014 so the per-product lists shipped on every opportunity are never validated and are unfalsifiable decoration.",
+     "evidence": "elecous/prediction/engine.py:255-269 resolve_due(): hit test is 'episodes = [e for e in ...list_latest(category=category...) if not e[\"is_negative\"] and created <= spike_start <= deadline]' then outcome correct/partially_correct/incorrect purely from hit_categories; nothing ever compares the stored products JSON (prediction/schema.py:17) to outcomes. Live: /api/opportunities shows 141 opportunities each naming 14-21 products whose individual correctness can never be judged.",
+     "severity": "medium",
+     "mission_principle": "Every prediction must eventually be provably correct/incorrect; unfalsifiable predictions should not exist \u2014 the product-level half of every prediction is structurally unfalsifiable today.",
+     "fix_direction": "Either resolve at product level (did the named entities spike?) using the existing per-entity episode store, or stop shipping undifferentiated product lists and present the category-level claim that is actually being validated.",
+     "verdict": null
+    },
+    {
+     "claim": "The category layer \u2014 the only pre-product aggregation unit for factors, mechanisms, and predictions \u2014 is a nominal config string with demonstrably polluted membership, so any category-level quantity (business value, opportunity products, a future pressure index) inherits noise rather than modeling demand.",
+     "evidence": "configs/entities.yaml auto-discovered members: 'Sun Yat-sen' in sun_protection (entities.yaml:788-794), 'Guy Ritchie' in outdoor_cooking (1286-1292), navy frogman/diver units filling air_quality_protection (1734-1876, discovery_query 'air filtration'); mechanisms/engine.py:286-313 business_value() computes median attention across exactly these members; environment/engine.py:88-90 groups episodes by this category string for all factor mining; live /api/episodes shows 2382 episodes distributed over these categories (outdoor_recreation 263, allergy_season 203, ...).",
+     "severity": "medium",
+     "mission_principle": "Categories are a mission-layer object between demand shift and products; here they are unvalidated config labels \u2014 'never fake, measure everything' requires category membership itself to be evidenced.",
+     "fix_direction": "Make category membership evidence-based: require discovered entities to demonstrate correlated demand behaviour with the category (e.g., co-spiking / baseline correlation) before joining the aggregation unit; prune members that never co-move. This is prerequisite work for a trustworthy category-level pressure series.",
+     "verdict": null
+    },
+    {
+     "claim": "The live output layer exposes no product route despite the code defining one \u2014 the running process serves an older API where product-keyed intelligence is absent, so the only live keying is opportunity-level (categories + wholesale product lists).",
+     "evidence": "Live: curl http://127.0.0.1:8321/api/products returned {\"detail\":\"Not Found\"} and the live /openapi.json paths list contains /api/opportunities but no /api/products, while elecous/dashboard/api/routes.py:519 defines @router.get(\"/products\") with decision_score composed at routes.py:303-313 from 0.45*expected_demand_pressure.",
+     "severity": "low",
+     "mission_principle": "Interface must expose intelligence \u2014 the newest product-intelligence layer (and its demand-pressure framing) is unverifiable against the live system until the process restarts on current code.",
+     "fix_direction": "Restart the live 'elecous run' process onto current code (at a safe moment respecting the single-writer lock) so the audit's output-layer claims and the /products decision layer can be exercised against reality.",
+     "verdict": null
+    }
+   ],
+   "what_works": [
+    {
+     "claim": "The causal-knowledge back half is genuinely category-keyed before products: episode research, factors, mechanisms, and prediction grouping all operate on categories, matching the mission's Categories-before-Products ordering.",
+     "evidence": "environment/engine.py:88-90 groups episodes by category for the research cycle; environment/schema.py:44 environmental_factors.categories; mechanisms/schema.py:20 affected_categories (and :19 product_traits); prediction/engine.py:82-88 groups matches by category 'so each opportunity represents one coherent demand story (spec 8.7)'."
+    },
+    {
+     "claim": "Products enter the prediction pipeline only at the very last step, in the opportunity output object \u2014 the output-layer ordering honors demand-before-products even though the attribution itself is degenerate.",
+     "evidence": "opportunities.py:46-47: categories derived from activated mechanisms first, then 'products = self.products_for(categories)' as the final enrichment before INSERT; prediction/schema.py:16-17 stores categories and products as output fields, not inputs."
+    },
+    {
+     "claim": "Category-level demand learning already exists and is measured rather than hand-set \u2014 a real foundation for a category pressure model.",
+     "evidence": "demand/schema.py:81-97 signal_weights (category, signal_type) and learned_windows (category); demand/engine.py:129-172 improve_from_episodes() learns weights from each signal's measured contribution in validated episodes and windows from observed formation\u2192decline durations; detector.py:216 'Weights are never manually assigned.'"
+    },
+    {
+     "claim": "The per-entity demand machinery is scientifically disciplined and directly reusable as the attribution layer under a category pressure index: dynamic baselines, robust z-scores, multi-signal agreement, false-spike rules, and frozen evidence bundles.",
+     "evidence": "demand/schema.py:31-45 baselines (entity, signal_type) with median/MAD; detector.py:85-128 evaluate() computes robust z per signal against each entity's own baseline; detector.py:131-173 five false-spike rules including min_signals_agreeing and signal_dominance; demand/schema.py:61-68 frozen evidence/timeline/signal_agreement JSON on every episode."
+    },
+    {
+     "claim": "Prediction asks a world-first question, not a product-first one: validated mechanisms are matched against the live World State at phenomenon granularity, which is the correct direction for a demand-first system.",
+     "evidence": "matching.py:1-10 docstring 'Asks \"which previously validated mechanisms resemble today's world?\" instead of \"what will sell?\"'; matching.py:57-60 activation computed over required phenomena vs active phenomena from world_state['signals']; live /api/opportunities evidence shows matched_signals like 'cold_stress:down:AU', 'rainfall_intensity:up:US' driving the heating opportunity."
+    }
+   ]
+  }
+ ]
+}
