@@ -257,6 +257,9 @@ def test_predict_evolves_pending_prediction_instead_of_duplicating(isolated_conf
     assert len(rows) == 1 and rows[0]["revisions"] == 0
     deadline_before = (rows[0]["created_at"], rows[0]["lead_time_days"])
 
+    # a fresh world state (R5: unchanged states are skipped outright) with the
+    # same active signals must EVOLVE the pending prediction, not duplicate it
+    engine.world.state = dict(engine.world.state, state_id="wst_test_b")
     second = engine.predict()
     assert second == []  # nothing new minted
     rows = engine.db.query_dicts("SELECT * FROM predictions")
@@ -409,3 +412,22 @@ def test_prediction_claim_and_product_hits_are_falsifiable(isolated_config):
     resolved = engine.resolve_due()
     assert resolved[0]["outcome"] == "incorrect"
     assert resolved[0]["product_hits"] == {"Air conditioner": False}
+
+
+def test_predict_skips_unchanged_world_state(isolated_config):
+    """Roadmap R5: predict on change, not on clock — the same world state
+    processed twice does nothing the second time (no rows, no versions)."""
+    mechanisms = MechanismStore()
+    mid = mechanisms.create(_mechanism_payload("cool mech", ["thermal_stress:up:US"], ["cooling"]))
+    mechanisms.db.execute("UPDATE mechanisms SET lifecycle = 'validated' WHERE mechanism_id = ?", [mid])
+    engine, _ = _prediction_engine_with_live_world(mechanisms)
+
+    assert len(engine.predict()) == 1
+    opp_id = engine.db.query_dicts("SELECT opportunity_id FROM predictions")[0]["opportunity_id"]
+    assert engine.predict() == []  # same state_id -> skipped entirely
+    assert int(engine.opportunities.latest(opp_id)["version"]) == 1  # not even an evolution
+
+    # a NEW state (different id) with the same signals evolves the prediction
+    engine.world.state = dict(engine.world.state, state_id="wst_test_2")
+    assert engine.predict() == []  # evolved, not created
+    assert int(engine.opportunities.latest(opp_id)["version"]) == 2

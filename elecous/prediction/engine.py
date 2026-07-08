@@ -71,6 +71,14 @@ class PredictionEngine:
         """One full prediction cycle against the current (or historical, for
         replay) World State. Returns created opportunity ids."""
         state = self.world.build(as_of=as_of) if as_of else (self.world.latest_state() or self.world.build())
+        # Predict on CHANGE, not on clock (roadmap R5): an unchanged world
+        # state cannot produce new evidence, so re-running would only churn
+        # identical opportunity versions every scheduler tick. Historical
+        # replay (as_of) always runs — it is a different question.
+        if as_of is None:
+            if state["state_id"] == getattr(self, "_last_predicted_state_id", None):
+                return []
+            self._last_predicted_state_id = state["state_id"]
         mechanisms = [m for m in self.mechanisms.list_latest() if m["lifecycle"] in PREDICTIVE_LIFECYCLES]
         matches = self.matcher.match(mechanisms, state)
         if not matches:
