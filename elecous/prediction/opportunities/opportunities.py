@@ -39,8 +39,40 @@ class OpportunityStore:
         self.log = get_logger("prediction")
 
     def products_for(self, categories: list[str]) -> list[str]:
+        """Static catalog roster for the given categories (config membership,
+        no evidence attached). UI/browse use only — never a prediction claim."""
         topics = self.config.load_file("entities.yaml").get("topics", [])
         return [t["entity"] for t in topics if t.get("category") in categories]
+
+    def products_with_evidence(self, categories: list[str]) -> list[str]:
+        """Products an opportunity may CLAIM (roadmap R2): only catalog members
+        with at least one genuine demand episode of their own in these
+        categories, ordered by real evidence strength (episode count, then
+        recency). The old behaviour — copying the whole category roster onto
+        every opportunity with identical scores — made per-product claims
+        unfalsifiable decoration (mission audit, CONFIRMED finding)."""
+        roster = set(self.products_for(categories))
+        if not roster:
+            return []
+        try:
+            demand_db = self.databases.get("demand")
+            placeholders = ",".join("?" for _ in categories)
+            rows = demand_db.query_dicts(
+                f"""
+                SELECT entity, count(*) AS n, max(spike_start) AS latest
+                FROM research_episodes e
+                WHERE version = (SELECT max(version) FROM research_episodes WHERE episode_id = e.episode_id)
+                  AND category IN ({placeholders})
+                  AND is_control = FALSE AND is_negative = FALSE
+                GROUP BY entity ORDER BY n DESC, latest DESC
+                """,
+                list(categories),
+            )
+        except Exception:
+            # Demand domain not initialized in this context (e.g. an isolated
+            # prediction-only test): no evidence available -> claim no products.
+            return []
+        return [r["entity"] for r in rows if r["entity"] in roster]
 
     def _compose(
         self,
@@ -54,7 +86,7 @@ class OpportunityStore:
         shared by form() (new opportunity) and evolve() (new version of an
         existing one) so both paths stay scientifically identical."""
         categories = sorted({c for a in activated for c in json.loads(a["mechanism"]["affected_categories"])})
-        products = self.products_for(categories)
+        products = self.products_with_evidence(categories)
         lead_times = [a["lead_time"] for a in activated if a["lead_time"].get("most_probable") is not None]
         combined_lead_time = (
             {

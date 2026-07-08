@@ -84,11 +84,12 @@ Four verified point-fixes, all cheap:
 6. **Predictions evolve, never duplicate (correction #7):** dedup is not just suppression — when new evidence arrives for a covered category+window, UPDATE the existing prediction's confidence, magnitude, timing, and explanation, with the change recorded as an event (feeds R6's live feed).
 **Verification:** pending count stops inflating (~11 stable, not +11/day); after 07-14, calibration curves exist, mechanism confidences move with outcomes, and every failed prediction carries a structured failure-attribution record.
 
-### R2 — Falsifiable, precision-first predictions (~2-3 days)
-- Resolve at the granularity claimed: predict product-level only where product-level evidence exists (per-entity episode history), else predict category-only and say so.
-- Kill wholesale roster dumps; wire real per-product differentiation (copy's DPI or per-entity spike-history response — whichever wins on replay).
-- Gate prediction emission on calibrated precision threshold, not on matcher activation alone. Target: precision > baseline (>0.468) at whatever recall follows.
-**Verification:** rolling benchmark precision above baseline; every emitted prediction names the exact falsification criterion and deadline.
+### R2 — Falsifiable, precision-first predictions ✅ DONE 2026-07-08 (3 regression tests, 116/116 pass)
+- Roster dumps killed: opportunities now claim only `products_with_evidence()` — catalog members with >=1 genuine episode of their own in the claimed categories, ordered by real evidence strength. The static roster remains browseable (`products_for`) but is never a claim.
+- Product-level judgment: resolution records `product_hits` per claimed product from that product's OWN episodes — per-product claims are now falsifiable and judged.
+- Emission gate: new predictions require calibrated confidence >= `prediction.min_emit_confidence` (0.5, justification measured & documented in thresholds.yaml). Evolution of existing predictions is exempt — weakening is information.
+- Every prediction stores its falsification criterion (`evidence.claim`: categories, products, window, criterion text).
+**Verification still pending real data:** emitted-prediction precision vs baseline measurable after first outcomes land (2026-07-14+); benchmark-level precision is a mechanism-formation question (R4/R7), not an emission question.
 
 ### R3 — Sales-proxy ground truth (the target-variable fix; highest scientific impact, needs user data decision)
 Redefine episodes against a sales-adjacent outcome: marketplace rank velocity / price+availability shifts / review velocity (licensed feeds), with attention (pageviews/media) demoted to leading indicator. Dual-track validation during transition: every mechanism scored against both attention-episodes (legacy) and sales-proxy episodes (new). **This is where "profitable" enters the science.** Blocked on Open Decision #1.

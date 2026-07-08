@@ -111,6 +111,12 @@ def test_scoring_and_ranking(isolated_config):
 
 
 def test_opportunity_formation_stage_and_clustering(isolated_config):
+    from elecous.common import timeutil
+
+    # R2 semantics: opportunities claim only evidence-backed products, so give
+    # one cooling entity a real-shaped episode history first.
+    _register_demand_and_insert_episode("Air conditioner", "cooling", timeutil.utcnow())
+
     store = MechanismStore()
     mechanism_id = store.create(_mechanism_payload("cooling mech", ["thermal_stress:up:US"], ["cooling"]))
     mechanism = store.latest(mechanism_id)
@@ -130,7 +136,8 @@ def test_opportunity_formation_stage_and_clustering(isolated_config):
     )
     stored = opp_store.latest(opportunity_id)
     assert stored["stage"] in (s.value for s in OpportunityStage)
-    assert json.loads(stored["products"])  # cooling products populated
+    # R2: only the evidence-backed product is claimed, never the full roster
+    assert json.loads(stored["products"]) == ["Air conditioner"]
     assert stored["probability"] > 0
 
     opp_store.update_stage(opportunity_id, OpportunityStage.PEAK)
@@ -323,3 +330,82 @@ def test_resolution_feeds_mechanisms_calibration_and_failure_attribution(isolate
         "SELECT * FROM mechanism_failures WHERE mechanism_id = ? AND kind = 'prediction_failure'", [mid]
     )
     assert len(failures) == 1
+
+
+def _register_demand_and_insert_episode(entity, category, spike_start):
+    """Minimal genuine-shaped episode row (abstract ids, own isolated DB) so
+    evidence-based product membership has something real-shaped to read."""
+    from elecous.common.ids import new_id
+    from elecous.demand.schema import DEMAND_MIGRATION, DEMAND_MIGRATION_0002, DEMAND_MIGRATION_0003
+    from elecous.storage.database import global_databases
+
+    dbs = global_databases()
+    for m in (DEMAND_MIGRATION, DEMAND_MIGRATION_0002, DEMAND_MIGRATION_0003):
+        dbs.register_schema(m)
+    dbs.get("demand").execute(
+        "INSERT INTO research_episodes (episode_id, version, entity, category, traits, country, region, "
+        "baseline, window_days, spike_start, spike_peak, recovery_end, demand_score, evidence, timeline, "
+        "signal_agreement, confidence, overall_confidence, control_episodes, mechanisms_found, "
+        "false_spike_checks, outcome, validation_status, lifecycle, is_control, is_negative, created_at) "
+        "VALUES (?, 1, ?, ?, '[]', 'US', NULL, '{}', 28, ?, NULL, NULL, 2.0, '{}', '{}', '{}', '{}', 0.8, "
+        "'[]', '[]', '{}', NULL, 'pending', 'active', FALSE, FALSE, ?)",
+        [new_id("episode"), entity, category, spike_start, spike_start],
+    )
+
+
+def test_products_with_evidence_excludes_roster_members_without_history(isolated_config):
+    """Roadmap R2: an opportunity claims only products with real episode
+    history — the rest of the category roster is browseable, not claimed."""
+    from elecous.common import timeutil
+
+    store = OpportunityStore()
+    roster = store.products_for(["cooling"])
+    assert "Air conditioner" in roster and len(roster) > 1  # static roster is broad
+
+    # no demand data at all -> no claimable products (honest empty, not a dump)
+    assert store.products_with_evidence(["cooling"]) == []
+
+    _register_demand_and_insert_episode("Air conditioner", "cooling", timeutil.utcnow())
+    assert store.products_with_evidence(["cooling"]) == ["Air conditioner"]
+
+
+def test_emission_gate_suppresses_low_confidence_predictions(isolated_config):
+    """Roadmap R2: fewer, more reliable — a match whose calibrated confidence
+    is below prediction.min_emit_confidence is never emitted."""
+    mechanisms = MechanismStore()
+    payload = _mechanism_payload("weak mech", ["thermal_stress:up:US"], ["cooling"])
+    payload["confidence"] = {"historical": 0.2, "recent": 0.2, "regional": 0.2, "scientific": 0.2, "current": 0.2}
+    mid = mechanisms.create(payload)
+    mechanisms.db.execute("UPDATE mechanisms SET lifecycle = 'validated' WHERE mechanism_id = ?", [mid])
+
+    engine, _ = _prediction_engine_with_live_world(mechanisms)
+    assert engine.predict() == []
+    assert engine.db.query_one("SELECT count(*) FROM predictions")[0] == 0
+
+
+def test_prediction_claim_and_product_hits_are_falsifiable(isolated_config):
+    """Roadmap R2: every prediction records its falsification criterion, and
+    claimed products are judged individually at resolution."""
+    from datetime import timedelta
+
+    from elecous.common import timeutil
+
+    _register_demand_and_insert_episode("Air conditioner", "cooling", timeutil.utcnow() - timedelta(days=60))
+
+    mechanisms = MechanismStore()
+    mid = mechanisms.create(_mechanism_payload("cool mech", ["thermal_stress:up:US"], ["cooling"]))
+    mechanisms.db.execute("UPDATE mechanisms SET lifecycle = 'validated' WHERE mechanism_id = ?", [mid])
+    engine, episodes = _prediction_engine_with_live_world(mechanisms)
+
+    assert len(engine.predict()) == 1
+    row = engine.db.query_dicts("SELECT * FROM predictions")[0]
+    claim = json.loads(row["evidence"])["claim"]
+    assert claim["categories"] == ["cooling"]
+    assert claim["products"] == ["Air conditioner"]  # evidence-based, not the roster
+    assert claim["window_days"] > 0 and "correct iff" in claim["criterion"]
+
+    engine.db.execute("UPDATE predictions SET created_at = ?", [timeutil.utcnow() - timedelta(days=30)])
+    episodes.episodes = []  # reality: nothing spiked
+    resolved = engine.resolve_due()
+    assert resolved[0]["outcome"] == "incorrect"
+    assert resolved[0]["product_hits"] == {"Air conditioner": False}

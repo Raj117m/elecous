@@ -79,3 +79,12 @@ prediction:
   match_threshold: 0.6              # world-state/mechanism similarity gate
   activation_full: 0.85
   opportunity_expiry_days: 21
+  # Emission gate (roadmap R2): a NEW prediction is emitted only when its
+  # calibrated confidence clears this bar. Justified by measurement, not
+  # convenience: the 2026-07-07 benchmark showed recall 1.0 / precision
+  # 0.4606 (below the 0.4676 naive baseline) — the platform predicted
+  # everything and was right less than half the time. 0.5 = "more likely
+  # right than wrong" once calibration data exists (until then calibrate()
+  # is identity, so this gates on raw confidence). Existing pending
+  # predictions still EVOLVE below the gate — weakening is information.
+  min_emit_confidence: 0.5

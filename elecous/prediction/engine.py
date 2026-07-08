@@ -140,6 +140,19 @@ class PredictionEngine:
                 self._evolve_prediction(existing, state["state_id"], activated, confidence, uncertainty, scores, business_value)
                 continue
 
+            # Emission gate (roadmap R2): fewer, more reliable. New claims
+            # below the calibrated-confidence bar are not emitted at all —
+            # measured cause: recall 1.0 / precision below baseline came from
+            # emitting every match. Evolution above is exempt: updating an
+            # existing claim with weaker evidence is honest information.
+            min_emit = float(self.config.load_file("thresholds.yaml")["prediction"].get("min_emit_confidence", 0.0))
+            if confidence["overall"] < min_emit:
+                self.log.info(
+                    "prediction suppressed below emission gate",
+                    categories=cats, confidence=confidence["overall"], gate=min_emit,
+                )
+                continue
+
             opportunity_id = self.opportunities.form(
                 state["state_id"], activated, scores, confidence, uncertainty, business_value
             )
@@ -274,6 +287,20 @@ class PredictionEngine:
     ) -> str:
         prediction_id = new_id("prediction")
         lead_times = [a["lead_time"]["most_probable"] for a in activated if a["lead_time"].get("most_probable")]
+        lead = sum(lead_times) / len(lead_times) if lead_times else None
+        opportunity = self.opportunities.latest(opportunity_id)
+        # Every prediction states its own falsification criterion (roadmap R2):
+        # what exactly must happen, for what, by when — so no claim can
+        # retreat into vagueness when judged.
+        claim = {
+            "categories": json.loads(opportunity["categories"]) if opportunity else [],
+            "products": json.loads(opportunity["products"]) if opportunity else [],
+            "window_days": (lead or 14.0) + 3.0,
+            "criterion": (
+                "correct iff every claimed category records >=1 genuine demand episode "
+                "within window_days of creation; each claimed product judged by its own episodes"
+            ),
+        }
         # Named columns: the table has grown via additive migrations (t_pred,
         # t_spike, revisions, updated_at) — a positional INSERT here silently
         # broke prediction creation in production on 2026-07-08 when migration
@@ -288,11 +315,12 @@ class PredictionEngine:
                 opportunity_id,
                 json.dumps([{"id": a["mechanism"]["mechanism_id"], "version": a["mechanism"]["version"]} for a in activated]),
                 confidence["overall"],
-                sum(lead_times) / len(lead_times) if lead_times else None,
+                lead,
                 json.dumps(
                     {
                         "matched_signals": [a["match"].matched_signals for a in activated],
                         "behavioural_chains": [json.loads(a["mechanism"]["behavioural_chain"]) for a in activated],
+                        "claim": claim,
                     }
                 ),
                 None,
@@ -413,6 +441,19 @@ class PredictionEngine:
                     "roi_actual": None # Pending financial integration
                 }
             }
+
+            # Product-level judgment (roadmap R2): every claimed product is
+            # judged by its OWN episodes — per-product claims stopped being
+            # unfalsifiable decoration when membership became evidence-based.
+            claimed_products = json.loads(opportunity["products"]) if opportunity else []
+            if claimed_products:
+                detail["product_hits"] = {
+                    p: any(
+                        not e["is_negative"] and created <= timeutil.ensure_utc(e["spike_start"]) <= deadline
+                        for e in self.prospective.episodes.list_latest(entity=p, include_controls=False)
+                    )
+                    for p in claimed_products
+                }
 
             # ------- close the learning loop (roadmap R1) -------
             # Each outcome flows back into the mechanisms that made the claim:
