@@ -32,11 +32,12 @@ class EligibilityEngine:
         self.thresholds = self.config.load_file("thresholds.yaml")["demand"]
 
     def check(self, entity: str, signal_type: str, as_of: datetime) -> EligibilityDecision:
-        min_history = int(self.thresholds["min_history_days"])
-        min_observations = int(self.thresholds["min_observations"])
-        max_gap = int(self.thresholds["max_gap_days"])
+        # Constitution Phase 2: Enforce 5-year historical backfill requirement
+        min_history = 1825  # 5 years
+        min_observations = int(self.thresholds.get("min_observations", 1800))
+        max_gap = int(self.thresholds.get("max_gap_days", 3))
 
-        series = self.store.series(entity, signal_type, as_of - timedelta(days=min_history * 3), as_of)
+        series = self.store.series(entity, signal_type, as_of - timedelta(days=min_history + 30), as_of)
         decision = EligibilityDecision(entity=entity, signal_type=signal_type, eligible=True)
         decision.observation_count = len(series)
         if not series:

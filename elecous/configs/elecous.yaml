@@ -29,6 +29,7 @@ databases:
     - validation
     - dashboard
     - research
+    - expansion
 
 logging:
   dir: logs

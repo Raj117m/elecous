@@ -171,7 +171,7 @@ def test_prediction_outcomes_resolve_against_reality(isolated_config):
 
     def insert_prediction(pid, opportunity_id, created_at, lead_days=7.0):
         engine.db.execute(
-            "INSERT INTO predictions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO predictions (prediction_id, world_state_id, opportunity_id, mechanisms_used, confidence, lead_time_days, evidence, outcome, validation_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [pid, "wst_1", opportunity_id, "[]", 0.7, lead_days, "{}", None, "pending", created_at],
         )
 

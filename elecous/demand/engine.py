@@ -22,7 +22,7 @@ from elecous.demand.controls.controls import ControlSelector
 from elecous.demand.eligibility.eligibility import EligibilityEngine
 from elecous.demand.episodes.episodes import EpisodeStore
 from elecous.demand.research.scientist import DemandScientist
-from elecous.demand.schema import DEMAND_MIGRATION
+from elecous.demand.schema import DEMAND_MIGRATION, DEMAND_MIGRATION_0002, DEMAND_MIGRATION_0003
 from elecous.demand.spikes.detector import DemandEvidence, SpikeDetector
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
@@ -42,6 +42,8 @@ class DemandEngine:
         self.config = config or active_config()
         self.databases = databases or global_databases()
         self.databases.register_schema(DEMAND_MIGRATION)
+        self.databases.register_schema(DEMAND_MIGRATION_0002)
+        self.databases.register_schema(DEMAND_MIGRATION_0003)
         self.db = self.databases.get("demand")
         self.bus = bus or global_bus()
         self.log = get_logger("demand")
@@ -53,6 +55,15 @@ class DemandEngine:
         self.scientist = DemandScientist()
         self.episodes = EpisodeStore(self.databases, self.bus)
         self.thresholds = self.config.load_file("thresholds.yaml")["demand"]
+        from elecous.demand.blind_spots import BlindSpotEngine
+        self.blind_spots = BlindSpotEngine(store, databases=self.databases)
+
+        # Seed products if empty (Constitution Product-Centric Redesign)
+        try:
+            if self.db.query_one("SELECT count(*) FROM products")[0] == 0:
+                self._seed_products()
+        except Exception as e:
+            self.log.error("failed seeding products", error=str(e))
 
     # ------------------------------------------------------------------ scan
     def scan(self, as_of: datetime | None = None) -> list[str]:
@@ -64,6 +75,14 @@ class DemandEngine:
             entity = topic["entity"]
             category = topic.get("category", "unknown")
             window = self.learned_window(category)
+            
+            # Run coverage evaluations to detect and record blind spots (Phase 5)
+            for t in SpikeDetector.DEMAND_SIGNAL_TYPES:
+                try:
+                    self.blind_spots.evaluate_coverage(entity, t, category, as_of)
+                except Exception as e:
+                    self.log.error("failed evaluating coverage for blind spot", entity=entity, signal_type=t, error=str(e))
+            
             # Eligibility per signal; at least two eligible signals required
             # since spikes need multi-signal agreement anyway (3.20).
             eligible_signals = [
@@ -219,3 +238,35 @@ class DemandEngine:
                     timeutil.utcnow(),
                 ],
             )
+
+    def _seed_products(self) -> None:
+        topics = self.config.load_file("entities.yaml").get("topics", [])
+        for topic in topics:
+            product_id = topic["entity"].lower().replace(" ", "_")
+            name = topic["entity"]
+            category = topic.get("category", "unknown")
+            traits = topic.get("traits", [])
+            forces = []
+            if "electrical" in traits or "resilience" in traits:
+                forces.append("raw_material_availability")
+            if "camping" in traits or "outdoor" in traits:
+                forces.append("consumer_behaviour")
+            if "summer" in traits or "winter" in traits or "rain" in traits or "snow" in traits:
+                forces.append("weather")
+            if not forces:
+                forces.append("consumer_behaviour")
+            
+            forces = list(set(forces))
+            
+            self.db.execute(
+                "INSERT INTO products VALUES (?, ?, ?, ?, ?, ?)",
+                [
+                    product_id,
+                    name,
+                    category,
+                    json.dumps(forces),
+                    float(topic.get("discovery_median_pageviews", 100.0)),
+                    timeutil.utcnow()
+                ]
+            )
+        self.log.info("seeded products database", count=len(topics))

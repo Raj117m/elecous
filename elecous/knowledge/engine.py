@@ -51,6 +51,8 @@ class KnowledgeEngine:
         self.graph = KnowledgeGraph(self.databases)
         self.memory = KnowledgeMemory(self.databases)
         self.revision = KnowledgeRevisionEngine(self.graph, self.databases)
+        from elecous.knowledge.memory.memory_manager import MemoryManager
+        self.memory_manager = MemoryManager(self.graph, self.databases)
 
     # -------------------------------------------------------------- sync
     def sync(self) -> dict[str, int]:
@@ -73,6 +75,10 @@ class KnowledgeEngine:
         counts = self.graph.rebuild_from_stores(
             self.signals, self.factors, self.mechanisms, episode_store=self.episodes, validation_rows=validation_rows
         )
+        try:
+            self.memory_manager.evaluate_transitions()
+        except Exception as e:
+            self.log.error("failed evaluating memory transitions", error=str(e))
         self.bus.emit(EventType.KNOWLEDGE_UPDATED, source="knowledge", **counts)
         return counts
 
@@ -147,7 +153,11 @@ class KnowledgeEngine:
         return self.revision.detect_issues()
 
     def self_heal(self) -> dict[str, Any]:
-        return self.revision.integrity_scan()
+        """Repair and compress knowledge (spec 7.27 and Phase 3)."""
+        scan_results = self.revision.integrity_scan()
+        merged = self.revision.merge_duplicate_concepts()
+        retired = self.revision.retire_obsolete_knowledge()
+        return {**scan_results, **merged, **retired}
 
     # ------------------------------------------------------- failure/unknown
     def record_failure(self, object_type: str, object_id: str, summary: str, detail: dict[str, Any]) -> str:

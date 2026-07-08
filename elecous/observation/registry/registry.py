@@ -27,6 +27,7 @@ REGISTRY_MIGRATION = Migration(
             name VARCHAR NOT NULL,
             provider VARCHAR NOT NULL,
             category VARCHAR NOT NULL,
+            domain VARCHAR NOT NULL,
             observation_capability VARCHAR NOT NULL,
             license VARCHAR NOT NULL,
             access_method VARCHAR NOT NULL,
@@ -70,6 +71,13 @@ REGISTRY_MIGRATION = Migration(
     ),
 )
 
+REGISTRY_MIGRATION_0002 = Migration(
+    "observations.0002.add_domain_column",
+    "observations",
+    (
+        "ALTER TABLE source_registry ADD COLUMN IF NOT EXISTS domain VARCHAR DEFAULT 'atmospheric'",
+    ),
+)
 
 @dataclass
 class Source:
@@ -77,6 +85,7 @@ class Source:
     name: str
     provider: str
     category: str
+    domain: str
     observation_capability: str
     license: str
     access_method: str
@@ -101,6 +110,7 @@ class SourceRegistry:
     def __init__(self, databases: DatabaseManager | None = None, config: Config | None = None):
         self.databases = databases or global_databases()
         self.databases.register_schema(REGISTRY_MIGRATION)
+        self.databases.register_schema(REGISTRY_MIGRATION_0002)
         self.db = self.databases.get("observations")
         self.config = config or active_config()
         self.log = get_logger("observation")
@@ -122,6 +132,7 @@ class SourceRegistry:
                 name=entry["name"],
                 provider=entry["provider"],
                 category=entry["category"],
+                domain=entry.get("domain", "atmospheric"),
                 observation_capability=entry["observation_capability"],
                 license=entry["license"],
                 access_method=entry["access_method"],
@@ -144,12 +155,13 @@ class SourceRegistry:
     def _insert(self, s: Source) -> None:
         now = timeutil.utcnow()
         self.db.execute(
-            "INSERT INTO source_registry VALUES (" + ", ".join("?" * 24) + ")",
+            "INSERT INTO source_registry VALUES (" + ", ".join("?" * 25) + ")",
             [
                 s.source_id,
                 s.name,
                 s.provider,
                 s.category,
+                s.domain,
                 s.observation_capability,
                 s.license,
                 s.access_method,
@@ -189,6 +201,13 @@ class SourceRegistry:
             params.append(capability)
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
+        return self.db.query_dicts(sql + " ORDER BY source_id", params)
+
+    def list_by_domain(self, domain: str, status: str | None = None) -> list[dict[str, Any]]:
+        sql, params = "SELECT * FROM source_registry WHERE domain = ?", [domain]
+        if status:
+            sql += " AND status = ?"
+            params.append(status)
         return self.db.query_dicts(sql + " ORDER BY source_id", params)
 
     def capabilities(self) -> list[str]:

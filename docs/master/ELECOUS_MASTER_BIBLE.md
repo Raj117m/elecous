@@ -378,7 +378,7 @@ ELECOUS/
 │   │   ├── expand_entities.py      # Discover new entities via Wikipedia
 │   │   └── evidence_report.py      # Audit trail of evidence → mechanisms
 │   ├── tests/
-│   │   ├── test_phase*.py          # 12 test files, 107 tests total
+│   │   ├── test_phase*.py          # 12 test files, 106 tests total
 │   │   ├── conftest.py             # Fixtures: isolated_config, temp data dirs
 │   │   └── README.md               # Test running guide
 │   └── docs/
@@ -844,7 +844,7 @@ def calibration_curve():
 - **64 active predictions** (0 resolved yet; all inside lead-time windows).
 - **Benchmark:** F1 0.631 vs. single-signal baseline F1 0.626 → **outperforms**.
 - **Storage:** 5.6 GB (11 domain DuckDBs).
-- **Test suite:** 107/107 non-network tests passing.
+- **Test suite:** 106/106 non-network tests passing.
 
 #### Environmental Coverage (The Core Weakness)
 
@@ -867,11 +867,11 @@ Validated mechanisms:
 7. **Mechanism retirement** — built automatic retirement for persistent failures.
 8. **Resumable GDELT backfill** — chunked, resumable from real per-entity coverage.
 9. **Multi-mode extraction** — trend + level modes (spike + correlation gate + magnitude gate).
-10. **Dashboard** — rebuilt from admin panel to demand intelligence surface (decision-first Today view, unified timeline, global search, product ranking/detail pages, honest coverage note, human language layer).
+10. **Dashboard** — rebuilt from admin panel to Mission Control (decision-first cards, honest coverage note, human language layer).
 
 #### Tests
 
-**107 non-network tests, all passing.**
+**106 non-network tests, all passing.**
 
 Run with:
 ```bash
@@ -1073,7 +1073,7 @@ sleep 2
 unset ELECOUS_DATA_DIR    # Critical: prevents touching production data
 .venv/bin/python -m pytest elecous/tests -m "not network" -q
 
-# Expect: 107 passed
+# Expect: 106 passed
 ```
 
 ---
@@ -1185,7 +1185,7 @@ pip install duckdb fastapi uvicorn requests numpy pyyaml
 # Verify
 unset ELECOUS_DATA_DIR
 .venv/bin/python -m pytest elecous/tests -m "not network" -q
-# Expect: 107 passed
+# Expect: 106 passed
 
 # Run
 .venv/bin/python -m elecous.dashboard.api.app
@@ -1219,7 +1219,7 @@ unset ELECOUS_DATA_DIR
    ```bash
    unset ELECOUS_DATA_DIR
    .venv/bin/python -m pytest elecous/tests -m "not network" -q
-   # Expect: 107 passed
+   # Expect: 106 passed
    ```
 
 3. **Start the dashboard** and explore it live.
@@ -1412,7 +1412,7 @@ git log --oneline -5
 # 2. Tests pass
 unset ELECOUS_DATA_DIR
 .venv/bin/python -m pytest elecous/tests -m "not network" -q
-# Expect: 107 passed
+# Expect: 106 passed
 
 # 3. Dashboard runs
 .venv/bin/python -m elecous.dashboard.api.app &

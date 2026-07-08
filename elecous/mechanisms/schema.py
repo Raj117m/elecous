@@ -77,3 +77,19 @@ MECHANISMS_MIGRATION = Migration(
         """,
     ),
 )
+
+MECHANISMS_MIGRATION_0002 = Migration(
+    "mechanisms.0002.add_alternative_chains",
+    "mechanisms",
+    (
+        "ALTER TABLE mechanisms ADD COLUMN alternative_chains VARCHAR DEFAULT '[]'",
+    ),
+)
+
+MECHANISMS_MIGRATION_0003 = Migration(
+    "mechanisms.0003.add_standardized_vectors",
+    "mechanisms",
+    (
+        "ALTER TABLE mechanisms ADD COLUMN standardized_vectors VARCHAR DEFAULT '[]'",
+    ),
+)

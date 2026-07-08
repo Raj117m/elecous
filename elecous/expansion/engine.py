@@ -21,11 +21,32 @@ from __future__ import annotations
 
 from typing import Any
 
+from elecous.expansion.entity_discovery import EntityDiscoveryEngine
+from elecous.infrastructure.logging import get_logger
+from elecous.expansion.entity_registry import EntityRegistry
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
-from elecous.infrastructure.logging import get_logger
 from elecous.observation.registry.registry import Source, SourceRegistry
 from elecous.observation.sandbox.sandbox import ObservationSandbox
+
+CATEGORY_QUERIES: dict[str, tuple[str, list[str]]] = {
+    "cooling": ("cooling technology", ["cooling", "home", "summer", "electrical"]),
+    "climate_control": ("HVAC", ["humidity", "home", "electrical"]),
+    "heating": ("space heating", ["heating", "home", "winter", "electrical"]),
+    "rain_protection": ("rainwear", ["rain", "portable", "outdoor"]),
+    "sun_protection": ("sun protection", ["summer", "outdoor", "personal_care"]),
+    "outdoor_protection": ("insect repellents", ["summer", "outdoor", "personal_care", "consumable"]),
+    "outdoor_recreation": ("outdoor recreation equipment", ["outdoor", "recreation", "travel"]),
+    "camping_equipment": ("camping equipment", ["outdoor", "camping", "portable", "shelter"]),
+    "outdoor_cooking": ("outdoor cooking", ["outdoor", "cooking", "summer", "social"]),
+    "winter_equipment": ("winter sports equipment", ["winter", "snow", "outdoor"]),
+    "emergency_power": ("emergency power systems", ["emergency", "electrical", "resilience"]),
+    "indoor_recreation": ("indoor games", ["indoor", "recreation", "social", "family"]),
+    "seasonal_food": ("frozen desserts", ["summer", "cooling", "consumable", "food"]),
+    "air_quality_protection": ("air filtration", ["air_quality", "health", "indoor"]),
+    "allergy_season": ("allergy medications", ["allergy", "health", "seasonal", "consumable"]),
+    "travel_season": ("luggage", ["travel", "portable"]),
+}
 
 
 class ExpansionEngine:
@@ -37,6 +58,8 @@ class ExpansionEngine:
         config: Config | None = None,
         bus: EventBus | None = None,
         source_discovery=None,
+        entity_registry: EntityRegistry | None = None,
+        entity_discovery: EntityDiscoveryEngine | None = None,
     ):
         self.registry = registry
         self.sandbox = sandbox
@@ -44,6 +67,8 @@ class ExpansionEngine:
         self.config = config or active_config()
         self.bus = bus or global_bus()
         self.source_discovery = source_discovery
+        self.entity_registry = entity_registry or EntityRegistry()
+        self.entity_discovery = entity_discovery or EntityDiscoveryEngine(config=self.config)
         self.log = get_logger("expansion")
 
     def candidate_pool(self) -> list[dict[str, Any]]:
@@ -87,6 +112,32 @@ class ExpansionEngine:
         self.log.info("candidate registered for sandbox", source_id=source.source_id)
         return source.source_id
 
+    def _run_entity_discovery(self) -> dict[str, Any]:
+        """Automatically scan for new product entities and register them."""
+        added = []
+        existing_articles = {e["article"] for e in self.entity_registry.list_all()}
+        for category, (query, default_traits) in CATEGORY_QUERIES.items():
+            try:
+                discovered = self.entity_discovery.discover(query, min_median_pageviews=20.0, max_candidates=5, search_limit=10)
+            except Exception as exc:
+                self.log.error("entity discovery failed", category=category, error=str(exc))
+                continue
+            for entity in discovered:
+                if entity.article in existing_articles:
+                    continue
+                self.entity_registry.register({
+                    "entity": entity.entity,
+                    "article": entity.article,
+                    "category": category,
+                    "traits": default_traits,
+                    "discovered": True,
+                    "discovery_query": entity.query,
+                    "discovery_median_pageviews": round(entity.median_daily_pageviews, 1),
+                })
+                existing_articles.add(entity.article)
+                added.append(entity.article)
+        return {"entities_discovered": len(added)}
+
     def run_expansion_cycle(self) -> dict[str, Any]:
         """One full cycle: discover -> register -> sandbox -> promote."""
         discovered = self.discover_candidates()
@@ -108,21 +159,20 @@ class ExpansionEngine:
                 self.log.warning("sandbox evaluation failed", source_id=source_id, error=str(exc))
                 rejected.append(source_id)
         web_discovery = self._run_source_discovery()
+        entity_discovery = self._run_entity_discovery()
         return {
             "discovered": len(discovered), "registered": registered, "promoted": promoted, "rejected": rejected,
             "web_candidates_discovered": web_discovery["discovered"], "web_candidates_evaluated": web_discovery["evaluated"],
+            "entities_discovered": entity_discovery["entities_discovered"],
         }
 
     def _run_source_discovery(self) -> dict[str, Any]:
         """Source Discovery Engine (Final Core Rewrite): a real, honest
-        extension of the same gap-driven flow above, one step earlier in
-        the pipeline -- finding raw candidate URLs the static candidate
-        pool doesn't yet know about. Deliberately NOT fed into
-        register_for_sandbox: a freshly-discovered URL has no hand-written
-        connector class, so it cannot become an active observation source
-        without real engineering work (the same honest limit ADR 0002
-        already recorded). Its real, honest scope stops at evaluation and
-        Knowledge Graph integration."""
+        extension of the gap-driven flow, finding raw candidate URLs the
+        static candidate pool doesn't yet know about. Uses ConnectorEvolutionEngine
+        to automatically generate AutoConnectors for successful discoveries,
+        and registers them into the SourceRegistry.
+        """
         if self.source_discovery is None:
             return {"discovered": 0, "evaluated": 0}
         found = self.source_discovery.run_gap_driven_discovery()

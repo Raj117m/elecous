@@ -52,7 +52,7 @@ are NOT what the evidence points to.
 
 Your first action should be to read the handoff docs, then run the test
 suite (unset ELECOUS_DATA_DIR && .venv/bin/python -m pytest elecous/tests
--m "not network" -q — expect 107 passed) to confirm the repository state
+-m "not network" -q — expect 106 passed) to confirm the repository state
 matches what's documented, then consult docs/handoff/10_NEXT_STEPS.md for
 prioritized work.
 ```

@@ -108,3 +108,32 @@ DEMAND_MIGRATION = Migration(
         """,
     ),
 )
+
+DEMAND_MIGRATION_0002 = Migration(
+    "demand.0002.add_volume_multiplier",
+    "demand",
+    (
+        "ALTER TABLE research_episodes ADD COLUMN volume_multiplier DOUBLE DEFAULT 1.0",
+    ),
+)
+
+DEMAND_MIGRATION_0003 = Migration(
+    "demand.0003.product_centric_redesign",
+    "demand",
+    (
+        """
+        CREATE TABLE IF NOT EXISTS products (
+            product_id VARCHAR PRIMARY KEY,
+            name VARCHAR NOT NULL,
+            category VARCHAR NOT NULL,
+            associated_forces VARCHAR NOT NULL,
+            baseline_demand DOUBLE DEFAULT 1.0,
+            created_at TIMESTAMPTZ NOT NULL
+        )
+        """,
+        "ALTER TABLE research_episodes ADD COLUMN IF NOT EXISTS demand_pressure_index DOUBLE DEFAULT 0.0",
+        "ALTER TABLE research_episodes ADD COLUMN IF NOT EXISTS expected_magnitude DOUBLE DEFAULT 1.0",
+        "ALTER TABLE research_episodes ADD COLUMN IF NOT EXISTS target_window_start TIMESTAMPTZ",
+        "ALTER TABLE research_episodes ADD COLUMN IF NOT EXISTS target_window_end TIMESTAMPTZ",
+    ),
+)

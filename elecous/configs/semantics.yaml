@@ -26,6 +26,9 @@ levels:
   weather_alert_severity:
     phenomenon: weather_hazard
     boundaries: [1, 2, 3]                 # minor/moderate/severe/extreme
+  search_interest:
+    phenomenon: public_interest
+    boundaries: [20, 40, 60, 80, 100]
 
 phenomena:
   temperature_max_c: thermal_stress
@@ -44,6 +47,7 @@ phenomena:
   gdp_growth_pct: economic_growth
   inflation_pct: price_pressure
   unemployment_pct: labor_stress
+  search_interest: public_interest
 
 # Provider vocabulary -> ELECOUS observation types (extended as the
 # Expansion Engine adds providers; never hardcoded in connectors).

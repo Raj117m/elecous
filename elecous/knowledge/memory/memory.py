@@ -16,7 +16,12 @@ from typing import Any
 from elecous.common import timeutil
 from elecous.common.ids import new_id
 from elecous.infrastructure.logging import get_logger
-from elecous.knowledge.schema import KNOWLEDGE_MIGRATION
+from elecous.knowledge.schema import (
+    KNOWLEDGE_MIGRATION,
+    KNOWLEDGE_MIGRATION_0002,
+    KNOWLEDGE_MIGRATION_0003,
+    KNOWLEDGE_MIGRATION_0004,
+)
 from elecous.storage.database import DatabaseManager, global_databases
 
 
@@ -24,6 +29,9 @@ class KnowledgeMemory:
     def __init__(self, databases: DatabaseManager | None = None):
         self.databases = databases or global_databases()
         self.databases.register_schema(KNOWLEDGE_MIGRATION)
+        self.databases.register_schema(KNOWLEDGE_MIGRATION_0002)
+        self.databases.register_schema(KNOWLEDGE_MIGRATION_0003)
+        self.databases.register_schema(KNOWLEDGE_MIGRATION_0004)
         self.db = self.databases.get("knowledge")
         self.log = get_logger("knowledge")
 

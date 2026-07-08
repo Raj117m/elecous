@@ -135,3 +135,25 @@ class FailureCategory(StrEnum):
     KNOWLEDGE_INCONSISTENCY = "knowledge_inconsistency"
     SCHEDULER = "scheduler_failure"
     RESOURCE_EXHAUSTION = "resource_exhaustion"
+
+
+class EnvironmentalDomain(StrEnum):
+    """The formal taxonomy of external forces capable of influencing demand."""
+
+    ATMOSPHERIC = "atmospheric"
+    MACROECONOMIC = "macroeconomic"
+    GEOPOLITICAL = "geopolitical"
+    REGULATORY = "regulatory"
+    PUBLIC_HEALTH = "public_health"
+    SOCIAL = "social"
+    INFRASTRUCTURE = "infrastructure"
+
+
+class DecisionRecommendation(StrEnum):
+    """The formal decision outputs generated from an Opportunity."""
+
+    IGNORE = "ignore"
+    MONITOR = "monitor"
+    PREPARE = "prepare"
+    ACT = "act"
+    REVIEW = "review"

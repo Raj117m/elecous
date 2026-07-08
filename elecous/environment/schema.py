@@ -211,3 +211,11 @@ FACTOR_SIGNALS_INDEX_MIGRATION = Migration(
     "environment",
     ("CREATE INDEX IF NOT EXISTS idx_factor_signals ON environmental_factors (signals)",),
 )
+
+ENVIRONMENT_DOMAIN_MIGRATION = Migration(
+    "environment.0007.add_domain_to_factors",
+    "environment",
+    (
+        "ALTER TABLE environmental_factors ADD COLUMN domain VARCHAR DEFAULT 'atmospheric'",
+    ),
+)

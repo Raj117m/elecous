@@ -22,8 +22,7 @@ from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
 from elecous.storage.database import DatabaseManager, global_databases
 
-EPISODE_COLUMNS = 27
-
+EPISODE_COLUMNS = 28
 
 class EpisodeStore:
     def __init__(self, databases: DatabaseManager | None = None, bus: EventBus | None = None):
@@ -71,6 +70,23 @@ class EpisodeStore:
             "score": evidence.score,
             "as_of": timeutil.to_iso(evidence.as_of),
         }
+        
+        # Calculate volume multiplier M
+        volume_multiplier = 1.0
+        strongest = max(evidence.signals, key=lambda s: s.evidence, default=None)
+        if strongest and strongest.baseline and strongest.values and timeline.get("acceleration") and timeline.get("peak"):
+            accel_time = timeutil.from_iso(timeline["acceleration"])
+            peak_time = timeutil.from_iso(timeline["peak"])
+            integral_s = 0.0
+            integral_b = 0.0
+            for d_iso, v in strongest.values:
+                d = timeutil.from_iso(d_iso)
+                if accel_time <= d <= peak_time:
+                    integral_s += v
+                    integral_b += strongest.baseline.predict(d)
+            if integral_b > 0:
+                volume_multiplier = integral_s / integral_b
+                
         constitution.require_evidence("research_episode", [s.signal_type for s in evidence.signals])
         episode_id = new_id("research_episode")
         overall = confidence.get("overall", 0.0)
@@ -112,6 +128,7 @@ class EpisodeStore:
                 is_control,
                 is_negative,
                 timeutil.utcnow(),
+                float(volume_multiplier),
             ],
         )
         self.bus.emit(
@@ -193,6 +210,7 @@ class EpisodeStore:
                 row["is_control"],
                 row["is_negative"],
                 timeutil.utcnow(),
+                row.get("volume_multiplier", 1.0),
             ],
         )
         self.log.info("episode version appended", episode_id=episode_id, version=version, actor=actor)

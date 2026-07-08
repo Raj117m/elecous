@@ -17,7 +17,7 @@ from elecous.common import timeutil
 from elecous.common.ids import new_id
 from elecous.common.vocabulary import Relationship
 from elecous.infrastructure.logging import get_logger
-from elecous.knowledge.schema import KNOWLEDGE_MIGRATION
+from elecous.knowledge.schema import KNOWLEDGE_MIGRATION, KNOWLEDGE_MIGRATION_0002, KNOWLEDGE_MIGRATION_0003, KNOWLEDGE_MIGRATION_0004
 from elecous.storage.database import DatabaseManager, global_databases
 
 
@@ -25,6 +25,9 @@ class KnowledgeGraph:
     def __init__(self, databases: DatabaseManager | None = None):
         self.databases = databases or global_databases()
         self.databases.register_schema(KNOWLEDGE_MIGRATION)
+        self.databases.register_schema(KNOWLEDGE_MIGRATION_0002)
+        self.databases.register_schema(KNOWLEDGE_MIGRATION_0003)
+        self.databases.register_schema(KNOWLEDGE_MIGRATION_0004)
         self.db = self.databases.get("knowledge")
         self.log = get_logger("knowledge")
 
@@ -38,6 +41,8 @@ class KnowledgeGraph:
         integrity: float = 1.0,
         quality: dict[str, Any] | None = None,
         half_life_days: float | None = None,
+        memory_tier: str = "short_term",
+        lifecycle_stage: str = "hypothesis",
     ) -> str:
         existing = self.db.query_one(
             "SELECT node_id FROM knowledge_nodes WHERE object_type = ? AND object_ref = ?",
@@ -48,13 +53,13 @@ class KnowledgeGraph:
             node_id = existing[0]
             self.db.execute(
                 "UPDATE knowledge_nodes SET label = ?, confidence = ?, integrity = ?, quality = ?, "
-                "half_life_days = ?, updated_at = ? WHERE node_id = ?",
-                [label, confidence, integrity, json.dumps(quality) if quality else None, half_life_days, now, node_id],
+                "half_life_days = ?, updated_at = ?, memory_tier = ?, lifecycle_stage = ? WHERE node_id = ?",
+                [label, confidence, integrity, json.dumps(quality) if quality else None, half_life_days, now, memory_tier, lifecycle_stage, node_id],
             )
             return node_id
         node_id = new_id("knowledge")
         self.db.execute(
-            "INSERT INTO knowledge_nodes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO knowledge_nodes (node_id, object_type, object_ref, label, confidence, integrity, quality, half_life_days, created_at, updated_at, memory_tier, lifecycle_stage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 node_id,
                 object_type,
@@ -66,6 +71,8 @@ class KnowledgeGraph:
                 half_life_days,
                 now,
                 now,
+                memory_tier,
+                lifecycle_stage,
             ],
         )
         return node_id
@@ -82,15 +89,30 @@ class KnowledgeGraph:
             "SELECT edge_id FROM knowledge_edges WHERE source_node = ? AND target_node = ? AND relationship = ?",
             [source_node, target_node, relationship.value],
         )
+        now = timeutil.utcnow()
         if existing:
-            self.db.execute("UPDATE knowledge_edges SET weight = ? WHERE edge_id = ?", [weight, existing[0]])
+            self.db.execute("UPDATE knowledge_edges SET weight = ?, last_seen_at = ? WHERE edge_id = ?", [weight, now, existing[0]])
             return existing[0]
         edge_id = new_id("knowledge")
         self.db.execute(
-            "INSERT INTO knowledge_edges VALUES (?, ?, ?, ?, ?, ?)",
-            [edge_id, source_node, target_node, relationship.value, weight, timeutil.utcnow()],
+            "INSERT INTO knowledge_edges (edge_id, source_node, target_node, relationship, weight, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [edge_id, source_node, target_node, relationship.value, weight, now, now],
         )
         return edge_id
+
+    def compress(self) -> dict[str, int]:
+        """Continuously compresses state, removing inactive relationships that
+        span more than 5 years (spec 7.21)."""
+        edges_removed = self.db.execute(
+            "DELETE FROM knowledge_edges WHERE last_seen_at < now() - INTERVAL 5 YEAR"
+        )
+        nodes_removed = self.db.execute(
+            "DELETE FROM knowledge_nodes WHERE node_id NOT IN (SELECT source_node FROM knowledge_edges) "
+            "AND node_id NOT IN (SELECT target_node FROM knowledge_edges)"
+        )
+        if edges_removed > 0 or nodes_removed > 0:
+            self.log.info("knowledge graph compressed", edges_removed=edges_removed, nodes_removed=nodes_removed)
+        return {"edges_removed": edges_removed, "nodes_removed": nodes_removed}
 
     def neighbors(self, node_id: str, relationship: Relationship | None = None) -> list[dict[str, Any]]:
         sql = "SELECT * FROM knowledge_edges WHERE source_node = ?"

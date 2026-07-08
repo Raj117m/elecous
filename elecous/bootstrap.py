@@ -31,6 +31,7 @@ from elecous.research.engine import ResearchEngine
 from elecous.research.experiments import ExperimentEngine
 from elecous.research.questions import ResearchQuestionStore
 from elecous.research.source_value import SourceValueLedger
+from elecous.scheduler.backlog import BacklogManager
 from elecous.scheduler.scheduler import Scheduler
 from elecous.storage.database import DatabaseManager, global_databases
 from elecous.storage.tiers import TierManager
@@ -94,6 +95,7 @@ def build_stack(config: Config | None = None) -> ElecousStack:
     )
 
     scheduler = Scheduler(config=config, pause_check=resources.should_pause)
+    backlog = BacklogManager(scheduler, environment.world)
     sandbox = ObservationSandbox(observation.registry, config=config)
     connector_evolution = ConnectorEvolutionEngine(observation.registry, sandbox=sandbox, knowledge=knowledge.graph)
     source_discovery = SourceDiscoveryEngine(

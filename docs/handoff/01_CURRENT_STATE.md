@@ -1,7 +1,7 @@
 # 01 — Current State
 
 *Verified via live API (`/api/activity`, `/api/health/system`, `/api/mechanisms`)
-and direct source/DB inspection. Last updated 2026-07-07.*
+and direct source/DB inspection. Last updated 2026-07-06, commit `2f1aed0`.*
 
 ## Measured numbers (real, not estimated)
 
@@ -19,7 +19,7 @@ and direct source/DB inspection. Last updated 2026-07-07.*
   not top-by-confidence).
 - **Storage**: ~5.6 GB. **Sources**: 11 registered, 9 active, 2 suspended
   (`eia_electricity`, `fred_series` — missing API keys).
-- **Tests**: 107/107 non-network tests passing.
+- **Tests**: 106/106 non-network tests passing.
 
 ## Environmental coverage (the core weakness this session addressed)
 
@@ -73,11 +73,10 @@ annually/quarterly, zero real observations in the last 58 days).
    coverage, not a state file.
 9. **Multi-mode signal extraction** (this turn) — see above.
 10. **Dashboard**: rebuilt from a developer admin panel into a live-updating
-    demand intelligence surface — decision-first Today view, unified timeline,
-    global search, product ranking, product intelligence detail pages, honest
-    coverage disclosure, human-language task/signal names, and a scheduler-live
-    dashboard entry point (previously only `elecous run` did — dashboard-only
-    mode always looked idle).
+    Mission Control — decision-first opportunity cards, honest coverage
+    disclosure, human-language task/signal names, cinematic dark UI, the
+    dashboard entry point now starts the scheduler (previously only
+    `elecous run` did — dashboard-only mode always looked idle).
 
 ## Not done / explicitly deferred (see 10_NEXT_STEPS.md and 11_KNOWN_PROBLEMS.md)
 
@@ -88,7 +87,7 @@ annually/quarterly, zero real observations in the last 58 days).
   external data, not a software fix.
 - Product-lifecycle / adaptive-attention architecture — designed, deferred
   with a measured trigger (~10K entities; today's scan is 5.9ms/entity).
-- Deep Bloomberg/Palantir-grade drill-downs (per-prediction evidence panels,
-  replay UI, interactive knowledge graph, adaptive product-lifecycle modeling)
-  — product intelligence now exists as a read-only composition layer, but the
-  deeper scientific/product lifecycle layers remain future work.
+- Full Bloomberg/Palantir-grade dashboard redesign (per-prediction evidence
+  panels, product pages, replay UI, interactive knowledge graph) — real
+  multi-day design work, only partially done (decision-first cards, coverage
+  honesty, human-language layer landed).

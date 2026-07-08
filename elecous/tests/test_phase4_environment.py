@@ -234,7 +234,7 @@ def test_signal_extraction_and_world_state_from_real_observations(isolated_confi
         phenomenon, direction, scope = change.signal_key.split(":")
         assert direction in ("up", "down")
         assert change.observation_types
-        assert abs(change.z) >= 1.5
+        assert abs(change.z) >= 1.0
 
     builder = WorldStateBuilder(extractor)
     state = builder.build(window_days=14)

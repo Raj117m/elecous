@@ -12,18 +12,26 @@ from datetime import datetime
 from typing import Any
 
 from elecous.demand.spikes.detector import SpikeDetector
+from elecous.expansion.entity_registry import EntityRegistry
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.logging import get_logger
 
 
 class ControlSelector:
-    def __init__(self, detector: SpikeDetector, config: Config | None = None):
+    def __init__(self, detector: SpikeDetector, config: Config | None = None, registry: EntityRegistry | None = None):
         self.detector = detector
         self.config = config or active_config()
+        self.registry = registry or EntityRegistry()
         self.log = get_logger("demand")
 
     def entity_catalog(self) -> list[dict[str, Any]]:
-        return self.config.load_file("entities.yaml").get("topics", [])
+        entities = self.registry.list_all()
+        if not entities:
+            topics = self.config.load_file("entities.yaml").get("topics", [])
+            for t in topics:
+                self.registry.register(t)
+            entities = self.registry.list_all()
+        return entities
 
     def select_controls(
         self,
