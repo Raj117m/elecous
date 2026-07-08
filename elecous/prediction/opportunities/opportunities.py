@@ -17,7 +17,7 @@ from elecous.common.vocabulary import OpportunityStage
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
-from elecous.prediction.schema import PREDICTION_MIGRATION
+from elecous.prediction.schema import PREDICTION_MIGRATION, PREDICTION_MIGRATION_0002, PREDICTION_MIGRATION_0003
 from elecous.storage.database import DatabaseManager, global_databases
 
 
@@ -25,6 +25,8 @@ class OpportunityStore:
     def __init__(self, databases: DatabaseManager | None = None, bus: EventBus | None = None, config: Config | None = None):
         self.databases = databases or global_databases()
         self.databases.register_schema(PREDICTION_MIGRATION)
+        self.databases.register_schema(PREDICTION_MIGRATION_0002)
+        self.databases.register_schema(PREDICTION_MIGRATION_0003)
         self.db = self.databases.get("predictions")
         self.bus = bus or global_bus()
         self.config = config or active_config()
@@ -80,9 +82,40 @@ class OpportunityStore:
         ) if activated else 0.0
         stage = self._stage_for(probability, scores.get("overall", 0.0))
         from datetime import timedelta
+        
+        expected_roi = business_value.get("expected_roi", 0.0)
+        risk = business_value.get("risk", 0.0)
+        capital = business_value.get("capital", 0.0)
+        urgency = business_value.get("urgency", 0.0)
+        
+        opportunity_score = (expected_roi * probability) - (risk * capital) + urgency
+        opportunity_score = round(opportunity_score, 2)
+        
+        sigma_p = confidence.get("sigma_p", 0.0)
+        
+        if sigma_p > 0.5:
+            decision = "Review"
+        elif opportunity_score >= 60:
+            decision = "Act"
+        elif opportunity_score >= 30:
+            decision = "Prepare"
+        elif opportunity_score >= 10:
+            decision = "Monitor"
+        else:
+            decision = "Ignore"
+            
+        t_dec = timeutil.utcnow() if decision != "Ignore" else None
 
         self.db.execute(
-            f"INSERT INTO opportunities VALUES ({', '.join('?' * 18)})",
+            """
+            INSERT INTO opportunities (
+                opportunity_id, version, world_state_id, categories, products,
+                activated_mechanisms, environmental_factors, evidence, scores, lead_time,
+                confidence, probability, uncertainty, business_value, regions,
+                stage, created_at, expires_at, opportunity_score, decision,
+                t_dec, contributing_forces, certainty_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
             [
                 opportunity_id,
                 1,
@@ -102,6 +135,11 @@ class OpportunityStore:
                 stage.value,
                 timeutil.utcnow(),
                 timeutil.utcnow() + timedelta(days=expiry_days),
+                opportunity_score,
+                decision,
+                t_dec,
+                json.dumps(scores.get("dpi_forces", {})),
+                scores.get("overall", 0.0),
             ],
         )
         self.bus.emit(
@@ -141,10 +179,19 @@ class OpportunityStore:
             "opportunity_id", "world_state_id", "categories", "products", "activated_mechanisms",
             "environmental_factors", "evidence", "scores", "lead_time", "confidence", "probability",
             "uncertainty", "business_value", "regions", "stage", "created_at", "expires_at",
+            "opportunity_score", "decision", "t_dec", "contributing_forces", "certainty_score"
         ]
         self.db.execute(
-            f"INSERT INTO opportunities VALUES ({', '.join('?' * 18)})",
-            [row["opportunity_id"], version] + [row[c] for c in columns[1:]],
+            """
+            INSERT INTO opportunities (
+                opportunity_id, version, world_state_id, categories, products,
+                activated_mechanisms, environmental_factors, evidence, scores, lead_time,
+                confidence, probability, uncertainty, business_value, regions,
+                stage, created_at, expires_at, opportunity_score, decision,
+                t_dec, contributing_forces, certainty_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [row["opportunity_id"], version] + [row.get(c) for c in columns[1:]],
         )
         self.bus.emit(EventType.OPPORTUNITY_UPDATED, source="prediction", opportunity_id=opportunity_id, stage=stage.value)
 

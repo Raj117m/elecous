@@ -88,3 +88,29 @@ KNOWLEDGE_MIGRATION = Migration(
         """,
     ),
 )
+
+KNOWLEDGE_MIGRATION_0002 = Migration(
+    "knowledge.0002.add_status_to_nodes",
+    "knowledge",
+    (
+        "ALTER TABLE knowledge_nodes ADD COLUMN status VARCHAR DEFAULT 'active'",
+    ),
+)
+
+KNOWLEDGE_MIGRATION_0003 = Migration(
+    "knowledge.0003.add_last_seen_to_edges",
+    "knowledge",
+    (
+        "ALTER TABLE knowledge_edges ADD COLUMN last_seen_at TIMESTAMPTZ",
+        "UPDATE knowledge_edges SET last_seen_at = created_at WHERE last_seen_at IS NULL",
+    ),
+)
+
+KNOWLEDGE_MIGRATION_0004 = Migration(
+    "knowledge.0004.add_memory_and_lifecycle_to_nodes",
+    "knowledge",
+    (
+        "ALTER TABLE knowledge_nodes ADD COLUMN memory_tier VARCHAR DEFAULT 'short_term'",
+        "ALTER TABLE knowledge_nodes ADD COLUMN lifecycle_stage VARCHAR DEFAULT 'hypothesis'",
+    ),
+)

@@ -2,783 +2,644 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ELECOUS - Demand Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELECOUS — Intelligence Operating System</title>
 <style>
   :root {
-    --bg:#060706;
-    --band:#0b0d0d;
-    --surface:#101313;
-    --surface-2:#151818;
-    --line:#242929;
-    --line-soft:#1a1f1f;
-    --text:#f1eee7;
-    --muted:#a8a195;
-    --faint:#6f695f;
-    --gold:#c7a15b;
-    --blue:#79b8d8;
-    --green:#9fca8d;
-    --coral:#d18473;
-    --violet:#b7a6da;
-    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --bg: #030303; 
+    --surface: #0a0a0c; 
+    --card: #111114; 
+    --line: #222228; 
+    --line-soft: #16161a;
+    --text: #ffffff; 
+    --dim: #a1a1aa; 
+    --faint: #52525b;
+    --accent: #d4af37; 
+    --accent-dim: #4a3c11; 
+    --good: #4ade80; 
+    --warn: #fbbf24; 
+    --bad: #f87171;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+    --sans: "SF Pro Text", "Inter", -apple-system, sans-serif;
   }
-  * { box-sizing:border-box; }
-  body {
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,Helvetica,Arial,sans-serif;
-    letter-spacing:0;
+  * { box-sizing: border-box; margin: 0; }
+  body { 
+    background: var(--bg); 
+    color: var(--text); 
+    font: 14px/1.6 var(--sans); 
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
   }
-  button, input, select { font:inherit; }
-  button { cursor:pointer; }
-  ::selection { background:#594927; color:#fff; }
-  .topbar {
-    position:sticky;
-    top:0;
-    z-index:20;
-    background:rgba(6,7,6,.94);
-    backdrop-filter:blur(18px);
-    border-bottom:1px solid var(--line-soft);
+  ::selection { background: var(--accent-dim); }
+  
+  /* Layout */
+  #sidebar {
+    width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
   }
-  header {
-    max-width:1580px;
-    margin:0 auto;
-    padding:16px 24px 10px;
-    display:grid;
-    grid-template-columns:auto minmax(260px,1fr) auto;
-    gap:18px;
-    align-items:center;
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow-y: auto;
+    position: relative;
   }
-  .brand { display:flex; flex-direction:column; gap:1px; min-width:210px; }
-  .brand h1 { margin:0; font-size:16px; letter-spacing:3px; font-weight:700; }
-  .brand h1 span { color:var(--gold); }
-  .brand p { margin:0; color:var(--faint); font-size:12px; }
-  .searchbar {
-    height:42px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    background:var(--surface);
-    border:1px solid var(--line);
-    border-radius:8px;
-    padding:0 8px 0 12px;
-    min-width:0;
+  
+  /* Sidebar */
+  .brand {
+    padding: 0 24px;
+    margin-bottom: 40px;
   }
-  .searchbar input {
-    width:100%;
-    min-width:0;
-    color:var(--text);
-    background:transparent;
-    border:0;
-    outline:0;
+  .brand h1 {
+    font-size: 14px;
+    letter-spacing: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
   }
-  .searchbar select {
-    color:var(--muted);
-    background:var(--band);
-    border:1px solid var(--line-soft);
-    border-radius:6px;
-    padding:4px 7px;
-    font-size:12px;
+  .brand h1 span { color: var(--accent); }
+  .nav-group {
+    margin-bottom: 24px;
   }
-  .searchbar button, .compact-btn {
-    color:var(--text);
-    background:var(--surface-2);
-    border:1px solid var(--line);
-    border-radius:6px;
-    padding:5px 10px;
-    font-size:12px;
+  .nav-label {
+    padding: 0 24px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--faint);
+    margin-bottom: 8px;
+    font-weight: 600;
   }
-  .clock { color:var(--faint); font-family:var(--mono); font-size:12px; white-space:nowrap; }
-  nav {
-    max-width:1580px;
-    margin:0 auto;
-    padding:0 24px;
-    display:flex;
-    gap:4px;
-    overflow-x:auto;
+  .nav-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: var(--dim);
+    padding: 10px 24px;
+    cursor: pointer;
+    font-size: 13.5px;
+    transition: all 0.2s;
   }
-  nav button {
-    color:var(--muted);
-    background:transparent;
-    border:0;
-    border-bottom:2px solid transparent;
-    padding:10px 12px 12px;
-    white-space:nowrap;
-    font-size:12.5px;
+  .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-btn.active { color: var(--text); background: rgba(255,255,255,0.05); border-left: 2px solid var(--accent); }
+  
+  .dev-toggle {
+    margin-top: auto;
+    padding: 20px 24px;
+    border-top: 1px solid var(--line-soft);
   }
-  nav button:hover { color:var(--text); }
-  nav button.active { color:var(--text); border-bottom-color:var(--gold); }
-  main {
-    max-width:1580px;
-    margin:0 auto;
-    padding:22px 24px 60px;
+  .dev-toggle label {
+    font-size: 12px;
+    color: var(--dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .screen-title {
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-    gap:16px;
-    margin:4px 0 18px;
+
+  /* Main View */
+  .header-bar {
+    padding: 30px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--line-soft);
+    position: sticky;
+    top: 0;
+    background: rgba(3,3,3,0.9);
+    backdrop-filter: blur(8px);
+    z-index: 10;
   }
-  .screen-title h2 {
-    margin:0;
-    font-size:24px;
-    line-height:1.15;
-    font-weight:650;
+  .header-bar h2 { font-size: 20px; font-weight: 400; letter-spacing: -0.5px; }
+  .growth-ticker { font-family: var(--mono); font-size: 12px; color: var(--good); }
+  
+  .content { padding: 40px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+  /* Utilities */
+  .muted { color: var(--faint); }
+  .mono { font-family: var(--mono); }
+  .badge { 
+    display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; 
+    letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--mono);
+    background: var(--line); color: var(--dim);
   }
-  .screen-title p { margin:4px 0 0; color:var(--muted); max-width:820px; }
-  .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:12px; align-items:start; }
-  .span-3 { grid-column:span 3; }
-  .span-4 { grid-column:span 4; }
-  .span-5 { grid-column:span 5; }
-  .span-6 { grid-column:span 6; }
-  .span-7 { grid-column:span 7; }
-  .span-8 { grid-column:span 8; }
-  .span-12 { grid-column:1/-1; }
-  .panel {
-    background:var(--surface);
-    border:1px solid var(--line-soft);
-    border-radius:8px;
-    padding:15px;
-    min-width:0;
+  .badge.good { background: rgba(74,222,128,0.1); color: var(--good); }
+  .badge.warn { background: rgba(251,191,36,0.1); color: var(--warn); }
+  .badge.bad { background: rgba(248,113,113,0.1); color: var(--bad); }
+  .badge.accent { background: rgba(212,175,55,0.1); color: var(--accent); }
+
+  /* Timeline View */
+  .timeline { border-left: 1px solid var(--line); margin-left: 20px; padding: 20px 0; }
+  .tl-node { position: relative; padding-left: 30px; margin-bottom: 30px; }
+  .tl-node::before {
+    content: ''; position: absolute; left: -5px; top: 6px; width: 9px; height: 9px;
+    border-radius: 50%; background: var(--line); border: 2px solid var(--bg);
   }
-  .panel h3 {
-    margin:0 0 12px;
-    color:var(--muted);
-    font-size:11px;
-    font-weight:700;
-    letter-spacing:1.3px;
-    text-transform:uppercase;
+  .tl-node.future::before { background: var(--accent); box-shadow: 0 0 10px rgba(212,175,55,0.4); }
+  .tl-node.present::before { background: var(--text); }
+  .tl-node.past::before { background: var(--faint); }
+  .tl-node.past-good::before { background: var(--good); }
+  .tl-node.past-bad::before { background: var(--bad); }
+
+  .tl-time { font-family: var(--mono); font-size: 11px; color: var(--faint); margin-bottom: 4px; display:block; }
+  .tl-card { 
+    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 8px; 
+    padding: 16px 20px; cursor: pointer; transition: border-color 0.2s;
   }
-  .metric {
-    background:var(--surface);
-    border:1px solid var(--line-soft);
-    border-radius:8px;
-    padding:13px 14px;
-    min-width:0;
+  .tl-card:hover { border-color: var(--line); }
+  .tl-card h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .tl-card p { color: var(--dim); font-size: 13px; line-height: 1.5; }
+
+  /* Intelligence Report (Product Briefing) */
+  .briefing-header { margin-bottom: 30px; }
+  .briefing-header h2 { font-size: 28px; font-weight: 500; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .briefing-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+  .b-panel { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 8px; padding: 24px; }
+  .b-panel h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin-bottom: 16px; font-weight: 600;}
+  
+  .evidence-list { list-style: none; padding: 0; }
+  .evidence-list li { margin-bottom: 10px; font-size: 13px; display: flex; gap: 10px; align-items: baseline; }
+  .evidence-list.support li::before { content: '✓'; color: var(--good); font-family: var(--mono); }
+  .evidence-list.against li::before { content: '✗'; color: var(--bad); font-family: var(--mono); }
+  .evidence-list.unknown li::before { content: '?'; color: var(--faint); font-family: var(--mono); }
+
+  .domain-tag { 
+    display: inline-block; padding: 2px 8px; border: 1px solid var(--line); border-radius: 12px; 
+    font-size: 11px; color: var(--dim); margin-right: 6px; margin-bottom: 6px;
   }
-  .metric .value {
-    font:650 25px/1.1 var(--mono);
-    color:var(--text);
-    overflow-wrap:anywhere;
-  }
-  .metric .label {
-    margin-top:4px;
-    color:var(--faint);
-    font-size:10.5px;
-    letter-spacing:1px;
-    text-transform:uppercase;
-  }
-  .row {
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    gap:12px;
-    align-items:start;
-    padding:9px 0;
-    border-top:1px solid var(--line-soft);
-  }
-  .row:first-child { border-top:0; padding-top:0; }
-  .row .key { color:var(--text); min-width:0; overflow-wrap:anywhere; }
-  .row .sub { color:var(--faint); font-size:12px; margin-top:2px; }
-  .row .val { color:var(--muted); font-family:var(--mono); font-size:12px; text-align:right; white-space:nowrap; }
-  .pill {
-    display:inline-flex;
-    align-items:center;
-    min-height:20px;
-    padding:2px 7px;
-    border-radius:999px;
-    background:#1b1f1f;
-    border:1px solid var(--line);
-    color:var(--muted);
-    font:11px/1 var(--mono);
-    white-space:nowrap;
-  }
-  .pill.good { color:var(--green); border-color:#314630; background:#121c13; }
-  .pill.warn { color:var(--gold); border-color:#4a3b1d; background:#1c1710; }
-  .pill.bad { color:var(--coral); border-color:#513027; background:#201310; }
-  .pill.info { color:var(--blue); border-color:#254253; background:#101b22; }
-  .bar {
-    height:5px;
-    width:100%;
-    background:#202525;
-    border-radius:999px;
-    overflow:hidden;
-  }
-  .bar i {
-    display:block;
-    height:100%;
-    width:0;
-    background:linear-gradient(90deg,var(--blue),var(--green),var(--gold));
-    border-radius:999px;
-  }
-  .feed-item {
-    padding:11px 0;
-    border-top:1px solid var(--line-soft);
-    min-width:0;
-  }
-  .feed-item:first-child { border-top:0; padding-top:0; }
-  .feed-head {
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:12px;
-  }
-  .feed-title {
-    font-weight:650;
-    min-width:0;
-    overflow-wrap:anywhere;
-  }
-  .feed-meta {
-    color:var(--faint);
-    font:12px/1.45 var(--mono);
-    margin-top:3px;
-  }
-  .filters {
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    margin-bottom:12px;
-  }
-  .filters button, .filters select {
-    color:var(--muted);
-    background:var(--surface);
-    border:1px solid var(--line);
-    border-radius:6px;
-    padding:5px 10px;
-    font-size:12px;
-  }
-  .filters button.active {
-    color:var(--text);
-    border-color:var(--gold);
-    background:#18150f;
-  }
-  .leaderboard {
-    display:grid;
-    grid-template-columns:54px minmax(160px,1.2fr) minmax(120px,.8fr) 1fr 96px 92px;
-    gap:10px;
-    align-items:center;
-    padding:10px 0;
-    border-top:1px solid var(--line-soft);
-  }
-  .leaderboard:first-child { border-top:0; }
-  .rank { color:var(--gold); font-family:var(--mono); font-weight:650; }
-  .product-name button {
-    color:var(--text);
-    background:transparent;
-    border:0;
-    padding:0;
-    text-align:left;
-    font-weight:650;
-  }
-  .product-name button:hover { color:var(--gold); }
-  .muted { color:var(--faint); }
-  .small { font-size:12px; }
-  .timeline {
-    position:relative;
-    padding-left:22px;
-    max-height:calc(100vh - 210px);
-    overflow:auto;
-  }
-  .timeline:before {
-    content:"";
-    position:absolute;
-    left:6px;
-    top:0;
-    bottom:0;
-    width:1px;
-    background:var(--line);
-  }
-  .time-event {
-    position:relative;
-    padding:0 0 18px;
-  }
-  .time-event:before {
-    content:"";
-    position:absolute;
-    left:-21px;
-    top:4px;
-    width:11px;
-    height:11px;
-    border-radius:50%;
-    background:var(--gold);
-    box-shadow:0 0 0 4px var(--bg);
-  }
-  .time-event.present:before { background:var(--blue); }
-  .time-event.future:before { background:var(--green); }
-  .time-event.past:before { background:var(--gold); }
-  .detail-drawer {
-    background:var(--band);
-    border:1px solid var(--line);
-    border-radius:8px;
-    padding:15px;
-  }
-  .detail-drawer h3 {
-    color:var(--text);
-    text-transform:none;
-    letter-spacing:0;
-    font-size:18px;
-    margin-bottom:3px;
-  }
-  .empty { color:var(--faint); padding:10px 0; }
-  .fade { animation:fade .25s ease; }
-  @keyframes fade { from { opacity:.45 } to { opacity:1 } }
-  @media (max-width:1000px) {
-    header { grid-template-columns:1fr; gap:10px; }
-    .clock { display:none; }
-    .span-3,.span-4,.span-5,.span-6,.span-7,.span-8 { grid-column:1/-1; }
-    .leaderboard { grid-template-columns:42px minmax(0,1fr) 88px; }
-    .leaderboard .hide-mobile { display:none; }
-  }
+
+  /* Domains Coverage */
+  .domain-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px;}
+  .domain-bar .track { flex: 1; height: 4px; background: var(--line); border-radius: 4px; margin: 0 16px; overflow: hidden; }
+  .domain-bar .track i { display: block; height: 100%; background: var(--text); }
+  
+  /* Graph */
+  #d3graph { width: 100%; height: 600px; background: var(--surface); border-radius: 8px; border: 1px solid var(--line-soft); }
+
+  /* Legacy dev view tables */
+  .dev-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .dev-table th, .dev-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--line-soft); }
+  .dev-table th { color: var(--faint); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; font-size: 10px; }
+
 </style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-<div class="topbar">
-  <header>
-    <div class="brand">
-      <h1>ELEC<span>OUS</span></h1>
-      <p>Demand Intelligence Operating System</p>
-    </div>
-    <div class="searchbar">
-      <input id="globalSearch" autocomplete="off" placeholder="Search products, categories, regions, forces, evidence">
-      <select id="globalKind" aria-label="Search kind">
-        <option value="">All</option>
-        <option value="product">Products</option>
-        <option value="opportunity">Opportunities</option>
-        <option value="mechanism">Relationships</option>
-        <option value="factor">Factors</option>
-        <option value="episode">Historical spikes</option>
-      </select>
-      <button id="globalSearchButton">Search</button>
-    </div>
-    <div id="clock" class="clock"></div>
-  </header>
-  <nav id="nav"></nav>
+
+<div id="sidebar">
+  <div class="brand">
+    <h1>ELEC<span>OUS</span></h1>
+    <div class="muted mono" style="font-size:10px;margin-top:4px">Demand Intelligence OS</div>
+  </div>
+  
+  <div class="nav-group">
+    <div class="nav-label">Intelligence</div>
+    <button class="nav-btn active" data-view="timeline" onclick="nav('timeline')">Timeline</button>
+    <button class="nav-btn" data-view="world" onclick="nav('world')">World Model</button>
+    <button class="nav-btn" data-view="domains" onclick="nav('domains')">Domains & Coverage</button>
+  </div>
+
+  <div class="nav-group" id="dev-nav" style="display:none">
+    <div class="nav-label">Developer</div>
+    <button class="nav-btn" data-view="legacy_mechanisms" onclick="nav('legacy_mechanisms')">Mechanisms</button>
+    <button class="nav-btn" data-view="legacy_factors" onclick="nav('legacy_factors')">Factors</button>
+    <button class="nav-btn" data-view="legacy_scheduler" onclick="nav('legacy_scheduler')">Scheduler & Health</button>
+  </div>
+
+  <div class="dev-toggle">
+    <label><input type="checkbox" id="dev-mode-cb" onchange="toggleDevMode(this.checked)"> Enable Developer Mode</label>
+  </div>
 </div>
-<main id="app"></main>
+
+<div id="main">
+  <div class="header-bar">
+    <h2 id="view-title">Timeline</h2>
+    <div class="growth-ticker" id="ticker">Synchronizing...</div>
+  </div>
+  <div class="content" id="app"></div>
+</div>
+
 <script>
-const API="/api";
-const VIEWS=[
-  ["overview","Today"],
-  ["timeline","Timeline"],
-  ["products","Products"],
-  ["search","Search"],
-  ["opportunities","Opportunities"],
-  ["predictions","Predictions"],
-  ["validation","Validation"],
-  ["environment","Environment"],
-  ["knowledge","Knowledge"],
-  ["operations","Operations"]
-];
-let current="overview";
-let productSort="future_demand";
-let selectedProduct=null;
-let timelinePhase="all";
-let searchKind="";
-let searchQuery="";
+const API = "/api";
+let currentView = "timeline";
+let isDevMode = false;
+let globalData = {}; // Cache for drilldowns
 
-const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
-async function j(path){
-  const response=await fetch(API+path);
-  if(!response.ok) throw new Error(path+": "+response.status);
-  return response.json();
-}
-const params=obj=>{
-  const p=new URLSearchParams();
-  Object.entries(obj).forEach(([k,v])=>{ if(v!==undefined&&v!==null&&v!=="") p.set(k,v); });
-  const s=p.toString();
-  return s?"?"+s:"";
-};
-const pct=value=>value==null?"-":Math.round(Number(value)*100)+"%";
-const num=value=>Number(value||0).toLocaleString();
-const dateOnly=value=>value?String(value).slice(0,10):"-";
-const pill=(text,cls="")=>`<span class="pill ${cls}">${esc(text)}</span>`;
-const bar=value=>`<div class="bar"><i style="width:${Math.max(0,Math.min(100,Number(value||0)*100))}%"></i></div>`;
-const metric=(value,label)=>`<div class="metric"><div class="value">${esc(value)}</div><div class="label">${esc(label)}</div></div>`;
-const panel=(title,body,span="span-4")=>`<section class="panel ${span}"><h3>${esc(title)}</h3>${body||'<div class="empty">Nothing to show yet.</div>'}</section>`;
-const row=(key,val,sub="")=>`<div class="row"><div><div class="key">${key}</div>${sub?`<div class="sub">${sub}</div>`:""}</div><div class="val">${val}</div></div>`;
-const stageClass=stage=>stage==="peak_opportunity"||stage==="strengthening"?"good":stage==="emerging"||stage==="forming"||stage==="early_formation"?"warn":stage==="declining"?"bad":"info";
-const statusClass=status=>["correct","passed","validated","trusted"].includes(status)?"good":["incorrect","failed","retired"].includes(status)?"bad":["pending","partially_correct","candidate"].includes(status)?"warn":"info";
-const signalName=signal=>{
-  const raw=typeof signal==="string"?signal:(signal?.signal_key||signal?.title||"");
-  const parts=String(raw).split(":");
-  if(parts.length>=2) return `${parts[0].replaceAll("_"," ")} ${parts[1]==="up"?"rising":parts[1]==="down"?"falling":parts[1]}${parts[2]?` in ${parts[2]}`:""}`;
-  return raw.replaceAll("_"," ");
-};
-const taskWords={
-  observe:"Collecting evidence",
-  demand:"Scanning demand",
-  environment:"Studying external forces",
-  mechanisms:"Testing relationships",
-  validation:"Validating predictions",
-  prediction:"Forecasting demand",
-  knowledge:"Updating memory",
-  research:"Planning evidence",
-  curiosity:"Investigating unknowns",
-  expansion:"Finding sources"
-};
-const humanTask=task=>{
-  const [prefix,...rest]=String(task).split(":");
-  return `${taskWords[prefix]||"Working"}${rest.length?": "+rest.join(" ").replaceAll("_"," "):""}`;
-};
-
-function titleBlock(title,subtitle,right=""){
-  return `<div class="screen-title"><div><h2>${esc(title)}</h2>${subtitle?`<p>${esc(subtitle)}</p>`:""}</div>${right}</div>`;
+async function fetchAPI(path) {
+  const r = await fetch(API + path);
+  if(!r.ok) throw new Error(\`API Error: \${path}\`);
+  return r.json();
 }
 
-function actionFor(product){
-  const pressure=Number(product.expected_demand_pressure||0);
-  const confidence=Number(product.confidence||0);
-  if(pressure>=0.7 && confidence>=0.7) return ["Act today","good"];
-  if(pressure>=0.45 && confidence>=0.55) return ["Watch closely","warn"];
-  if(product.future_opportunity_count>0) return ["Gather evidence","info"];
-  return ["No action",""];
+function toggleDevMode(on) {
+  isDevMode = on;
+  document.getElementById('dev-nav').style.display = on ? 'block' : 'none';
+  if (!on && currentView.startsWith("legacy_")) nav("timeline");
 }
 
-async function renderOverview(){
-  const [products,timeline,activity,accuracy,benchmark]=await Promise.all([
-    j("/products?sort=future_demand"),
-    j("/timeline"),
-    j("/activity"),
-    j("/predictions/accuracy"),
-    j("/validations/benchmark")
-  ]);
-  const topProducts=products.products.slice(0,6);
-  const worldChanges=(timeline.events||[]).filter(e=>e.kind==="world_change").slice(0,7);
-  const future=(timeline.events||[]).filter(e=>e.phase==="future").slice(0,7);
-  const benchmarkMetrics=benchmark.latest?.metrics;
-  const pulse=(activity.running_now||[]).length
-    ? (activity.running_now||[]).map(humanTask).join(", ")
-    : (activity.next_work||[]).map(n=>`${humanTask(n.task)} at ${String(n.at).slice(11,16)}`).join(" | ") || "No scheduled work reported";
-  const metrics=[
-    metric(products.products.filter(p=>p.future_opportunity_count>0).length,"live product opportunities"),
-    metric(products.products.filter(p=>p.status==="evidence_building").length,"products with historical evidence"),
-    metric(accuracy.judged,"predictions judged"),
-    metric(benchmarkMetrics?.verdict==="outperforms_baseline"?"above":"pending","baseline comparison")
-  ].join("");
-  const productRows=topProducts.map(product=>{
-    const [act,cls]=actionFor(product);
-    return `<div class="feed-item">
-      <div class="feed-head">
-        <div>
-          <div class="feed-title">${esc(product.product)}</div>
-          <div class="feed-meta">${esc(product.category.replaceAll("_"," "))} | pressure ${pct(product.expected_demand_pressure)} | confidence ${pct(product.confidence)}</div>
+function nav(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  
+  const titles = {
+    timeline: "Intelligence Timeline", world: "World Model", domains: "Environmental Domains",
+    legacy_mechanisms: "[DEV] Mechanism Store", legacy_factors: "[DEV] Factor Store", legacy_scheduler: "[DEV] Operations"
+  };
+  document.getElementById('view-title').textContent = titles[view] || "Briefing";
+  
+  renderView();
+}
+
+// Formatters
+const prettySig = s => { const [p,d,loc]=s.split(':'); return \`\${p.replace(/_/g,' ')} \${d==='up'?'rising':'falling'}\${loc?' in '+loc:''}\`; };
+const formatP = pct => (pct*100).toFixed(0)+'%';
+
+// ---- Renderers ---- //
+
+async function renderTimeline() {
+  const [opps, acc, eps] = await Promise.all([fetchAPI("/opportunities"), fetchAPI("/predictions/accuracy"), fetchAPI("/episodes")]);
+  globalData.opportunities = opps.opportunities;
+  globalData.predictions = acc.recent;
+  
+  let html = \`<div class="timeline">\`;
+  
+  // Future (Opportunities)
+  html += \`<h3 style="font-family:var(--mono); color:var(--accent); font-size:12px; margin-bottom:20px; letter-spacing:1px">EXPECTED DEMAND SHIFTS</h3>\`;
+  const activeOpps = opps.opportunities.filter(o => o.confidence > 0.4).sort((a,b)=>b.confidence - a.confidence);
+  if (activeOpps.length === 0) html += \`<div class="muted" style="margin-bottom:30px; margin-left:30px">No active predictions with high confidence.</div>\`;
+  activeOpps.forEach(o => {
+    html += \`
+      <div class="tl-node future">
+        <span class="tl-time">Expected: \${o.lead_time?.most_probable||"?"} days</span>
+        <div class="tl-card" onclick="renderBriefing('opp', '\${o.opportunity_id}')">
+          <div style="display:flex;justify-content:space-between">
+            <h3>\${(o.categories||[]).join(", ")}</h3>
+            <span class="badge accent">\${formatP(o.confidence)} Confidence</span>
+          </div>
+          <p>Driven by: \${o.domains?.join(", ") || "Unknown conditions"}</p>
         </div>
-        ${pill(act,cls)}
+      </div>\`;
+  });
+
+  // Present (Live state summary)
+  html += \`<h3 style="font-family:var(--mono); color:var(--text); font-size:12px; margin:40px 0 20px; letter-spacing:1px">LIVE EXTERNAL FORCES</h3>\`;
+  const state = await fetchAPI("/home"); // /world-state doesn't exist anymore, /home has world_state
+  const sigs = (state.world_state?.signals||[]).slice(0,5).map(s=>prettySig(s.signal_key)).join(", ");
+  html += \`
+    <div class="tl-node present">
+      <span class="tl-time">Now</span>
+      <div class="tl-card">
+        <h3>Current Environment</h3>
+        <p>Active shifts: \${sigs || "Quiet"}</p>
       </div>
-      <div style="margin-top:8px">${bar(product.expected_demand_pressure)}</div>
-      <div class="feed-meta">${product.strongest_force?`Why: ${esc(signalName(product.strongest_force))}`:"Why: no active force has earned enough evidence yet"}</div>
-    </div>`;
-  }).join("");
-  const worldRows=worldChanges.map(event=>row(
-    esc(signalName(event.signal_key||event.title)),
-    esc(event.magnitude==null?"live":String(event.magnitude)),
-    `${esc(event.scope||"global")} | ${dateOnly(event.at)}`
-  )).join("");
-  const futureRows=future.map(event=>row(
-    esc(event.title||"Future demand event"),
-    event.confidence!=null?pct(event.confidence):pill(event.kind,"info"),
-    `${dateOnly(event.at)} | ${esc((event.products||[]).slice(0,3).join(", "))}`
-  )).join("");
-  const scorecard=benchmarkMetrics?.elecous
-    ? row("ELECOUS F1 / precision / recall",
-        `${benchmarkMetrics.elecous.f1?.toFixed(3)} / ${benchmarkMetrics.elecous.precision?.toFixed(3)} / ${benchmarkMetrics.elecous.recall?.toFixed(3)}`)
-      +row("Baseline F1 / precision / recall",
-        `${benchmarkMetrics.baseline.f1?.toFixed(3)} / ${benchmarkMetrics.baseline.precision?.toFixed(3)} / ${benchmarkMetrics.baseline.recall?.toFixed(3)}`)
-      +row("Verdict",pill(benchmarkMetrics.verdict.replaceAll("_"," "),benchmarkMetrics.verdict==="outperforms_baseline"?"good":"warn"))
-    : row("Benchmark","No completed benchmark yet");
-  return titleBlock("What should I pay attention to today?","Current world changes, demand pressure and evidence-backed product movement.")
-    +`<div class="grid">${metrics}</div>`
-    +`<div class="panel span-12" style="margin-top:12px;border-color:#3a3020"><div class="feed-head"><div><div class="feed-title">Live work</div><div class="feed-meta">${esc(pulse)}</div></div><div class="feed-meta">${num(activity.observations.total)} observations | ${num(activity.episodes.total)} episodes | ${num(activity.predictions.total)} predictions</div></div></div>`
-    +`<div class="grid" style="margin-top:12px">`
-    +panel("Products becoming interesting",productRows,"span-5")
-    +panel("What changed in the world",worldRows,"span-4")
-    +panel("Next demand windows",futureRows,"span-3")
-    +panel("Why ELECOUS is confident",scorecard,"span-6")
-    +panel("Honest coverage",row("Strongest current coverage","weather and public attention")+row("Known blind spots","social, search, retail, pricing, logistics"),"span-6")
-    +`</div>`;
+    </div>\`;
+
+  // Past (Validated Predictions)
+  html += \`<h3 style="font-family:var(--mono); color:var(--faint); font-size:12px; margin:40px 0 20px; letter-spacing:1px">VALIDATED INTELLIGENCE</h3>\`;
+  const past = (acc.recent||[]).slice(0, 10);
+  past.forEach(p => {
+    const isGood = p.validation_status === 'correct';
+    html += \`
+      <div class="tl-node \${isGood?'past-good':'past-bad'}">
+        <span class="tl-time">\${p.created_at?.slice(0,10) || "Past"}</span>
+        <div class="tl-card" onclick="renderBriefing('pred', '\${p.prediction_id}')">
+          <div style="display:flex;justify-content:space-between">
+            <h3>Prediction: \${(p.outcome?.categories||[]).join(", ")||"Demand Shift"}</h3>
+            <span class="badge \${isGood?'good':p.validation_status==='incorrect'?'bad':'warn'}">\${p.validation_status}</span>
+          </div>
+          <p>Confidence was \${formatP(p.confidence)}</p>
+        </div>
+      </div>\`;
+  });
+
+  html += \`</div>\`;
+  document.getElementById('app').innerHTML = html;
 }
 
-async function renderTimeline(){
-  const data=await j("/timeline");
-  const events=(data.events||[]).filter(e=>timelinePhase==="all"||e.phase===timelinePhase);
-  const filters=["all","past","present","future"].map(phase=>`<button class="${timelinePhase===phase?"active":""}" onclick="timelinePhase='${phase}';render('timeline')">${phase}</button>`).join("");
-  const eventRows=events.map(event=>`<div class="time-event ${esc(event.phase)}">
-    <div class="feed-head">
-      <div>
-        <div class="feed-title">${esc(event.title||event.kind)}</div>
-        <div class="feed-meta">${esc(event.kind.replaceAll("_"," "))} | ${dateOnly(event.at)}${event.at?` | ${esc(String(event.at).slice(11,19))}`:""}</div>
-      </div>
-      ${pill(event.phase,event.phase==="future"?"good":event.phase==="present"?"info":"warn")}
+async function renderBriefing(type, id) {
+  document.getElementById('view-title').textContent = "Intelligence Report";
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  
+  let data, title, isPred;
+  if (type === 'pred') {
+    const audit = await fetchAPI(\`/audit/\${id}\`);
+    data = audit.prediction;
+    title = \`Prediction \${id.slice(0,8)}\`;
+    isPred = true;
+  } else {
+    data = await fetchAPI(\`/opportunities/\${id}\`);
+    title = (data.categories||[]).join(", ") + " Demand Shift";
+    isPred = false;
+  }
+
+  const ev = data.structured_evidence || {supporting:[], against:[], unknowns:[], trend:"stable"};
+  const domains = data.domains || [];
+
+  let html = \`
+    <button onclick="nav('timeline')" style="background:none;border:none;color:var(--dim);cursor:pointer;margin-bottom:20px;font-family:var(--mono);font-size:12px">← Back to Timeline</button>
+    <div class="briefing-header">
+      <h2>\${title}</h2>
+      <div class="muted">Confidence: <b style="color:var(--text)">\${formatP(data.confidence||0)}</b> &nbsp;·&nbsp; Trend: <span class="\${ev.trend==='rising'?'good':'muted'}">\${ev.trend}</span></div>
+      <div style="margin-top:12px">\${domains.map(d=>\`<span class="domain-tag">\${d}</span>\`).join("")}</div>
     </div>
-    <div class="feed-meta">${event.products?.length?`Products: ${esc(event.products.slice(0,5).join(", "))}`:""}${event.confidence!=null?` | confidence ${pct(event.confidence)}`:""}${event.probability!=null?` | probability ${pct(event.probability)}`:""}</div>
-  </div>`).join("");
-  const buckets={past:0,present:0,future:0};
-  (data.events||[]).forEach(e=>{ if(buckets[e.phase]!=null) buckets[e.phase]+=1; });
-  return titleBlock("The demand timeline","Past spikes, present world changes and future demand windows share one continuous memory.")
-    +`<div class="grid">${metric(buckets.past,"historical events")}${metric(buckets.present,"live world changes")}${metric(buckets.future,"future windows")}${metric(events.length,"visible events")}</div>`
-    +`<div class="filters" style="margin-top:14px">${filters}</div>`
-    +`<section class="panel span-12"><div class="timeline">${eventRows||'<div class="empty">No timeline events in this filter.</div>'}</div></section>`;
-}
-
-async function loadProductDetail(productId){
-  selectedProduct=productId;
-  render("products",true);
-}
-
-async function renderProducts(){
-  const data=await j("/products"+params({sort:productSort}));
-  if(!selectedProduct && data.products.length) selectedProduct=data.products[0].product_id;
-  const sortOptions=[
-    ["future_demand","Highest future demand"],
-    ["environmental_pressure","Strongest pressure"],
-    ["largest_spike","Largest spike"],
-    ["most_validated","Most validated"],
-    ["highest_risk","Highest risk"],
-    ["lowest_confidence","Lowest confidence"],
-    ["newest_opportunity","Newest opportunity"],
-    ["most_evidence","Most evidence"]
-  ].map(([value,label])=>`<option value="${value}" ${productSort===value?"selected":""}>${label}</option>`).join("");
-  const rows=data.products.map(product=>`<div class="leaderboard">
-    <div class="rank">#${product.rank}</div>
-    <div class="product-name"><button onclick="loadProductDetail('${esc(product.product_id)}')">${esc(product.product)}</button><div class="feed-meta">${esc(product.category.replaceAll("_"," "))}</div></div>
-    <div class="hide-mobile">${pill(product.status.replaceAll("_"," "),statusClass(product.status))}</div>
-    <div class="hide-mobile">${bar(product.expected_demand_pressure)}<div class="feed-meta">${product.strongest_force?esc(signalName(product.strongest_force)):"no active force"}</div></div>
-    <div class="val hide-mobile">${pct(product.confidence)}</div>
-    <div class="val">${product.decision_score}</div>
-  </div>`).join("");
-  let detail="";
-  if(selectedProduct){
-    try{
-      const product=await j("/products/"+encodeURIComponent(selectedProduct));
-      const opportunities=(product.opportunities||[]).slice(0,5).map(o=>row(
-        `${esc((o.categories||[]).join(", ")||"Demand opportunity")} ${pill(o.stage||"active",stageClass(o.stage))}`,
-        pct(o.probability),
-        `${dateOnly(o.created_at)} | lead ${esc(o.lead_time?.most_probable??"-")}d`
-      )).join("");
-      const spikes=(product.historical_spikes||[]).map(s=>row(
-        `Spike on ${dateOnly(s.spike_start)}`,
-        String(s.demand_score),
-        `confidence ${pct(s.confidence)} | ${esc(s.validation_status||"pending")}`
-      )).join("");
-      const rels=(product.relationships||[]).slice(0,6).map(r=>row(
-        esc(r.name),
-        pct(r.confidence),
-        `${esc(r.lifecycle)} | ${(r.supporting_signals||[]).slice(0,2).map(signalName).join(", ")}`
-      )).join("");
-      const predictions=(product.recent_predictions||[]).map(p=>row(
-        esc(p.prediction_id),
-        pill(p.validation_status,statusClass(p.validation_status)),
-        `confidence ${pct(p.confidence)} | ${dateOnly(p.created_at)}`
-      )).join("");
-      detail=`<aside class="detail-drawer span-4">
-        <h3>${esc(product.product)}</h3>
-        <div class="feed-meta">${esc(product.category.replaceAll("_"," "))} | rank #${product.rank} | ${esc(product.status.replaceAll("_"," "))}</div>
-        <div class="grid" style="grid-template-columns:repeat(2,1fr);margin:12px 0">
-          ${metric(pct(product.expected_demand_pressure),"demand pressure")}
-          ${metric(pct(product.confidence),"confidence")}
-          ${metric(product.historical_spike_count,"historical spikes")}
-          ${metric(product.validated_relationships,"validated relationships")}
+    
+    <div class="briefing-grid">
+      <!-- Left Column: Reasoning -->
+      <div>
+        <div class="b-panel" style="margin-bottom:20px">
+          <h3>Why does ELECOUS believe this?</h3>
+          <p style="color:var(--dim); font-size:14px; margin-bottom:20px; line-height:1.6">
+            ELECOUS has detected a confluence of external forces in \${domains.join(" and ") || "the environment"}. 
+            Historically, when these specific conditions align, demand for \${(data.categories||[]).join(", ")} spikes.
+          </p>
+          
+          <h4 style="font-size:12px; margin-bottom:10px; color:var(--text)">Supporting Evidence</h4>
+          <ul class="evidence-list support">
+            \${ev.supporting.map(s => \`<li>\${prettySig(s)}</li>\`).join("") || \`<li class="muted">No direct signals</li>\`}
+          </ul>
+          
+          <h4 style="font-size:12px; margin:20px 0 10px; color:var(--text)">Contradictory Evidence</h4>
+          <ul class="evidence-list against">
+            \${ev.against.map(s => \`<li>\${prettySig(s)}</li>\`).join("") || \`<li class="muted">No known contradictions</li>\`}
+          </ul>
         </div>
-        ${panel("Current forces",(product.environmental_forces||[]).slice(0,8).map(force=>row(esc(signalName(force)),"")).join(""),"")}
-        ${panel("Live opportunities",opportunities,"")}
-        ${panel("Past spikes",spikes,"")}
-        ${panel("Prediction record",predictions||row("No predictions recorded",""),"")}
-        ${panel("Environmental relationships",rels,"")}
-      </aside>`;
-    }catch(e){
-      detail=`<aside class="detail-drawer span-4"><h3>Product unavailable</h3><div class="empty">${esc(e.message)}</div></aside>`;
-    }
-  }
-  return titleBlock("Product intelligence","Every monitored product has a position, even when ELECOUS is waiting for stronger evidence.",
-    `<select onchange="productSort=this.value;render('products')" class="compact-btn">${sortOptions}</select>`)
-    +`<div class="panel span-12" style="margin-bottom:12px"><div class="feed-meta">${esc(data.sort_explanation)}</div></div>`
-    +`<div class="grid"><section class="panel span-8"><h3>Continuous ranking</h3>${rows||'<div class="empty">No monitored products found.</div>'}</section>${detail}</div>`;
+      </div>
+      
+      <!-- Right Column: Actionability -->
+      <div>
+        <div class="b-panel">
+          <h3>Actionability</h3>
+          <div style="margin-bottom:16px">
+            <div class="muted" style="font-size:12px; margin-bottom:4px">Expected Timing</div>
+            <div style="font-size:15px">\${data.lead_time?.most_probable||"?"} days</div>
+          </div>
+          <div style="margin-bottom:16px">
+            <div class="muted" style="font-size:12px; margin-bottom:4px">Target Products</div>
+            <div style="font-size:14px">\${(data.products||[]).slice(0,5).join(", ") || "Category-wide"}</div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px; margin-bottom:4px">Recommendation</div>
+            <div style="font-size:15px; color:\${data.confidence>0.7?'var(--good)':'var(--warn)'}">
+              \${data.confidence > 0.7 ? "Act Now" : "Monitor Closely"}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  \`;
+  document.getElementById('app').innerHTML = html;
 }
 
-async function runSearch(){
-  searchQuery=document.getElementById("globalSearch").value.trim();
-  searchKind=document.getElementById("globalKind").value;
-  render("search");
+async function renderDomains() {
+  const factors = await fetchAPI("/factors");
+  const counts = {};
+  factors.factors.forEach(f => {
+    (f.domains||[]).forEach(d => { counts[d] = (counts[d]||0) + 1; });
+  });
+  
+  const total = Object.values(counts).reduce((a,b)=>a+b, 0) || 1;
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+
+  let html = \`<div class="b-panel" style="max-width:600px">
+    <h3>Environmental Domain Coverage</h3>
+    <p class="muted" style="margin-bottom:24px">Distribution of validated environmental forces currently tracked by ELECOUS.</p>
+  \`;
+  
+  sorted.forEach(([domain, count]) => {
+    const pct = count/total;
+    html += \`
+      <div class="domain-bar">
+        <div style="width:120px">\${domain}</div>
+        <div class="track"><i style="width:\${pct*100}%"></i></div>
+        <div style="width:40px; text-align:right" class="muted">\${formatP(pct)}</div>
+      </div>
+    \`;
+  });
+  
+  html += \`</div>\`;
+  document.getElementById('app').innerHTML = html;
 }
 
-async function renderSearch(){
-  const data=await j("/search"+params({q:searchQuery,kind:searchKind}));
-  const sections=[];
-  const productRows=(data.products||[]).slice(0,15).map(p=>row(
-    `<button class="compact-btn" onclick="selectedProduct='${esc(p.product_id)}';render('products')">${esc(p.product)}</button>`,
-    `#${p.rank}`,
-    `${esc(p.category.replaceAll("_"," "))} | pressure ${pct(p.expected_demand_pressure)} | confidence ${pct(p.confidence)}`
-  )).join("");
-  if(data.products) sections.push(panel("Products",productRows,"span-6"));
-  const oppRows=(data.opportunities||[]).slice(0,15).map(o=>row(
-    esc((o.categories||[]).join(", ")||o.opportunity_id),
-    pct(o.probability),
-    `${esc((o.products||[]).slice(0,4).join(", "))} | ${esc(o.stage||"active")}`
-  )).join("");
-  if(data.opportunities) sections.push(panel("Opportunities",oppRows,"span-6"));
-  const mechRows=(data.mechanisms||[]).slice(0,15).map(m=>row(
-    esc(m.name),
-    pct(m.current_confidence),
-    `${esc(m.lifecycle)} | ${esc((m.affected_categories||[]).join(", "))}`
-  )).join("");
-  if(data.mechanisms) sections.push(panel("Relationships",mechRows,"span-6"));
-  const factorRows=(data.factors||[]).slice(0,15).map(f=>row(
-    esc(f.name),
-    pct(f.current_confidence),
-    `${esc(f.lifecycle)} | ${esc((f.categories||[]).join(", "))}`
-  )).join("");
-  if(data.factors) sections.push(panel("Factors",factorRows,"span-6"));
-  const episodeRows=(data.episodes||[]).slice(0,15).map(e=>row(
-    esc(e.entity),
-    String(e.demand_score),
-    `${dateOnly(e.spike_start)} | ${esc(e.category)}`
-  )).join("");
-  if(data.episodes) sections.push(panel("Historical spikes",episodeRows,"span-6"));
-  return titleBlock("Search intelligence",searchQuery?`Results for "${searchQuery}"`:"Search across the demand memory.")
-    +`<div class="grid">${sections.join("")||panel("No results",'<div class="empty">No matching evidence.</div>',"span-12")}</div>`;
+let d3sim = null;
+async function renderWorld() {
+  const g = await fetchAPI("/knowledge/graph");
+  document.getElementById('app').innerHTML = \`<div id="d3graph"></div><div class="muted" style="margin-top:10px;text-align:center">The Living Intelligence Model: Watch connections form and strengthen.</div>\`;
+  
+  if(!window.d3) return;
+  const container = document.getElementById("d3graph");
+  const width = container.clientWidth;
+  const height = 600;
+  
+  if(d3sim) d3sim.stop();
+  const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
+  const simulation = d3.forceSimulation(g.nodes)
+      .force("link", d3.forceLink(g.links).id(d => d.id).distance(100))
+      .force("charge", d3.forceManyBody().strength(-150))
+      .force("center", d3.forceCenter(width / 2, height / 2));
+  d3sim = simulation;
+  
+  const link = svg.append("g").attr("stroke", "var(--line)").attr("stroke-opacity", 0.6)
+      .selectAll("line").data(g.links).join("line").attr("stroke-width", d => Math.max(1, (d.value||1)*2));
+  
+  const node = svg.append("g").selectAll("g").data(g.nodes).join("g")
+      .call(d3.drag()
+        .on("start", e=>{if(!e.active)simulation.alphaTarget(0.3).restart();e.subject.fx=e.subject.x;e.subject.fy=e.subject.y;})
+        .on("drag", e=>{e.subject.fx=e.x;e.subject.fy=e.y;})
+        .on("end", e=>{if(!e.active)simulation.alphaTarget(0);e.subject.fx=null;e.subject.fy=null;}));
+
+  node.append("circle")
+      .attr("r", d => d.group==="mechanism" ? 8 : 5)
+      .attr("fill", d => d.group === "mechanism" ? "var(--accent)" : d.group === "factor" ? "var(--good)" : "var(--faint)")
+      .attr("stroke", "var(--surface)").attr("stroke-width", 2);
+
+  node.append("text")
+      .text(d => d.label)
+      .attr("x", 12).attr("y", 4)
+      .style("font-size", "10px").style("fill", "var(--dim)").style("font-family", "var(--mono)")
+      .style("pointer-events", "none");
+
+  simulation.on("tick", () => {
+      link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+      node.attr("transform", d => \`translate(\${d.x},\${d.y})\`);
+  });
 }
 
-async function renderOpportunities(){
-  const data=await j("/opportunities");
-  const rows=(data.opportunities||[]).map(o=>row(
-    `${esc((o.categories||[]).join(", ")||o.opportunity_id)} ${pill(o.stage||"active",stageClass(o.stage))}`,
-    pct(o.probability),
-    `${esc((o.products||[]).slice(0,4).join(", "))} | lead ${esc(o.lead_time?.most_probable??"-")}d | confidence ${pct(o.confidence?.overall??o.confidence?.current)}`
-  )).join("");
-  return titleBlock("Opportunities","Demand pressure that has crossed from world state into product relevance.")
-    +panel("Active opportunities",rows,"span-12");
+// ---- Legacy Renderers for Dev Mode ---- //
+
+async function renderLegacyMechanisms() {
+  const d = await fetchAPI("/mechanisms");
+  let html = \`<table class="dev-table"><tr><th>Mechanism ID</th><th>Name</th><th>Confidence</th><th>Lifecycle</th></tr>\`;
+  d.mechanisms.forEach(m => {
+    html += \`<tr><td class="mono">\${m.mechanism_id}</td><td>\${m.name}</td><td>\${formatP(m.current_confidence)}</td><td><span class="badge neutral">\${m.lifecycle}</span></td></tr>\`;
+  });
+  html += \`</table>\`;
+  document.getElementById('app').innerHTML = \`<div class="b-panel">\${html}</div>\`;
 }
 
-async function renderPredictions(){
-  const data=await j("/predictions/accuracy");
-  const metrics=Object.entries(data.counts||{}).map(([k,v])=>metric(v,k.replaceAll("_"," "))).join("")
-    +metric(data.accuracy==null?"pending":pct(data.accuracy),"accuracy where judged");
-  const rows=(data.recent||[]).map(p=>row(
-    esc(p.prediction_id),
-    pill(p.validation_status,statusClass(p.validation_status)),
-    `confidence ${pct(p.confidence)} | lead ${esc(p.lead_time_days??"-")}d | ${dateOnly(p.created_at)}`
-  )).join("");
-  return titleBlock("Predictions","Every prediction remains visible until it can be judged.")
-    +`<div class="grid">${metrics}</div><div class="grid" style="margin-top:12px">${panel("Prediction ledger",rows,"span-12")}</div>`;
+async function renderLegacyFactors() {
+  const d = await fetchAPI("/factors");
+  let html = \`<table class="dev-table"><tr><th>Factor ID</th><th>Name</th><th>Signals</th><th>Domains</th></tr>\`;
+  d.factors.forEach(m => {
+    html += \`<tr><td class="mono">\${m.factor_id}</td><td>\${m.name}</td><td class="mono">\${(m.signals||[]).length} signals</td><td>\${(m.domains||[]).join(", ")}</td></tr>\`;
+  });
+  html += \`</table>\`;
+  document.getElementById('app').innerHTML = \`<div class="b-panel">\${html}</div>\`;
 }
 
-async function renderValidation(){
-  const [validations,benchmark,accuracy]=await Promise.all([j("/validations?limit=40"),j("/validations/benchmark"),j("/predictions/accuracy")]);
-  const bm=benchmark.latest?.metrics;
-  const bench=bm?.elecous
-    ? row("ELECOUS",`${bm.elecous.f1?.toFixed(3)} F1`,`${bm.elecous.precision?.toFixed(3)} precision | ${bm.elecous.recall?.toFixed(3)} recall`)
-      +row("Baseline",`${bm.baseline.f1?.toFixed(3)} F1`,`${bm.baseline.precision?.toFixed(3)} precision | ${bm.baseline.recall?.toFixed(3)} recall`)
-      +row("Verdict",pill(bm.verdict.replaceAll("_"," "),bm.verdict==="outperforms_baseline"?"good":"warn"))
-    : row("Benchmark","No benchmark yet");
-  const valRows=(validations.validations||[]).map(v=>row(
-    `${esc(v.object_type)} | ${esc(v.method)}`,
-    pill(v.outcome,statusClass(v.outcome)),
-    dateOnly(v.created_at)
-  )).join("");
-  const outcomeRows=Object.entries(accuracy.counts||{}).map(([k,v])=>row(esc(k),String(v))).join("");
-  return titleBlock("Validation","Truth has priority over appearance.")
-    +`<div class="grid">${panel("Benchmark",bench,"span-4")}${panel("Prediction outcomes",outcomeRows||row("No outcomes",""),"span-4")}${panel("Recent validations",valRows,"span-4")}</div>`;
+async function renderLegacyScheduler() {
+  const s = await fetchAPI("/health/system");
+  const tele = s.scheduler_telemetry || {};
+  let html = \`
+    <div class="b-panel" style="margin-bottom:20px"><h3>Telemetry</h3>
+      <p>Running Tasks: \${(tele.running_tasks||[]).join(", ") || "None"}</p>
+      <p>Workers: \${tele.max_workers}</p>
+      <p>Running Tasks: ${(tele.running_tasks||[]).join(", ") || "None"}</p>
+      <p>Workers: ${tele.max_workers}</p>
+    </div>
+    <div class="b-panel"><h3>Next Work</h3><table class="dev-table"><tr><th>Task</th><th>Next Run</th></tr>
+  `;
+  (s.scheduler||[]).forEach(t => { html += `<tr><td class="mono">${t.name}</td><td>${t.next_run}</td></tr>`; });
+  html += `</table></div>`;
+  document.getElementById('app').innerHTML = html;
 }
 
-async function renderEnvironment(){
-  const [state,sources]=await Promise.all([j("/world-state"),j("/observation/sources")]);
-  const signals=(state.signals||[]).map(s=>row(
-    esc(signalName(s.signal_key||s)),
-    esc(s.z??"live"),
-    `${esc(s.scope||"global")} | ${dateOnly(state.as_of||state.created_at)}`
-  )).join("");
-  const sourceRows=(sources.sources||[]).map(s=>row(
-    esc(s.name||s.source_id),
-    pill(s.status,statusClass(s.status)),
-    `health ${pct(s.health)} | failures ${esc(s.failure_count??0)}`
-  )).join("");
-  return titleBlock("External forces","What ELECOUS currently knows about the world outside the product.")
-    +`<div class="grid">${panel("Active signals",signals,"span-7")}${panel("Evidence sources",sourceRows,"span-5")}</div>`;
-}
+// ---- Core Engine ---- //
 
-async function renderKnowledge(){
-  const [growth,unknowns,discovery]=await Promise.all([j("/knowledge/growth"),j("/unknowns"),j("/discovery")]);
-  const compression=growth.compression||{};
-  const metrics=metric(compression.observations??"-","observations")
-    +metric(growth.factors??0,"factors")
-    +metric(growth.research_episodes??0,"episodes")
-    +metric(compression.mechanisms??0,"relationships");
-  const unknownRows=(unknowns.unknowns||[]).slice(0,20).map(u=>row(
-    esc(u.statement||u.description||u.kind||"unknown"),
-    esc(u.priority??u.research_priority??""),
-    esc(u.kind||"research question")
-  )).join("");
-  const discovered=(discovery.discovered_sources||[]).slice(0,20).map(s=>row(
-    esc(s.url||s.source_id||s.name),
-    esc(s.kind||s.status||"source"),
-    `quality ${esc(s.quality_score??"-")}`
-  )).join("");
-  return titleBlock("Learning memory","How evidence compresses into demand knowledge and open questions.")
-    +`<div class="grid">${metrics}</div><div class="grid" style="margin-top:12px">${panel("Open unknowns",unknownRows,"span-6")}${panel("Source discovery",discovered,"span-6")}</div>`;
-}
-
-async function renderOperations(){
-  const [resources,system,activity]=await Promise.all([j("/health/resources"),j("/health/system"),j("/activity")]);
-  const sample=resources.sample||{};
-  const metrics=metric(sample.process_memory_mb?Math.round(sample.process_memory_mb)+"M":"-","process memory")
-    +metric(sample.system_cpu_percent!=null?sample.system_cpu_percent+"%":"-","system cpu")
-    +metric(sample.disk_free_gb?Math.round(sample.disk_free_gb)+"G":"-","disk free")
-    +metric(activity.running_now?.length||0,"running tasks");
-  const tasks=(system.scheduler||[]).slice().sort((a,b)=>String(a.next_run).localeCompare(String(b.next_run))).slice(0,25).map(t=>row(
-    esc(humanTask(t.name)),
-    esc(t.total_runs??0),
-    `${dateOnly(t.next_run)} | failures ${esc(t.consecutive_failures??0)}`
-  )).join("");
-  const dbRows=(system.databases||[]).map(db=>row(
-    esc(db.domain),
-    Object.values(db.tables||{}).reduce((a,b)=>a+Number(b||0),0).toLocaleString(),
-    esc(db.path)
-  )).join("");
-  return titleBlock("Operations","The scientific system is running only when the evidence machinery is healthy.")
-    +`<div class="grid">${metrics}</div><div class="grid" style="margin-top:12px">${panel("Scheduler",tasks,"span-6")}${panel("Databases",dbRows,"span-6")}</div>`;
-}
-
-const renderers={
-  overview:renderOverview,
-  timeline:renderTimeline,
-  products:renderProducts,
-  search:renderSearch,
-  opportunities:renderOpportunities,
-  predictions:renderPredictions,
-  validation:renderValidation,
-  environment:renderEnvironment,
-  knowledge:renderKnowledge,
-  operations:renderOperations
+const renderMap = {
+  timeline: renderTimeline, world: renderWorld, domains: renderDomains,
+  legacy_mechanisms: renderLegacyMechanisms, legacy_factors: renderLegacyFactors, legacy_scheduler: renderLegacyScheduler
 };
 
-async function render(view=current,soft=false){
-  current=view;
-  document.querySelectorAll("nav button").forEach(button=>button.classList.toggle("active",button.dataset.view===view));
-  const app=document.getElementById("app");
-  try{
-    app.innerHTML=await renderers[view]();
-    if(!soft){ app.classList.remove("fade"); void app.offsetWidth; app.classList.add("fade"); }
-  }catch(error){
-    app.innerHTML=titleBlock("Connection interrupted","ELECOUS could not read the local API.")+panel("Error",`<div class="empty">${esc(error.message)}</div>`,"span-12");
+async function renderView() {
+  const app = document.getElementById('app');
+  if (currentView !== 'timeline') {
+    app.style.opacity = 0.5;
+  }
+  try {
+    if (currentView === 'timeline') {
+      renderTimelineFromStream();
+    } else {
+      await renderMap[currentView]();
+    }
+    app.style.opacity = 1;
+  } catch (err) {
+    app.innerHTML = `<div class="b-panel"><h3 style="color:var(--bad)">System Error</h3><p>${err.message}</p></div>`;
+    app.style.opacity = 1;
   }
 }
 
-const nav=document.getElementById("nav");
-VIEWS.forEach(([view,label])=>{
-  const button=document.createElement("button");
-  button.textContent=label;
-  button.dataset.view=view;
-  button.onclick=()=>render(view);
-  nav.appendChild(button);
-});
-document.getElementById("globalSearchButton").onclick=runSearch;
-document.getElementById("globalSearch").addEventListener("keydown",event=>{ if(event.key==="Enter") runSearch(); });
-document.getElementById("globalKind").addEventListener("change",event=>{ searchKind=event.target.value; });
-setInterval(()=>{ document.getElementById("clock").textContent=new Date().toLocaleString(); },1000);
-document.getElementById("clock").textContent=new Date().toLocaleString();
-render("overview");
-setInterval(()=>render(current,true),30000);
+// Live Ticker
+async function updateTicker() {
+  try {
+    const d = await fetchAPI("/knowledge/growth");
+    const m = d.metrics.find(x => !x.value.includes("0")) || d.metrics[0];
+    document.getElementById('ticker').innerHTML = `INTELLIGENCE GROWTH: <span style="color:var(--text)">${m.value}</span> <span class="muted">${m.label}</span>`;
+  } catch (e) {}
+}
+
+let streamSource = null;
+let streamState = { past: [], present: {}, future: [] };
+
+function connectStream() {
+  if (streamSource) streamSource.close();
+  streamSource = new EventSource("/api/timeline/stream");
+  
+  streamSource.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'initial') {
+      streamState = msg.data;
+      if (currentView === 'timeline') renderTimelineFromStream();
+    } else if (msg.type === 'update') {
+      const evt = msg.data;
+      // Differential apply based on event type
+      if (evt.event_type === 'opportunity_updated' || evt.event_type === 'prediction_created' || evt.event_type === 'world_state_updated') {
+        // Simple strategy: we can fetch the initial state again via a parallel fetch 
+        // to stay perfectly synced without duplicating backend logic in JS.
+        // Or for now just trigger a refetch of the timeline data if needed.
+        fetchAPI("/timeline").then(data => {
+            streamState = data;
+            if (currentView === 'timeline') renderTimelineFromStream();
+        });
+      }
+      
+      // Flash a little notification
+      const ticker = document.getElementById('ticker');
+      const oldHtml = ticker.innerHTML;
+      ticker.innerHTML = `<span style="color:var(--accent)">LIVE EVENT: ${evt.event_type}</span>`;
+      setTimeout(() => ticker.innerHTML = oldHtml, 3000);
+    }
+  };
+}
+
+function renderTimelineFromStream() {
+  let html = `<div class="timeline">`;
+  
+  // Future (Opportunities)
+  html += `<h3 style="font-family:var(--mono); color:var(--accent); font-size:12px; margin-bottom:20px; letter-spacing:1px">EXPECTED DEMAND SHIFTS</h3>`;
+  const activeOpps = (streamState.future || []).filter(o => o.confidence > 0.4).sort((a,b)=>b.confidence - a.confidence);
+  if (activeOpps.length === 0) html += `<div class="muted" style="margin-bottom:30px; margin-left:30px">No active predictions with high confidence.</div>`;
+  activeOpps.forEach(o => {
+    html += `
+      <div class="tl-node future">
+        <span class="tl-time">Expected: ${o.scores?.lead_time||"?"} days</span>
+        <div class="tl-card" onclick="renderBriefing('opp', '${o.opportunity_id}')">
+          <div style="display:flex;justify-content:space-between">
+            <h3>${(o.categories||[]).join(", ")}</h3>
+            <span class="badge accent">${formatP(o.confidence)} Confidence</span>
+          </div>
+          <p>Driven by: ${(o.categories||[]).join(", ") || "Unknown conditions"}</p>
+        </div>
+      </div>`;
+  });
+
+  // Present (Live state summary)
+  html += `<h3 style="font-family:var(--mono); color:var(--text); font-size:12px; margin:40px 0 20px; letter-spacing:1px">LIVE EXTERNAL FORCES</h3>`;
+  const sigs = (streamState.present?.signals||[]).slice(0,5).map(s=>prettySig(s.signal_key)).join(", ");
+  html += `
+    <div class="tl-node present">
+      <span class="tl-time">Now</span>
+      <div class="tl-card">
+        <h3>Current Environment</h3>
+        <p>Active shifts: ${sigs || "Quiet"}</p>
+      </div>
+    </div>`;
+
+  // Past (Validated Predictions/Episodes)
+  html += `<h3 style="font-family:var(--mono); color:var(--faint); font-size:12px; margin:40px 0 20px; letter-spacing:1px">VALIDATED INTELLIGENCE</h3>`;
+  const past = (streamState.past||[]).slice(0, 10);
+  if (past.length === 0) html += `<div class="muted" style="margin-bottom:30px; margin-left:30px">No past research episodes.</div>`;
+  past.forEach(p => {
+    const isGood = p.confidence > 0.5;
+    html += `
+      <div class="tl-node ${isGood?'past-good':'past-bad'}">
+        <span class="tl-time">${p.timeline?.started_at?.slice(0,10) || "Past"}</span>
+        <div class="tl-card">
+          <div style="display:flex;justify-content:space-between">
+            <h3>Research: ${p.traits?.entity || "Demand Shift"}</h3>
+            <span class="badge ${isGood?'good':'bad'}">Confidence ${formatP(p.confidence)}</span>
+          </div>
+          <p>Found ${p.evidence?.supporting_signals?.length || 0} supporting signals.</p>
+        </div>
+      </div>`;
+  });
+
+  html += `</div>`;
+  document.getElementById('app').innerHTML = html;
+}
+
+setInterval(updateTicker, 10000);
+updateTicker();
+connectStream();
+nav('timeline');
+
 </script>
 </body>
 </html>

@@ -141,6 +141,7 @@ class EnvironmentalSignalExtractor:
         level_percentile = float(self.thresholds.get("level_percentile", 0.85))
 
         changes: list[SignalChange] = []
+        processed_series: dict[tuple[str, str], dict[datetime.date, float]] = {}
         for (obs_type, scope), points in series.items():
             phenomenon = self.normalizer.phenomenon_for(obs_type)
             if phenomenon is None:
@@ -158,14 +159,14 @@ class EnvironmentalSignalExtractor:
                 std = float(np.std(baseline_values))
                 scale = std if std > 1e-12 else max(abs(median), 1.0) * 0.05
 
-            candidates: dict[str, tuple[float, datetime | None, str]] = {}  # direction -> (|magnitude|, at, mode)
+            candidates: dict[str, tuple[float, datetime | None, str]] = {}
 
-            def register(direction: str, magnitude: float, at: datetime | None, mode: str) -> None:
-                current = candidates.get(direction)
-                if current is None or magnitude > current[0]:
+            def register(direction, magnitude, at, mode):
+                if direction in candidates:
+                    old_mag, old_at, old_modes = candidates[direction]
+                    candidates[direction] = (max(magnitude, old_mag), min(at, old_at), old_modes + "+" + mode)
+                else:
                     candidates[direction] = (magnitude, at, mode)
-                elif current is not None:
-                    candidates[direction] = (current[0], current[1], current[2] + "+" + mode)
 
             # Mode 1 -- Spike (original, unchanged logic): a single point
             # deviates sharply from the recent baseline. Fires for volatile
@@ -185,6 +186,10 @@ class EnvironmentalSignalExtractor:
             # kind of environmental change from a spike.
             all_points = sorted(points, key=lambda p: p[0])
             if len(all_points) >= 10:
+                key = (phenomenon, scope)
+                if key not in processed_series:
+                    processed_series[key] = {p[0].date(): p[1] for p in all_points}
+
                 idx = np.arange(len(all_points), dtype=float)
                 vals = np.array([v for _, v in all_points], dtype=float)
                 slope = float(np.polyfit(idx, vals, 1)[0])
@@ -194,33 +199,10 @@ class EnvironmentalSignalExtractor:
                     direction = "up" if slope > 0 else "down"
                     register(direction, abs(slope_z), all_points[-1][0], "trend")
 
-            # Mode 3 -- Level: some phenomena matter not because they moved,
-            # but because they are currently extreme (high inflation, low
-            # air quality) relative to what's been observed historically.
-            # Real bug caught by measuring against live data before shipping:
-            # an earlier version ranked the window mean against a
-            # distribution that INCLUDED the window itself, which is
-            # self-referential -- any naturally decaying series (a Wikipedia
-            # article's pageviews falling from an initial burst toward zero,
-            # extremely common in real data) always ranks its own tail as
-            # "extreme," flooding media_attention with spurious level
-            # signals. Fixed to rank against ONLY the baseline period (the
-            # same reference spike/trend already use), so "extreme" means
-            # relative to the prior period, not to a distribution the
-            # candidate value itself is part of. Honest scope note: this is
-            # extreme-vs-the-last-~58-days, not multi-year regime -- a
-            # longer-history query is future work (see AUDIT doc).
+            # Mode 3 -- Level
             window_mean = float(np.mean([v for _, v in window_points]))
             if baseline_values.size >= 10:
                 rank = float((baseline_values < window_mean).mean())
-                # Second real bug caught by measuring, not assuming: rank
-                # alone still floods on sparse/near-zero baselines (tail
-                # Wikipedia articles with mostly-zero pageviews) -- any
-                # nonzero window value trivially outranks "100% of a
-                # near-all-zero baseline" despite being a trivial absolute
-                # change. Require the deviation to also clear the SAME
-                # baseline-scale magnitude spike detection uses, so "extreme
-                # rank" also means "a real amount of movement."
                 effect_size = abs(window_mean - median) / scale
                 if effect_size >= change_z:
                     if rank >= level_percentile:
@@ -228,7 +210,67 @@ class EnvironmentalSignalExtractor:
                     elif rank <= (1.0 - level_percentile):
                         register("down", (1.0 - rank) * effect_size, window_points[-1][0], "level")
 
+            # Mode 4 -- Regime: a sudden step change in the mean between the first
+            # and second half of the baseline, which persists into the window.
+            if baseline_values.size >= 14:
+                half = baseline_values.size // 2
+                mean1 = float(np.mean(baseline_values[:half]))
+                mean2 = float(np.mean(baseline_values[half:]))
+                regime_shift = (mean2 - mean1) / scale
+                if abs(regime_shift) >= change_z:
+                    window_diff = (window_mean - mean1) / scale
+                    # Only register if the window maintains the new regime
+                    if abs(window_diff) >= change_z and np.sign(regime_shift) == np.sign(window_diff):
+                        direction = "up" if regime_shift > 0 else "down"
+                        register(direction, abs(regime_shift), all_points[half][0], "regime")
+
+            # Mode 5 -- Cyclic: detects strong weekly seasonality (7-day lag autocorrelation)
+            # that is broken or strengthened in the window period.
+            if len(all_points) >= 21:
+                vals = np.array([v for _, v in all_points], dtype=float)
+                if np.std(vals) > 1e-12:
+                    autocorr_7 = float(np.corrcoef(vals[:-7], vals[7:])[0, 1])
+                    if autocorr_7 > 0.6:  # Strong weekly seasonality
+                        # Is the cycle amplitude increasing?
+                        window_std = float(np.std([v for _, v in window_points]))
+                        baseline_std = float(np.std(baseline_values))
+                        if baseline_std > 1e-12:
+                            amp_ratio = window_std / baseline_std
+                            if amp_ratio > 1.5:
+                                register("up", amp_ratio, window_points[0][0], "cyclic")
+                            elif amp_ratio < 0.5:
+                                register("down", 1.0 / amp_ratio, window_points[0][0], "cyclic")
+
+            # Mode 6 -- Momentum: second derivative (acceleration).
+            # Checks if the trend slope in the second half is significantly steeper than the first.
+            if len(all_points) >= 14:
+                half = len(all_points) // 2
+                vals1 = np.array([v for _, v in all_points[:half]], dtype=float)
+                vals2 = np.array([v for _, v in all_points[half:]], dtype=float)
+                idx1 = np.arange(len(vals1), dtype=float)
+                idx2 = np.arange(len(vals2), dtype=float)
+                slope1 = float(np.polyfit(idx1, vals1, 1)[0]) if np.std(vals1) > 1e-12 else 0.0
+                slope2 = float(np.polyfit(idx2, vals2, 1)[0]) if np.std(vals2) > 1e-12 else 0.0
+                momentum = slope2 - slope1
+                momentum_z = momentum * half / scale
+                if abs(momentum_z) >= trend_min_slope_z and np.sign(slope1) == np.sign(slope2) and abs(slope2) > abs(slope1) * 1.5:
+                    direction = "up" if momentum > 0 else "down"
+                    register(direction, abs(momentum_z), all_points[half][0], "momentum")
+
+            # Mode 7 -- Persistence: an anomaly that lasts for a significant duration.
+            # If >80% of window points are anomalous in the same direction.
+            if len(window_points) >= 3:
+                ups = sum(1 for ts, v in zs if v >= change_z)
+                downs = sum(1 for ts, v in zs if v <= -change_z)
+                if ups / len(window_points) >= 0.8:
+                    register("up", ups / len(window_points) * change_z, window_points[0][0], "persistence")
+                elif downs / len(window_points) >= 0.8:
+                    register("down", downs / len(window_points) * change_z, window_points[0][0], "persistence")
+
             for direction, (magnitude, at, modes) in candidates.items():
+                modes_tuple = tuple(modes.split("+"))
+                if len(modes_tuple) > 1:
+                    modes_tuple = modes_tuple + ("composite",)
                 changes.append(
                     SignalChange(
                         signal_key=f"{phenomenon}:{direction}:{scope}",
@@ -239,9 +281,86 @@ class EnvironmentalSignalExtractor:
                         first_crossed_at=at,
                         observation_types=(obs_type,),
                         contributing_sources=sources_by_key.get((obs_type, scope), ()),
-                        modes=tuple(modes.split("+")),
+                        modes=modes_tuple,
                     )
                 )
+
+        # Modes 8 & 9: Correlation and Divergence (Joint Analysis)
+        # O(N^2) comparison across different phenomena in the same scope
+        phenom_scope_keys = list(processed_series.keys())
+        for i in range(len(phenom_scope_keys)):
+            phenomA, scopeA = phenom_scope_keys[i]
+            dictA = processed_series[(phenomA, scopeA)]
+            for j in range(i + 1, len(phenom_scope_keys)):
+                phenomB, scopeB = phenom_scope_keys[j]
+                if scopeA != scopeB:
+                    continue
+                dictB = processed_series[(phenomB, scopeB)]
+                
+                common_dates = sorted(set(dictA.keys()).intersection(dictB.keys()))
+                if len(common_dates) < 14:
+                    continue
+                
+                baseline_dates = [d for d in common_dates if d < window_start.date()]
+                window_dates = [d for d in common_dates if d >= window_start.date()]
+                
+                if len(baseline_dates) < 7 or len(window_dates) < 3:
+                    continue
+                    
+                valsA_base = np.array([dictA[d] for d in baseline_dates], dtype=float)
+                valsB_base = np.array([dictB[d] for d in baseline_dates], dtype=float)
+                
+                stdA = np.std(valsA_base)
+                stdB = np.std(valsB_base)
+                if stdA < 1e-12 or stdB < 1e-12:
+                    continue
+                
+                base_corr = float(np.corrcoef(valsA_base, valsB_base)[0, 1])
+                
+                valsA_win = np.array([dictA[d] for d in window_dates], dtype=float)
+                valsB_win = np.array([dictB[d] for d in window_dates], dtype=float)
+                
+                win_stdA = np.std(valsA_win)
+                win_stdB = np.std(valsB_win)
+                if win_stdA < 1e-12 or win_stdB < 1e-12:
+                    continue
+                    
+                win_corr = float(np.corrcoef(valsA_win, valsB_win)[0, 1])
+                
+                # Mode 8: Correlation (they become highly correlated in the window)
+                if abs(base_corr) < 0.4 and abs(win_corr) > 0.8:
+                    direction = "up" if win_corr > 0 else "down"
+                    at = datetime.combine(window_dates[0], datetime.min.time(), tzinfo=timeutil.UTC)
+                    z_val = round(abs(win_corr) * change_z, 3)
+                    
+                    changes.append(SignalChange(
+                        signal_key=f"{phenomA}:{direction}:{scopeA}",
+                        phenomenon=phenomA, direction=direction, scope=scopeA, z=z_val, first_crossed_at=at,
+                        observation_types=("joint_analysis",), contributing_sources=(), modes=("correlation",)
+                    ))
+                    changes.append(SignalChange(
+                        signal_key=f"{phenomB}:{direction}:{scopeB}",
+                        phenomenon=phenomB, direction=direction, scope=scopeB, z=z_val, first_crossed_at=at,
+                        observation_types=("joint_analysis",), contributing_sources=(), modes=("correlation",)
+                    ))
+
+                # Mode 9: Divergence (historically correlated, but breaks in window)
+                elif abs(base_corr) > 0.7 and abs(win_corr) < 0.2:
+                    direction = "down"
+                    at = datetime.combine(window_dates[0], datetime.min.time(), tzinfo=timeutil.UTC)
+                    z_val = round(abs(base_corr - win_corr) * change_z, 3)
+                    
+                    changes.append(SignalChange(
+                        signal_key=f"{phenomA}:{direction}:{scopeA}",
+                        phenomenon=phenomA, direction=direction, scope=scopeA, z=z_val, first_crossed_at=at,
+                        observation_types=("joint_analysis",), contributing_sources=(), modes=("divergence",)
+                    ))
+                    changes.append(SignalChange(
+                        signal_key=f"{phenomB}:{direction}:{scopeB}",
+                        phenomenon=phenomB, direction=direction, scope=scopeB, z=z_val, first_crossed_at=at,
+                        observation_types=("joint_analysis",), contributing_sources=(), modes=("divergence",)
+                    ))
+
         # Merge changes of the same signal key arising from different
         # observation types (e.g. two providers measuring the same
         # phenomenon): strongest z wins, evidence types union.

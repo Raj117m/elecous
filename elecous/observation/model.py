@@ -61,6 +61,16 @@ class Observation:
     version: int = 1
     collection_time: str = field(default_factory=lambda: timeutil.to_iso(timeutil.utcnow()))
 
+    @property
+    def t_obs(self) -> datetime:
+        """Observation Time (T_obs): The precise real-world timestamp when an event occurred."""
+        return self.timestamp
+
+    @property
+    def t_sig(self) -> datetime:
+        """Signal Time (T_sig): The timestamp when ELECOUS ingested and mathematically normalized the observation."""
+        return timeutil.from_iso(self.collection_time)
+
     # ------------------------------------------------------------- hashing
     @property
     def semantic_hash(self) -> str:

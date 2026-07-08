@@ -17,13 +17,13 @@ from elecous.common import timeutil
 from elecous.common.ids import new_id
 from elecous.common.vocabulary import Lifecycle, ValidationStatus
 from elecous.environment.pattern_engine.mining import MinedPattern
-from elecous.environment.schema import ENVIRONMENT_MIGRATION, FACTOR_SIGNALS_INDEX_MIGRATION
+from elecous.environment.schema import ENVIRONMENT_DOMAIN_MIGRATION, ENVIRONMENT_MIGRATION, FACTOR_SIGNALS_INDEX_MIGRATION
 from elecous.governance import constitution
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
 from elecous.storage.database import DatabaseManager, global_databases
 
-FACTOR_COLUMNS = 22
+FACTOR_COLUMNS = 23
 
 
 class FactorStore:
@@ -31,6 +31,7 @@ class FactorStore:
         self.databases = databases or global_databases()
         self.databases.register_schema(ENVIRONMENT_MIGRATION)
         self.databases.register_schema(FACTOR_SIGNALS_INDEX_MIGRATION)
+        self.databases.register_schema(ENVIRONMENT_DOMAIN_MIGRATION)
         self.db = self.databases.get("environment")
         self.bus = bus or global_bus()
         self.log = get_logger("environment")
@@ -60,6 +61,7 @@ class FactorStore:
                 1,
                 name,
                 json.dumps(sorted(pattern.signals)),
+                "atmospheric",  # Default domain, should be extracted from signals later
                 json.dumps([pattern.category]),
                 json.dumps(sorted(regions)),
                 json.dumps(timing),
@@ -195,6 +197,7 @@ class FactorStore:
                 version,
                 row["name"],
                 row["signals"],
+                row.get("domain", "atmospheric"),
                 row["categories"],
                 row["regions"],
                 row["lead_time"],

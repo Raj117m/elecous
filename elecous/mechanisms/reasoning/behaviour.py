@@ -133,3 +133,24 @@ class BehaviouralReasoner:
         if not chain:
             return 0.0
         return sum(1 for step in chain if step.get("evidenced")) / len(chain)
+
+    def alternative_chains(self, primary_chain: list[dict[str, Any]], category: str) -> list[list[dict[str, Any]]]:
+        """Phase 3 Causal Discovery: Construct competing hypotheses.
+        If we inferred purchase intent due to attention, an alternative hypothesis
+        is that it was driven by necessity (e.g. weather hazard) rather than attention.
+        Returns a list of alternative chains."""
+        alternatives = []
+        alt_chain = []
+        for step in primary_chain:
+            if step["layer"] == "human_need":
+                alt_chain.append({"layer": "human_need", "evidenced": False, "statement": "consumers act out of urgent necessity, bypassing normal intent"})
+            elif step["layer"] == "purchase_intent":
+                alt_chain.append({"layer": "purchase_intent", "evidenced": False, "statement": "panic buying or forced substitution, not standard intent"})
+            elif step["layer"] == "attention" and step.get("evidenced"):
+                # If attention is evidenced, alternative is that attention is a side-effect, not a cause
+                alt_chain.append({"layer": "attention", "evidenced": True, "statement": "attention is a lagging indicator of demand, not the cause"})
+            else:
+                alt_chain.append(dict(step))
+        if alt_chain != primary_chain:
+            alternatives.append(alt_chain)
+        return alternatives

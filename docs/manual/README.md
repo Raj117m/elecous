@@ -28,7 +28,7 @@ public source with provenance.
 - **147** validated mechanisms (of ~680 total; 467 retired, rest candidate)
 - **64** predictions generated; prospective outcomes pending their windows
 - Rolling benchmark: ELECOUS F1 **0.631** vs single-signal baseline **0.626**
-- Storage ~5.6 GB; 11 sources; 107/107 non-network tests passing
+- Storage ~5.6 GB; 11 sources; 106/106 non-network tests passing
 
 ## The 18 documents
 

@@ -19,26 +19,21 @@ from elecous.governance import constitution
 from elecous.infrastructure.cache import TTLCache
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
-from elecous.mechanisms.schema import MECHANISMS_MIGRATION
+from elecous.mechanisms.schema import MECHANISMS_MIGRATION, MECHANISMS_MIGRATION_0002, MECHANISMS_MIGRATION_0003
 from elecous.storage.database import DatabaseManager, global_databases
 
-MECHANISM_COLUMNS = 29
+MECHANISM_COLUMNS = 31
 
 
 class MechanismStore:
     def __init__(self, databases: DatabaseManager | None = None, bus: EventBus | None = None):
         self.databases = databases or global_databases()
         self.databases.register_schema(MECHANISMS_MIGRATION)
+        self.databases.register_schema(MECHANISMS_MIGRATION_0002)
+        self.databases.register_schema(MECHANISMS_MIGRATION_0003)
         self.db = self.databases.get("mechanisms")
         self.bus = bus or global_bus()
         self.log = get_logger("mechanisms")
-        # Real bottleneck found in the Final Implementation Phase profiling
-        # sweep: find_by_factors() is called once per (factor, category)
-        # pair inside generate_from_factors()'s main loop (up to ~550 real
-        # calls in one run) and re-queried list_latest(category=...) fresh
-        # every time (13.3ms/call measured, ~7.3s of real redundant work).
-        # Same TTLCache already used for this exact reason elsewhere
-        # (EnvironmentalSignalExtractor, SkepticEngine, EnvironmentalEngine).
         self._category_cache = TTLCache(ttl_seconds=30.0, max_entries=64)
 
     # -------------------------------------------------------------- creation
@@ -79,6 +74,8 @@ class MechanismStore:
                 now + timedelta(days=7),
                 None,
                 now,
+                json.dumps(payload.get("alternative_chains", [])),
+                json.dumps(payload.get("standardized_vectors", [])),
             ],
         )
         self.bus.emit(
@@ -88,11 +85,6 @@ class MechanismStore:
             name=payload["name"],
             categories=payload["affected_categories"],
         )
-        # A real write must invalidate find_by_factors()'s per-category
-        # cache immediately -- unlike the read-only caches elsewhere, a
-        # stale hit here could let generate_from_factors() create a
-        # duplicate mechanism for the same (factor, category) if called
-        # again inside the cache's TTL window.
         for category in payload["affected_categories"]:
             self._category_cache.invalidate(category)
         self.log.info("mechanism created", mechanism_id=mechanism_id, name=payload["name"])
@@ -126,6 +118,9 @@ class MechanismStore:
                 if isinstance(value, (str, int, float, bool, datetime, type(None)))
                 else json.dumps(value, default=str)
             )
+        # Ensure alternative_chains exists if current row lacks it
+        if "alternative_chains" not in row:
+            row["alternative_chains"] = "[]"
         stability = json.loads(row["stability"]) if isinstance(row["stability"], str) else row["stability"]
         stability["revisions"] = stability.get("revisions", 0) + 1
         stability["age_days"] = (timeutil.utcnow() - timeutil.ensure_utc(current["created_at"])).days
@@ -162,6 +157,8 @@ class MechanismStore:
                 row["next_validation_at"],
                 row["last_validation"],
                 row["created_at"],
+                row["alternative_chains"],
+                row.get("standardized_vectors", "[]"),
             ],
         )
         self.log.info("mechanism version appended", mechanism_id=mechanism_id, version=version, actor=actor, reason=reason)

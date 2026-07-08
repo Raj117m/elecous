@@ -143,3 +143,17 @@ sources:
     connector_config: {}
     requires_credential: fred_api_key
     status: active
+
+  - source_id: google_trends
+    name: Google Trends Search Interest
+    provider: Google (via pytrends)
+    category: attention
+    observation_capability: public_interest
+    license: "Terms of Service"
+    access_method: unofficial_api
+    update_frequency: daily
+    countries: []
+    coverage: global
+    connector: elecous.observation.connectors.trends.GoogleTrendsConnector
+    connector_config: { past_days: 7, backfill_days: 30 }
+    status: active

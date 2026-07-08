@@ -102,15 +102,10 @@ migrations (full list in `docs/manual/02_REPOSITORY_STRUCTURE.md`).
 ## Dashboard flow
 
 Single-file vanilla-JS frontend (`dashboard/frontend/index.html`) polling a
-FastAPI backend (`dashboard/api/routes.py`, 38 routes, zero scientific
-reasoning — routes only serialize or compose what engines already produced).
-Silent 30-second refresh, no full reload. The primary user-facing surfaces are
-Today, Timeline, Products, Search, Opportunities, Predictions, Validation,
-Environment, Knowledge and Operations. `/api/products` composes monitored
-entities, active opportunities, predictions, episodes and mechanisms into a
-ranked product intelligence view; `/api/timeline.events` unifies historical
-spikes, live world changes, future opportunities, predictions and validations.
-See `docs/manual/11_DASHBOARD_REFERENCE.md` for the view list.
+FastAPI backend (`dashboard/api/routes.py`, 32 routes, zero scientific
+reasoning — routes only serialize what engines already produced). Silent
+15-second refresh, no full reload. See `docs/manual/11_DASHBOARD_REFERENCE.md`
+for the view list.
 
 ## What is NOT yet built (confirm before assuming)
 
@@ -118,6 +113,5 @@ See `docs/manual/11_DASHBOARD_REFERENCE.md` for the view list.
   one machine, threading-based concurrency only.
 - No knowledge-graph visualization (data model exists in
   `knowledge/graph/graph.py`; no interactive UI).
-- No deep product-lifecycle/adaptive-attention model yet. A read-only product
-  intelligence page exists, but it composes existing evidence rather than
-  changing how the scientific engines allocate attention.
+- No per-product dedicated intelligence pages (data exists via
+  `/api/mechanisms`, `/api/factors`, `/api/episodes`; no composed product view).

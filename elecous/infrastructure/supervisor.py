@@ -195,3 +195,63 @@ class AutonomousSupervisor:
             "subsystems": {r.subsystem: {"healthy": r.healthy, "detail": r.detail} for r in reports},
             "overall": all(r.healthy for r in reports),
         }
+
+    # -------------------------------------------------- task prioritization
+    def generate_improvement_tasks(self) -> list[str]:
+        """Autonomous Task Prioritization (spec 13.5).
+        Detects systemic weaknesses and pushes dynamic improvement tasks
+        to the scheduler rather than just reacting to failure."""
+        tasks_generated = []
+        reports = self.full_health_check()
+        now = timeutil.utcnow()
+        from datetime import timedelta
+
+        for report in reports:
+            if report.subsystem == "observation":
+                unhealthy = report.detail.get("unhealthy", [])
+                failing = report.detail.get("failing", [])
+                if unhealthy or failing:
+                    # Dynamically schedule expansion if sources are failing
+                    name = f"dynamic_expansion_{int(now.timestamp())}"
+                    self.stack.scheduler.register(
+                        name=name,
+                        subsystem="expansion",
+                        action=self.stack.expansion.run_expansion_cycle,
+                        interval=timedelta(days=365),
+                        priority=1,
+                        run_immediately=True,
+                    )
+                    tasks_generated.append(name)
+            elif report.subsystem == "knowledge":
+                # Ensure knowledge graph is compressed and tidy
+                name = f"dynamic_compression_{int(now.timestamp())}"
+                self.stack.scheduler.register(
+                    name=name,
+                    subsystem="knowledge",
+                    action=self.stack.knowledge.graph.compress,
+                    interval=timedelta(days=365),
+                    priority=2,
+                    run_immediately=True,
+                )
+                tasks_generated.append(name)
+        
+        # Check prediction confidence drops
+        from elecous.storage.database import global_databases
+        db = global_databases().get("predictions")
+        if db:
+            low_conf = db.query_one("SELECT COUNT(*) FROM opportunity_predictions WHERE confidence < 0.3 AND status = 'active'")
+            if low_conf and low_conf[0] > 5:
+                name = f"dynamic_mechanism_expansion_{int(now.timestamp())}"
+                self.stack.scheduler.register(
+                    name=name,
+                    subsystem="curiosity",
+                    action=self.stack.curiosity.run_exploration,
+                    interval=timedelta(days=365),
+                    priority=2,
+                    run_immediately=True,
+                )
+                tasks_generated.append(name)
+        
+        if tasks_generated:
+            self.log.info("generated autonomous improvement tasks", count=len(tasks_generated), tasks=tasks_generated)
+        return tasks_generated

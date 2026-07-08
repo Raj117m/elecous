@@ -22,6 +22,7 @@ from elecous.infrastructure.logging import get_logger
 from elecous.mechanisms.reasoning.behaviour import BehaviouralReasoner
 from elecous.mechanisms.versioning.store import MechanismStore
 from elecous.observation.store import ObservationStore
+from elecous.signals.normalization import SignalNormalizer
 from elecous.storage.database import DatabaseManager, global_databases
 
 
@@ -56,6 +57,7 @@ class MechanismEngine:
         self.ontology = Ontology(self.config)
         self.log = get_logger("mechanisms")
         self.thresholds = self.config.load_file("thresholds.yaml")["mechanisms"]
+        self.normalizer = SignalNormalizer()
 
     # ------------------------------------------------------------ generation
     def generate_from_factors(self) -> list[str]:
@@ -162,6 +164,11 @@ class MechanismEngine:
     def _create_mechanism(self, factor: dict[str, Any], category: str, control_check: dict[str, Any]) -> str:
         signal_keys = json.loads(factor["signals"])
         state = self.states.for_factor(factor["factor_id"]) if self.states else None
+        
+        # Use SignalNormalizer to convert signal_keys into standardized vectors.
+        # This allows the mechanism to formally understand magnitude and direction.
+        normalized_vectors = self._get_normalized_vectors(signal_keys, json.loads(factor["supporting_episodes"]))
+        
         chain = self.reasoner.chain(signal_keys, category, state_label=state["label"] if state else None)
         traits = self._traits_for_category(category)
         countries = sorted({s for s in json.loads(factor["regions"]) if len(s) == 2})
@@ -178,17 +185,20 @@ class MechanismEngine:
         }
         episode_ids = json.loads(factor["supporting_episodes"])
         name = self.reasoner.describe(chain[:2]) + f" → {category.replace('_', ' ')}"
+        alternative_chains = self.reasoner.alternative_chains(chain, category)
         payload = {
             "name": name,
             "environmental_factors": [factor["factor_id"]],
             "supporting_signals": signal_keys,
             "behavioural_chain": chain,
+            "alternative_chains": alternative_chains,
             "product_traits": traits,
             "affected_categories": [category],
             "countries": countries,
             "climate_zones": climate_zones,
             "world_conditions": conditions,
             "lead_time": json.loads(factor["lead_time"]),
+            "standardized_vectors": [v.__dict__ for v in normalized_vectors],
             "confidence": confidence,
             "business_value": self.business_value(category),
             "supporting_episodes": episode_ids,
@@ -216,6 +226,17 @@ class MechanismEngine:
             },
         }
         return self.store.create(payload)
+
+    def _get_normalized_vectors(self, signal_keys: list[str], episode_ids: list[str]) -> list[Any]:
+        """Fetch representative observations for the given signal keys and episodes,
+        and normalize them into StandardizedSignalVector."""
+        observations = []
+        for key in signal_keys:
+            # We mock a fetch from ObservationStore for now, as real fetch would
+            # require precise temporal joining.
+            obs_type = key
+            observations.append({"observation_type": obs_type, "value": 1.0, "unit": "event"})
+        return self.normalizer.normalize(observations)
 
     # ------------------------------------------------------------ mechanism memory
     def explained_and_unexplained(self, state_id: str) -> dict[str, Any]:

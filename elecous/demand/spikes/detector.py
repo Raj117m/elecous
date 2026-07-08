@@ -137,6 +137,35 @@ class SpikeDetector:
         """
         rules = self.thresholds["false_spike"]
 
+        # Rule 1: D_min and D_max (Constitution 1.3)
+        # Find the actual duration of the spike
+        timeline = self.research_timeline(evidence)
+        if not timeline.get("acceleration") or not timeline.get("peak"):
+            return {"rule": "insufficient_duration", "detail": "no continuous acceleration"}
+        accel_time = timeutil.from_iso(timeline["acceleration"])
+        peak_time = timeutil.from_iso(timeline["peak"])
+        duration_days = (peak_time - accel_time).days + 1
+        d_min = int(rules.get("d_min", 3))
+        d_max = int(rules.get("d_max", 30))
+        if duration_days < d_min:
+            return {"rule": "insufficient_duration", "duration": duration_days, "d_min": d_min}
+        if duration_days > d_max:
+            return {"rule": "excessive_duration_absorbed_into_baseline", "duration": duration_days, "d_max": d_max}
+
+        # Rule 2: Volume Multiplier M (Constitution 1.3)
+        m_threshold = float(rules.get("m_multiplier", 1.5))
+        strongest = max(evidence.signals, key=lambda s: s.evidence, default=None)
+        if strongest and strongest.baseline and strongest.values:
+            integral_s = 0.0
+            integral_b = 0.0
+            for d_iso, v in strongest.values:
+                d = timeutil.from_iso(d_iso)
+                if accel_time <= d <= peak_time:
+                    integral_s += v
+                    integral_b += strongest.baseline.predict(d)
+            if integral_b > 0 and (integral_s / integral_b) < m_threshold:
+                return {"rule": "insufficient_volume_multiplier", "m": round(integral_s / integral_b, 2), "m_min": m_threshold}
+
         # Rule: platform bug / impossible jump.
         for signal in evidence.signals:
             values = [v for _, v in signal.values]

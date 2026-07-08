@@ -34,7 +34,7 @@ happened repeatedly this session. To inspect live state:
 ## Tests
 ```bash
 unset ELECOUS_DATA_DIR
-.venv/bin/python -m pytest elecous/tests -m "not network" -q   # 107 tests
+.venv/bin/python -m pytest elecous/tests -m "not network" -q   # 106 tests
 ```
 Network tests are `@pytest.mark.network`, deselected by default (they hit
 real public APIs). `isolated_config` fixture gives each test its own temp

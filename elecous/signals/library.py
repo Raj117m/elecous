@@ -49,11 +49,20 @@ SIGNALS_MIGRATION = Migration(
     ),
 )
 
+SIGNALS_MIGRATION_0002 = Migration(
+    "signals.0002.add_domain_column",
+    "signals",
+    (
+        "ALTER TABLE signal_library ADD COLUMN domain VARCHAR DEFAULT 'atmospheric'",
+    ),
+)
+
 
 class SignalLibrary:
     def __init__(self, databases: DatabaseManager | None = None, bus: EventBus | None = None):
         self.databases = databases or global_databases()
         self.databases.register_schema(SIGNALS_MIGRATION)
+        self.databases.register_schema(SIGNALS_MIGRATION_0002)
         self.db = self.databases.get("signals")
         self.bus = bus or global_bus()
         self.log = get_logger("signals")
@@ -68,6 +77,7 @@ class SignalLibrary:
         self,
         signal_key: str,
         signal_kind: str,
+        domain: str,
         observation_capability: str,
         category: str | None,
         country: str | None,
@@ -80,12 +90,13 @@ class SignalLibrary:
         if existing is None:
             signal_id = new_id("signal")
             self.db.execute(
-                "INSERT INTO signal_library VALUES (" + ", ".join("?" * 17) + ")",
+                "INSERT INTO signal_library VALUES (" + ", ".join("?" * 18) + ")",
                 [
                     signal_id,
                     1,
                     signal_key,
                     signal_kind,
+                    domain,
                     observation_capability,
                     json.dumps([category] if category else []),
                     json.dumps([country] if country else []),
@@ -157,12 +168,13 @@ class SignalLibrary:
             constitution.require_validated_promotion(current, target, ValidationStatus.PASSED if passed else status)
         version = int(existing["version"]) + 1
         self.db.execute(
-            "INSERT INTO signal_library VALUES (" + ", ".join("?" * 17) + ")",
+            "INSERT INTO signal_library VALUES (" + ", ".join("?" * 18) + ")",
             [
                 existing["signal_id"],
                 version,
                 signal_key,
                 existing["signal_kind"],
+                existing["domain"],
                 existing["observation_capability"],
                 existing["categories"],
                 existing["countries"],

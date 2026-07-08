@@ -59,3 +59,24 @@ PREDICTION_MIGRATION = Migration(
         """,
     ),
 )
+
+PREDICTION_MIGRATION_0002 = Migration(
+    "predictions.0002.add_score_and_time_defs",
+    "predictions",
+    (
+        "ALTER TABLE opportunities ADD COLUMN opportunity_score DOUBLE DEFAULT 0.0",
+        "ALTER TABLE opportunities ADD COLUMN decision VARCHAR DEFAULT 'Ignore'",
+        "ALTER TABLE opportunities ADD COLUMN t_dec TIMESTAMPTZ",
+        "ALTER TABLE predictions ADD COLUMN t_pred TIMESTAMPTZ",
+        "ALTER TABLE predictions ADD COLUMN t_spike TIMESTAMPTZ",
+    ),
+)
+
+PREDICTION_MIGRATION_0003 = Migration(
+    "predictions.0003.product_centric_columns",
+    "predictions",
+    (
+        "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS contributing_forces VARCHAR DEFAULT '{}'",
+        "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS certainty_score DOUBLE DEFAULT 0.0",
+    ),
+)

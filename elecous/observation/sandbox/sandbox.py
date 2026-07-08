@@ -118,3 +118,18 @@ class ObservationSandbox:
             return True
         self.registry.set_status(source_id, "sandbox", reason="sandbox checks failed")
         return False
+
+    def evaluate_domain(self, domain: str) -> list[SandboxReport]:
+        """Upgrade to evaluate all known sandbox sources for a specific domain.
+        This provides mathematical reliability assessment for the new taxonomy."""
+        reports = []
+        for source in self.registry.list_by_domain(domain, status="sandbox"):
+            reports.append(self.evaluate(source["source_id"]))
+        return reports
+
+    def promote_domain_if_passing(self, domain: str) -> dict[str, bool]:
+        """Evaluates all sandbox sources for a domain and promotes them if passing."""
+        results = {}
+        for source in self.registry.list_by_domain(domain, status="sandbox"):
+            results[source["source_id"]] = self.promote_if_passing(source["source_id"])
+        return results
