@@ -36,6 +36,29 @@ class FactorStore:
         self.bus = bus or global_bus()
         self.log = get_logger("environment")
 
+    # -------------------------------------------------------------- naming
+    @staticmethod
+    def pattern_name(signals: list[str], category: str) -> str:
+        """Human-readable factor name: aggregate per-region signal keys into
+        one sentence per (phenomenon, direction). The old join of every raw
+        key produced names up to 6,687 characters of the same token repeated
+        (mission audit: 'the environmental-force vocabulary a user would
+        browse is garbage')."""
+        from collections import Counter
+
+        combo: Counter = Counter()
+        for key in signals:
+            parts = key.split(":")
+            phenomenon = parts[0]
+            direction = parts[1] if len(parts) > 1 else "up"
+            combo[(phenomenon, direction)] += 1
+        bits = []
+        for (phenomenon, direction), n in sorted(combo.items(), key=lambda x: (-x[1], x[0])):
+            verb = "rising" if direction == "up" else "falling"
+            scope = f" across {n} regions" if n > 1 else ""
+            bits.append(f"{phenomenon.replace('_', ' ')} {verb}{scope}")
+        return " + ".join(bits) + f" → {category.replace('_', ' ')}"
+
     # -------------------------------------------------------------- formation
     def form_from_pattern(
         self,
@@ -53,7 +76,7 @@ class FactorStore:
         factor_id = new_id("environmental_factor")
         timing = self._timing(pattern, lead_times)
         confidence = self._initial_confidence(pattern)
-        name = " + ".join(k.rsplit(":", 1)[0] for k in pattern.signals) + f" → {pattern.category}"
+        name = self.pattern_name(list(pattern.signals), pattern.category)
         self.db.execute(
             f"INSERT INTO environmental_factors VALUES ({', '.join('?' * FACTOR_COLUMNS)})",
             [

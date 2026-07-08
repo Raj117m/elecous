@@ -112,8 +112,9 @@ The 10-second answers (what deserves attention / why / what changed / what faile
 **Recommendation contract (correction #13):** every recommendation renders exactly these fields, each from stored data — why ELECOUS believes it, supporting evidence, contradicting evidence, expected sales increase, expected timing, expected profit opportunity, risk, remaining uncertainty, similar historical situations. If a field cannot be honestly populated, it says so ("no contradicting evidence found in N checks") rather than being omitted — absence of counter-evidence is itself information.
 **Verification:** first-screen answers auditable against live payloads; zero implementation jargon outside dev mode; feed events all trace to real stored state changes; every recommendation renders the full 9-field contract.
 
-### R7 — Knowledge hygiene: bounded, ranked relationships (~2 days)
-700 factors with garbage collision names; append-only growth. Continuous rank/strengthen/weaken/merge/archive with evidence-based scoring. Prerequisite for a browsable "environmental force" vocabulary in the UI.
+### R7 — Knowledge hygiene: bounded, ranked relationships (PART 1 ✅ 2026-07-08)
+**Done — factor naming:** generation now aggregates per-region signal keys into one human sentence per (phenomenon, direction) ("media attention rising across 195 regions + ... → sun protection"); hygiene script rewrote **213,460 stored rows, longest name 6,687 → 239 chars** (measured; scripts/factor_name_hygiene.py — MUST re-run after the production data flip).
+**Remaining:** per-(product, force) ecosystem lifecycle (strengthen/weaken/merge/remove driven by prediction outcomes — correction #4); relationship archive policy for append-only growth. Mechanism-level lifecycle already exists (retire_persistent_failures + R1's outcome-driven confidence).
 
 ### R8 — Independence remediation (parallel, mostly user actions)
 Replace pytrends with a licensed search-interest source; Open-Meteo commercial plan decision; EIA/FRED keys. Add license verdict as a hard field on every source; expansion engine must reject non-commercial candidates at discovery time.

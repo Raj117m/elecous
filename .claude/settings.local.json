@@ -262,7 +262,11 @@
       "Bash(git commit -q -m 'R2: falsifiable, precision-first predictions — evidence-based product claims, emission gate, per-product judgment *)",
       "Bash(git commit -q -m 'R5: predict on change, not on clock *)",
       "Bash(time .venv/bin/python elecous/scripts/validate_dpi.py)",
-      "Bash(git commit -q -m 'R4: DPI empirically validated and REJECTED — chance-level ranker; leakage bug fixed; removed from live path *)"
+      "Bash(git commit -q -m 'R4: DPI empirically validated and REJECTED — chance-level ranker; leakage bug fixed; removed from live path *)",
+      "Bash(.venv/bin/python elecous/scripts/factor_name_hygiene.py)",
+      "Bash(.venv/bin/python -m pytest elecous/tests/test_phase4_environment.py -q --tb=line)",
+      "Bash(.venv/bin/python -m pytest elecous/tests/test_phase4_environment.py::test_signal_extraction_and_world_state_from_real_observations -q --tb=short)",
+      "Bash(git commit -q -m 'R7\\(1\\): factor names — from 6,687-char token floods to human sentences *)"
     ]
   }
 }
