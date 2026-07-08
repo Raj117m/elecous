@@ -59,9 +59,7 @@ class PredictionEngine:
         self.uncertainty = UncertaintyEngine()
         self.scoring = ScoringEngine(self.config)
         self.opportunities = OpportunityStore(self.databases, self.bus, self.config)
-        from elecous.demand.pressure.dpi import DemandPressureIndex
         from elecous.validation.calibration.calibration import CalibrationEngine
-        self.dpi_engine = DemandPressureIndex(self.databases)
         # Calibration is applied at prediction time and recomputed at
         # resolution time — the loop the roadmap's D4 audit found dead.
         self.calibration = CalibrationEngine(self.databases, self.config)
@@ -106,18 +104,13 @@ class PredictionEngine:
         category_groups = list(by_category.values())
         for activated in category_groups:
             scores = self.scoring.opportunity_scores(activated, historical_success)
-            
-            # Compute real DPI for the products in the opportunity's categories
             cats = sorted({c for a in activated for c in json.loads(a["mechanism"]["affected_categories"])})
-            products = self.opportunities.products_for(cats)
-            dpis = []
-            for p in products:
-                try:
-                    dpis.append(self.dpi_engine.compute(p, as_of=as_of))
-                except Exception:
-                    pass
-            avg_dpi = round(sum(dpis) / len(dpis), 3) if dpis else 0.0
-            scores["dpi"] = avg_dpi
+            # DPI v1 removed from the live path 2026-07-08: measured on 400
+            # real episodes it ranked the about-to-spike entity at the 50.8th
+            # percentile — chance level — while a trivial recency baseline hit
+            # 67.9 (scripts/validate_dpi.py, docs/audit/dpi_validation_*.json).
+            # The module stays for an evidence-grounded v2; nothing that
+            # measures at random gets to burn compute in every cycle.
 
             confidence = self._prediction_confidence(activated, state)
             conflicts = sum(

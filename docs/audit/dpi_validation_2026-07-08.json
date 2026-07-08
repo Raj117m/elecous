@@ -1,0 +1,16 @@
+{
+ "as_of": "2026-07-08T16:27:04.096192+00:00",
+ "design": "rank spiking entity among category peers at spike_start - 7d",
+ "episodes_scored": 400,
+ "skipped_small_category": 0,
+ "skipped_target_already_accelerating": 0,
+ "random_expectation_mean_percentile": 0.5,
+ "dpi": {
+  "mean_percentile": 0.5076,
+  "top3_equivalent_rate": 0.16
+ },
+ "recency_baseline": {
+  "mean_percentile": 0.6791,
+  "top3_equivalent_rate": 0.405
+ }
+}

@@ -260,7 +260,9 @@
       "Bash(.venv/bin/python -m pytest elecous/tests/test_phase8_prediction.py -q --tb=short)",
       "Bash(git commit -q -m 'R1: close the learning loop — evolve-don'\\\\''t-duplicate, calibration applied, outcomes feed mechanisms, failure attribution *)",
       "Bash(git commit -q -m 'R2: falsifiable, precision-first predictions — evidence-based product claims, emission gate, per-product judgment *)",
-      "Bash(git commit -q -m 'R5: predict on change, not on clock *)"
+      "Bash(git commit -q -m 'R5: predict on change, not on clock *)",
+      "Bash(time .venv/bin/python elecous/scripts/validate_dpi.py)",
+      "Bash(git commit -q -m 'R4: DPI empirically validated and REJECTED — chance-level ranker; leakage bug fixed; removed from live path *)"
     ]
   }
 }

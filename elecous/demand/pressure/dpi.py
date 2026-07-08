@@ -47,7 +47,18 @@ class DemandPressureIndex:
 
             accel_time = timeutil.from_iso(timeline["acceleration"])
             peak_time = timeutil.from_iso(timeline["peak"])
-            
+
+            # No future leakage (constitution rule 3): an episode whose
+            # acceleration hadn't begun by as_of does not exist yet from
+            # as_of's point of view. The original check only bounded episode
+            # AGE, silently counting future episodes into "current" pressure —
+            # which would have made any historical validation of DPI a fraud.
+            if accel_time > as_of:
+                continue
+            # A peak after as_of is knowledge from the future too: integrate
+            # the spike only up to what was observable at as_of.
+            peak_time = min(peak_time, as_of)
+
             if (as_of - peak_time).days > d_max:
                 continue
                 
