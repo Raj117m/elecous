@@ -1,17 +1,18 @@
 {
  "run_id": "wf_bd113a4f-8ef",
+ "status": "PARTIAL \u2014 3 of 6 dimensions audited; session limit reset 20:40 Asia/Calcutta 2026-07-07",
  "completed_dimensions": [
-  "demand-first architecture"
+  "demand-first architecture",
+  "dashboard vs product vision",
+  "validation & learning loop closure"
  ],
- "failed_dimensions": [
-  "dashboard-vs-vision",
-  "validation-learning-loop",
+ "pending_dimensions": [
   "environmental-breadth",
-  "continuous-learning-selfaudit",
-  "prediction-quality"
+  "prediction-quality",
+  "continuous-learning-selfaudit"
  ],
- "failure_reason": "session rate limit, resets 15:00 Asia/Calcutta 2026-07-07; re-run pending",
- "verification_note": "adversarial verification of the completed dimension also hit the limit \u2014 findings below are UNVERIFIED single-auditor claims",
+ "pending_work": "verification of dashboard+validation dimensions; synthesis judge",
+ "verification_note": "demand-first architecture: CONFIRMED by adversarial verification (2 high findings independently reproduced). dashboard-vs-vision & validation-loop: single-auditor, verification pending.",
  "reports": [
   {
    "dimension": "demand-first architecture",
@@ -23,7 +24,10 @@
      "severity": "high",
      "mission_principle": "Demand pressure and demand shift must be first-class modeled quantities (World \u2192 External Forces \u2192 Demand Pressure \u2192 Demand Shift \u2192 Categories \u2192 Products); never fake \u2014 the interface implies a pressure quantity that does not exist upstream.",
      "fix_direction": "Introduce a demand_pressure table keyed (category, region, as_of): a continuous aggregate of per-entity robust z-scores (already computed in SpikeDetector.evaluate via DynamicBaseline) weighted by the existing learned signal_weights; define demand shift as the derivative crossing the existing stage thresholds (detector.py:23 STAGES) at category level, with per-entity attribution afterwards. The dashboard's expected_demand_pressure should then read this measured series instead of opportunity probability.",
-     "verdict": null
+     "verdict": {
+      "verdict": "CONFIRMED",
+      "reasoning": "Independently reproduced every element of the claim. (1) elecous/demand/schema.py:14-109 defines exactly the six tables cited (demand_signal_registry, baselines keyed (entity, signal_type), research_episodes keyed on entity with a frozen demand_score DOUBLE at line 60, signal_weights, learned_windows, demand_failures) and none contains any pressure or shift column. (2) A repo-wide grep (all file types, excluding .git/__pycache__/data) for 'demand_pressure|demand_shift' hits only elecous/dashboard/api/routes.py, elecous/dashboard/frontend/index.html, and docs/audit/mission_audit_partial_2026-07-07.json \u2014 the first two are dashboard display code and the third is an artifact of this audit, not code. (3) routes.py:129 initializes \"expected_demand_pressure\": 0.0 and routes.py:185 computes it exactly as claimed: item[\"expected_demand_pressure\"] = max(item[\"expected_demand_pressure\"], probability), where probability is opportunity.get(\"probability\") (line 180); routes.py:327 presents it to users as \"ranked by strongest active demand pressure from current opportunities\". The remaining routes.py occurrences (306, 336, 345, 348, 357) merely consume that value for decision-score weighting and sort keys \u2014 still display-layer, no independent pressure model. (4) Live API cross-check: /api/opportunities returned 63.7MB of JSON with zero occurrences of the substring \"pressure\" (case-insensitive); opportunity scores are {scientific_confidence, current_activation, historical_success, evidence_completeness, mechanism_stability, overall} \u2014 no pressure/shift quantity. (5) Alternate-name search: the only other \"pressure\" hits are ontology.py:29 (\"price_pressure\": \"economic\", a factor-domain label) and resources.py:52 (system resource pressure); no demand-shift concept exists anywhere in source. The offered evidence was slightly incomplete (it omitted routes.py lines 306/336/345/348/357 and the frontend index.html occurrences), but all omitted hits are also dashboard display code that only consume the same max-of-probability value, so the claim's assertion \u2014 \"exclusively in dashboard display code\" \u2014 remains fully accurate."
+     }
     },
     {
      "claim": "Demand detection is product-first, not demand-first: the scan iterates the per-product entity catalog and measures each product's own attention signals, so episodes/baselines are keyed on individual products from birth and 'category' is only a static YAML label copied onto the episode.",
@@ -31,39 +35,38 @@
      "severity": "high",
      "mission_principle": "Demand first, products last: demand pressure should be derived from external forces and environmental intelligence, with products only at the end \u2014 here products are the entry point of demand measurement (demand = attention to the product's Wikipedia article).",
      "fix_direction": "Invert the detection unit: detect category-level pressure episodes first (aggregate the same per-entity z series across category members, reusing DynamicBaseline and learned weights), then attribute to entities by measured contribution. Per-entity series remain as attribution evidence, not as the definition of demand.",
-     "verdict": null
+     "verdict": {
+      "verdict": "CONFIRMED",
+      "reasoning": "Independently reproduced every cited evidence item from source. (1) elecous/demand/engine.py:63 is exactly 'for topic in self.controls.entity_catalog():', and entity_catalog() (elecous/demand/controls/controls.py:25-26) returns the static 'topics' list from elecous/configs/entities.yaml \u2014 a flat per-entity catalog (Air conditioner, Tent, Space heater, Umbrella...) where category is a hand-written attribute per item. (2) The detector lives at elecous/demand/spikes/detector.py (auditor's path was abbreviated; line numbers exact): line 59 DEMAND_SIGNAL_TYPES = (\"pageviews_daily\", \"media_volume_pct\"), lines 86-87 compute each entity's own baseline and fetch store.series(entity, signal_type, ...) \u2014 per-entity attention measurement. (3) elecous/demand/schema.py:47-78 confirms research_episodes with entity VARCHAR NOT NULL (line 50) and idx_episode_entity (entity, spike_start) (line 78); the baselines table (lines 31-45) is also keyed (entity, signal_type, as_of). (4) engine.py:100-105 copies category via topic.get(\"category\", \"unknown\") into entity_meta at episode creation. Nothing in scan() (engine.py:58-84) computes category-level or demand-pressure-level signals before iterating entities; detection order is entity -> spike -> episode, the reverse of the mission's Demand Pressure -> Categories -> Products flow. Live API corroborates: GET /api/timeline returns opportunities whose \"products\" arrays are verbatim entities.yaml catalog rows (including non-products like \"Sun Yat-sen\" and \"Rule of three (writing)\") with the YAML category label carried through unchanged. Two minor nuances that do not overturn the claim: the catalog is per-Wikipedia-topic rather than strictly per-product (many discovered rows are people/companies/events, which if anything worsens the product-first critique), and category is not purely decorative \u2014 it keys learned windows/weights (engine.py:121-127) and control matching (controls.py:44-52) \u2014 but it remains static YAML in origin and is never derived from demand detection, so 'category is a static YAML label copied onto the episode' is accurate in substance."
+     }
     },
     {
      "claim": "Product attribution at the output layer is wholesale category expansion with zero product-level differentiation: every opportunity attaches every entities.yaml topic in its categories, and the only code that differentiates products (rank_products) is dead in production \u2014 called only from a test.",
      "evidence": "elecous/prediction/opportunities/opportunities.py:33-35 products_for() returns '[t[\"entity\"] for t in topics if t.get(\"category\") in categories]' and opportunities.py:47 'products = self.products_for(categories)'; ranking.py:53-76 rank_products gives every category member category_relevance=1.0 hence identical scores, and its only caller is elecous/tests/test_phase8_prediction.py:108; live API /api/opportunities returned 141 opportunities each carrying the full roster, e.g. {\"id\": \"opp_019f3a78afcbbc3b3a243149c286\", \"categories\": [\"heating\"], \"n_products\": 17, \"probability\": 0.8515} whose products include 'Heat transfer', 'Joule heating', 'Passive house' \u2014 encyclopedia concepts, not products.",
      "severity": "medium",
      "mission_principle": "Fewer but MORE RELIABLE predictions; products last should mean products earned by evidence, not enumerated by config membership \u2014 wholesale expansion inflates the prediction surface (live benchmark precision 0.4606 vs baseline 0.4676).",
-     "fix_direction": "Attach only products with measured evidence: wire rank_products (or a replacement using per-entity contribution to the category pressure/episodes) into OpportunityStore.form(), and threshold membership instead of copying the whole category roster.",
-     "verdict": null
+     "fix_direction": "Attach only products with measured evidence: wire rank_products (or a replacement using per-entity contribution to the category pressure/episodes) into OpportunityStore.form(), and threshold membership instead of copying the whole category roster."
     },
     {
      "claim": "Predictions are resolved only at category granularity \u2014 'correct' means any non-negative episode occurred in each predicted category \u2014 so the per-product lists shipped on every opportunity are never validated and are unfalsifiable decoration.",
      "evidence": "elecous/prediction/engine.py:255-269 resolve_due(): hit test is 'episodes = [e for e in ...list_latest(category=category...) if not e[\"is_negative\"] and created <= spike_start <= deadline]' then outcome correct/partially_correct/incorrect purely from hit_categories; nothing ever compares the stored products JSON (prediction/schema.py:17) to outcomes. Live: /api/opportunities shows 141 opportunities each naming 14-21 products whose individual correctness can never be judged.",
      "severity": "medium",
      "mission_principle": "Every prediction must eventually be provably correct/incorrect; unfalsifiable predictions should not exist \u2014 the product-level half of every prediction is structurally unfalsifiable today.",
-     "fix_direction": "Either resolve at product level (did the named entities spike?) using the existing per-entity episode store, or stop shipping undifferentiated product lists and present the category-level claim that is actually being validated.",
-     "verdict": null
+     "fix_direction": "Either resolve at product level (did the named entities spike?) using the existing per-entity episode store, or stop shipping undifferentiated product lists and present the category-level claim that is actually being validated."
     },
     {
      "claim": "The category layer \u2014 the only pre-product aggregation unit for factors, mechanisms, and predictions \u2014 is a nominal config string with demonstrably polluted membership, so any category-level quantity (business value, opportunity products, a future pressure index) inherits noise rather than modeling demand.",
      "evidence": "configs/entities.yaml auto-discovered members: 'Sun Yat-sen' in sun_protection (entities.yaml:788-794), 'Guy Ritchie' in outdoor_cooking (1286-1292), navy frogman/diver units filling air_quality_protection (1734-1876, discovery_query 'air filtration'); mechanisms/engine.py:286-313 business_value() computes median attention across exactly these members; environment/engine.py:88-90 groups episodes by this category string for all factor mining; live /api/episodes shows 2382 episodes distributed over these categories (outdoor_recreation 263, allergy_season 203, ...).",
      "severity": "medium",
      "mission_principle": "Categories are a mission-layer object between demand shift and products; here they are unvalidated config labels \u2014 'never fake, measure everything' requires category membership itself to be evidenced.",
-     "fix_direction": "Make category membership evidence-based: require discovered entities to demonstrate correlated demand behaviour with the category (e.g., co-spiking / baseline correlation) before joining the aggregation unit; prune members that never co-move. This is prerequisite work for a trustworthy category-level pressure series.",
-     "verdict": null
+     "fix_direction": "Make category membership evidence-based: require discovered entities to demonstrate correlated demand behaviour with the category (e.g., co-spiking / baseline correlation) before joining the aggregation unit; prune members that never co-move. This is prerequisite work for a trustworthy category-level pressure series."
     },
     {
      "claim": "The live output layer exposes no product route despite the code defining one \u2014 the running process serves an older API where product-keyed intelligence is absent, so the only live keying is opportunity-level (categories + wholesale product lists).",
      "evidence": "Live: curl http://127.0.0.1:8321/api/products returned {\"detail\":\"Not Found\"} and the live /openapi.json paths list contains /api/opportunities but no /api/products, while elecous/dashboard/api/routes.py:519 defines @router.get(\"/products\") with decision_score composed at routes.py:303-313 from 0.45*expected_demand_pressure.",
      "severity": "low",
      "mission_principle": "Interface must expose intelligence \u2014 the newest product-intelligence layer (and its demand-pressure framing) is unverifiable against the live system until the process restarts on current code.",
-     "fix_direction": "Restart the live 'elecous run' process onto current code (at a safe moment respecting the single-writer lock) so the audit's output-layer claims and the /products decision layer can be exercised against reality.",
-     "verdict": null
+     "fix_direction": "Restart the live 'elecous run' process onto current code (at a safe moment respecting the single-writer lock) so the audit's output-layer claims and the /products decision layer can be exercised against reality."
     }
    ],
    "what_works": [
@@ -86,6 +89,214 @@
     {
      "claim": "Prediction asks a world-first question, not a product-first one: validated mechanisms are matched against the live World State at phenomenon granularity, which is the correct direction for a demand-first system.",
      "evidence": "matching.py:1-10 docstring 'Asks \"which previously validated mechanisms resemble today's world?\" instead of \"what will sell?\"'; matching.py:57-60 activation computed over required phenomena vs active phenomena from world_state['signals']; live /api/opportunities evidence shows matched_signals like 'cold_stress:down:AU', 'rainfall_intensity:up:US' driving the heating opportunity."
+    }
+   ]
+  },
+  {
+   "dimension": "dashboard vs product vision",
+   "summary": "The dashboard is genuinely decision-first in its skeleton \u2014 the Today screen literally asks \"What should I pay attention to today?\", ships action pills (Act today / Watch closely / Gather evidence), an 8-sort continuous product ranking with per-sort explanations, and a unified past/present/future timeline endpoint built only from stored rows. But the intelligence it exposes degrades at exactly the points the mission cares about: the primary \"Why\" explanation for top-ranked products renders a raw factor ID (fac_019f...), the living intelligence feed is entirely absent (0 notifications ever produced in production, and the frontend never calls the endpoint), the ranking is degenerate because category-level opportunities stamp identical scores onto every member product (including absurd 'products' like \"Sun Yat-sen\" and \"Rule of three (writing)\"), and history carries no did-we-predict-it / was-it-correct marks because nothing has ever been judged and the timeline schema has no episode-to-prediction linkage anyway. The 'Honest coverage' panel is hardcoded text, violating never-hardcode, and the 'Why ELECOUS is confident' panel frames a recall-only benchmark win (precision 0.4606 vs baseline 0.4676) as \"above\" baseline. Grades: (1) 30-second clarity PARTIAL; (2) first-screen answers PARTIAL (changed/up/opportunities/confidence/do-today present; why/down/weaker/evidence weak or absent); (3) timeline PARTIAL (continuous, exact dates, phase-distinct dots; no correctness marks, past capped at 50 of 2383 episodes); (4) search facets PARTIAL (API has category/region/status/min_confidence; UI exposes only q+kind; brand/industry/time-period absent everywhere); (5) product page PARTIAL (forces/spikes/predictions/opportunities present; confidence evolution and related/competing/diverging products absent); (6) ranking PARTIAL (8 real sorts; missing fastest-growing-confidence/most-improved/recently-validated-weakened-failed); (7) living feed ABSENT; (8) jargon leaks in roughly a dozen user-visible places including a whole Operations tab of scheduler/DB stats the mission explicitly forbids.",
+   "findings": [
+    {
+     "claim": "The core \"Why\" explanation for top-ranked products is a raw factor ID, not intelligence: /api/products sets strongest_force from opportunity environmental_factors, which are factor IDs, and the frontend renders it directly in the 'Why:' line and ranking rows.",
+     "evidence": "routes.py:194-195 (`if not item[\"strongest_force\"] and forces: item[\"strongest_force\"] = forces[0]` where forces come from opportunity environmental_factors); live /api/products rank-1 row: {\"product\": \"Sports equipment\", ... \"strongest_force\": \"fac_019f2e99dadf0b2d890cf41f2b88\"}; index.html:470 renders `Why: ${esc(signalName(product.strongest_force))}` and index.html:546 repeats it per ranking row \u2014 signalName (index.html:402-407) turns it into \"fac 019f2e99dadf0b2d890cf41f2b88\", gibberish for a business user.",
+     "severity": "high",
+     "mission_principle": "Interface must expose intelligence, never implementation; every displayed value must be explainable",
+     "fix_direction": "Resolve factor IDs to their underlying human-readable signal descriptions (or the mechanism's behavioural-chain sentence) in _product_intelligence before returning; never emit fac_/mech_ IDs in product-facing fields."
+    },
+    {
+     "claim": "The living feed of intelligence events (vision item 7) is absent: NotificationEngine's intelligence checks (check_opportunity, check_mechanism_failure, check_knowledge_revision, check_observation_loss) are invoked only from tests, production emits only supervisor system alerts, the live store holds zero notifications, and the frontend never fetches /api/notifications at all.",
+     "evidence": "Live GET /api/notifications returned {\"notifications\": []} (count 0); grep shows check_opportunity called only in elecous/tests/test_phase9_dashboard.py:122-123, and the only production caller is elecous/infrastructure/supervisor.py:179-182 (emit_system_alert); index.html:359-782 contains no call to /notifications and no feed view in VIEWS (index.html:361-372).",
+     "severity": "high",
+     "mission_principle": "Living feed of intelligence events (relationship discovered, prediction strengthened/weakened/confirmed/failed, source connected, blind spot found)",
+     "fix_direction": "Wire the four check_* hooks into the opportunity, mechanism-validation, knowledge-revision and observation-health pipelines so real events accumulate, then add a feed panel (or fold into Today) that renders /api/notifications in business language."
+    },
+    {
+     "claim": "The continuous ranking is degenerate and polluted: category-level opportunities stamp identical pressure/confidence/decision_score onto every product in the category (top 5 all score 86.2, 208 of 288 products are 'live_opportunity'), and opportunity product lists include non-products like 'Sun Yat-sen', 'Rule of three (writing)', 'Albinism in humans', which the dashboard presents verbatim as ranked demand opportunities.",
+     "evidence": "Live /api/products: ranks 1-5 all {\"decision_score\": 86.2, \"expected_demand_pressure\": 0.7386, \"confidence\": 0.9}; status Counter({'live_opportunity': 208, 'evidence_building': 43, 'monitored': 37}); live /api/timeline future_opportunity 'sun_protection' products include \"Sun Yat-sen\", \"Alpinia purpurata\", \"Rule of three (writing)\", \"Albinism in humans\"; routes.py:183-196 applies the same opportunity probability/confidence to every member product via max().",
+     "severity": "high",
+     "mission_principle": "Fewer but more reliable predictions; first screen must answer 'which products up' with decision-grade specificity",
+     "fix_direction": "Differentiate per-product scores using product-level evidence (spike history, article-level pageview response) instead of copying category opportunity values, and filter opportunity product lists through an is-a-purchasable-product gate before display."
+    },
+    {
+     "claim": "History carries no did-ELECOUS-predict-it / was-it-correct marks: timeline historical_spike events have no linkage to predictions (only their own validation_status, uniformly 'pending'), prediction events are titled 'Prediction pending' with no product context, and the timeline UI does not even render validation_status on events.",
+     "evidence": "Live /api/timeline: all sampled historical_spike events show \"validation_status\": \"pending\" and contain no prediction reference; prediction events: {\"title\": \"Prediction pending\", \"opportunity_id\": \"opp_...\"} with no products field; routes.py:398-411 builds spike events without any predicted_by/outcome field; index.html:506-515 renders title/kind/date/products/confidence but never validation_status. Root cause overlaps validation dimension (0 of 141+ predictions ever judged), but the dashboard schema could not display correctness marks even if judgments existed.",
+     "severity": "medium",
+     "mission_principle": "Timeline as the heart: historical spikes must show whether ELECOUS predicted them and whether it was correct",
+     "fix_direction": "Join episodes to resolved predictions in the timeline route (predicted: yes/no, outcome: correct/incorrect/missed) and render a correctness badge on past events; give prediction events product/category titles."
+    },
+    {
+     "claim": "The 'Honest coverage' panel on the Today screen is hardcoded static text, not measured from the source registry or /api/observation/gaps, so it will silently drift from reality.",
+     "evidence": "index.html:498: `panel(\"Honest coverage\",row(\"Strongest current coverage\",\"weather and public attention\")+row(\"Known blind spots\",\"social, search, retail, pricing, logistics\"),\"span-6\")` \u2014 string literals; meanwhile live /api/observation/sources lists 9 active sources including gdelt_media (media), worldbank_macro (macro) and nager_holidays (calendars), none of which the hardcoded 'strongest coverage' text mentions, and routes.py:383-385 exposes /observation/gaps which the panel ignores.",
+     "severity": "medium",
+     "mission_principle": "Never fake, never hardcode, measure everything",
+     "fix_direction": "Derive coverage from the live source registry (active capability domains) and blind spots from /observation/gaps, rendering both from data."
+    },
+    {
+     "claim": "'Why ELECOUS is confident' overstates the benchmark: the verdict pill says 'outperforms baseline' and the Today metric shows 'above', but the live benchmark shows ELECOUS precision BELOW baseline (0.4606 vs 0.4676) with the F1 win coming purely from recall 1.0 \u2014 the opposite of 'fewer but more reliable' \u2014 and the UI offers no framing of this trade-off.",
+     "evidence": "Live /api/validations/benchmark: {\"elecous\": {\"precision\": 0.46057, \"recall\": 1.0, \"f1\": 0.63067, \"fp\": 1293}, \"baseline\": {\"precision\": 0.46761, \"recall\": 0.94836, \"f1\": 0.62638}, \"verdict\": \"outperforms_baseline\"}; index.html:457 renders metric as \"above\" when verdict==='outperforms_baseline'; index.html:483-489 titles the panel \"Why ELECOUS is confident\" and shows a green 'outperforms baseline' pill.",
+     "severity": "medium",
+     "mission_principle": "Fewer but more reliable predictions; validation is the highest authority; honest self-assessment",
+     "fix_direction": "Surface precision-vs-baseline explicitly (e.g. 'higher recall, slightly lower precision \u2014 1293 false positives') and gate the green 'outperforms' treatment on winning precision, not F1 alone."
+    },
+    {
+     "claim": "Search facets are mostly missing from the UI: the API supports kind/category/region/status/min_confidence, but the frontend exposes only a free-text box and a kind dropdown; brand, industry, country/region, environmental factor, time period, prediction status and validation status facets have no UI controls, and time-period filtering does not exist even in the API.",
+     "evidence": "routes.py:847-856 signature: `q, kind, category, region, status, min_confidence` (no date/time-period param); index.html:342-352 renders only #globalSearch input and #globalKind select (options: All/Products/Opportunities/Relationships/Factors/Historical spikes); renderSearch (index.html:605-640) passes only {q, kind} via params().",
+     "severity": "medium",
+     "mission_principle": "Search facets: product/category/industry/country/region/brand/environmental factor/time period/prediction status/validation status",
+     "fix_direction": "Add facet controls bound to the existing category/region/status/min_confidence params, add a time-period param to /search, and map validation/prediction status into the status facet per kind."
+    },
+    {
+     "claim": "Product page lacks confidence evolution and any related/competing/similar/same-force/diverging products section; 'accuracy' is unshowable because every prediction is pending, and the Prediction record labels rows with raw prediction IDs.",
+     "evidence": "Live /api/products/sports-equipment keys contain no confidence-history or related-products field (keys: product_id...relationships only); prediction_counts: {\"pending\": 16}; index.html:569-573 renders `esc(p.prediction_id)` (e.g. 'pred_019f38ec532a...') as the row label; routes.py:111-321 (_product_intelligence) computes only point-in-time confidence via max() and never assembles related products.",
+     "severity": "medium",
+     "mission_principle": "Product page: confidence evolution over time and related/competing/similar/same-force/diverging products",
+     "fix_direction": "Persist and expose opportunity/mechanism confidence version history (rows already carry version numbers, e.g. factor version 37) as a time series, and derive related products from shared mechanisms/forces vs diverging direction; label predictions by product+window, not ID."
+    },
+    {
+     "claim": "The Operations tab exposes scheduler internals, database table counts and on-disk DB paths, and the Knowledge/Validation/search surfaces leak implementation vocabulary \u2014 jargon audit (vision item 8): user-visible strings include 'Factors' (global search dropdown and results panel), 'observations' and 'factors' metric labels, 'mechanism | mechanism_validation' validation rows, timeline titles like 'mechanism validation failed', a 'Scheduler' panel, a 'Databases' panel with file paths, 'process memory / system cpu / disk free / running tasks', raw prediction IDs, raw factor IDs, and raw discovered-source URLs.",
+     "evidence": "index.html:349 `<option value=\"factor\">Factors</option>`; index.html:631 panel(\"Factors\",...); index.html:492 'observations | episodes | predictions' strip; index.html:675 `${esc(v.object_type)} | ${esc(v.method)}` \u2192 renders 'mechanism | mechanism_validation'; routes.py:483 timeline title f\"{object_type} validation {outcome}\" \u2192 live event title \"mechanism validation failed\"; index.html:739 panels 'Scheduler' and 'Databases'; index.html:736 `esc(db.path)`; index.html:724-727 process memory/system cpu/disk free; index.html:658 & 570 raw prediction_id labels; index.html:703-704 'observations'/'factors' metrics; index.html:713 raw s.url. Mission explicitly forbids user-facing mechanisms/factors/observations/validation-engine/scheduler/DB stats.",
+     "severity": "medium",
+     "mission_principle": "Interface must expose intelligence, never implementation",
+     "fix_direction": "Rename 'Factors' to 'External forces' everywhere, humanize validation-event titles at the route layer, replace ID labels with entity names, and either remove the Operations tab from the business UI or move it behind an explicitly operator-only surface without DB paths/table counts."
+    },
+    {
+     "claim": "Factor names shown in Search \u2192 Factors are unreadable generated strings \u2014 the same signal token concatenated dozens of times \u2014 so the environmental-force vocabulary a user would browse is garbage.",
+     "evidence": "Live /api/factors (count 694): names like 'cold_stress:up + cold_stress:up + cold_stress:up + ...' and 'media_attention:down + media_attention:down + ...' (one at version 37 repeats the token ~37 times); index.html:626-631 renders `esc(f.name)` directly in the Factors results panel.",
+     "severity": "medium",
+     "mission_principle": "Interface exposes intelligence; environmental factor = a comprehensible external force",
+     "fix_direction": "Fix factor naming upstream to deduplicate signal components ('sustained cold stress rising across 9 countries'), and have the dashboard humanize via signalName-style translation as a safety net."
+    },
+    {
+     "claim": "First-screen answers for 'which products are going DOWN' and 'what got weaker' are absent: no product-level downward direction exists anywhere in the UI or the products payload, and live opportunity stages are only 'strengthening'/'emerging' (the 'declining' styling path is dead).",
+     "evidence": "Live /api/opportunities: stages Counter({'strengthening': 77, 'emerging': 75}) \u2014 no declining/weakening; /api/products rows carry no direction/trend field (keys list from live payload); index.html:400 stageClass handles 'declining' but no view ranks or lists weakening products; actionFor (index.html:429-436) only expresses upside actions.",
+     "severity": "medium",
+     "mission_principle": "First screen answers: which products down / what got weaker",
+     "fix_direction": "Compute demand direction per product (pressure delta vs previous world state, expiring/weakening opportunities, retired mechanisms affecting the category) and give the Today screen a 'weakening' column mirroring 'becoming interesting'."
+    },
+    {
+     "claim": "Ranking sorts omit the learning-motion sorts from the vision: no fastest-growing confidence, most improved, or recently validated/weakened/failed \u2014 all 8 implemented sorts are static snapshots.",
+     "evidence": "routes.py:324-363 defines exactly future_demand, environmental_pressure, largest_spike, most_validated, highest_risk, lowest_confidence, newest_opportunity, most_evidence; index.html:532-541 mirrors the same 8; nothing consumes version history or validation recency.",
+     "severity": "low",
+     "mission_principle": "Continuous ranking with sorts including fastest-growing confidence, most improved, recently validated/weakened/failed",
+     "fix_direction": "Once confidence history is exposed (see product-page finding), add delta-based sorts (confidence 7-day delta, most recent validation outcome per category)."
+    },
+    {
+     "claim": "Timeline history is shallow and silently truncated: past is capped at 50 episodes (of 2383 live), predictions and validations at 100 each, with no pagination or date-range control, so the 'continuous past' is one month deep.",
+     "evidence": "routes.py:392 `past = stack.demand.episodes.list_latest(include_controls=False)[:50]`; routes.py:455-457 and 473-474 LIMIT 100; live /api/timeline totals: 428 events (50 historical_spike, 26 world_change, 152 future_opportunity, 100 prediction, 100 validation); live /api/activity episodes total 2383; oldest spike shown ~2026-06-04.",
+     "severity": "low",
+     "mission_principle": "Timeline as continuous past-present-future memory",
+     "fix_direction": "Add since/until/limit params to /timeline and infinite-scroll paging in the UI so years of episodes are reachable."
+    },
+    {
+     "claim": "/api/home \u2014 the spec's 9.4 home payload \u2014 is dead code from the frontend's perspective: the overview composes five other endpoints and never calls /home, so the two home definitions can drift.",
+     "evidence": "routes.py:997-1010 defines GET /home; index.html renderOverview (438-445) fetches /products, /timeline, /activity, /predictions/accuracy, /validations/benchmark \u2014 no /home reference anywhere in index.html.",
+     "severity": "low",
+     "mission_principle": "Self-auditing coherence between spec surface and shipped interface",
+     "fix_direction": "Either make the overview consume /home (extending it with the fields the overview needs) or retire /home to avoid a second, unmaintained definition of 'the first screen'."
+    }
+   ],
+   "what_works": [
+    {
+     "claim": "The Today screen is built around decisions, not data: it opens with 'What should I pay attention to today?' and every top product carries an action pill (Act today / Watch closely / Gather evidence / No action) derived from pressure x confidence thresholds.",
+     "evidence": "index.html:429-436 (actionFor) and index.html:490 titleBlock(\"What should I pay attention to today?\", ...); pills rendered per product at index.html:461-471."
+    },
+    {
+     "claim": "A real jargon-translation layer exists and mostly works: signal keys become sentences ('cold_stress:up:CA' \u2192 'cold stress rising in CA'), scheduler task names become 'Collecting evidence' / 'Testing relationships', and mechanisms are renamed 'Relationships' in the search UI.",
+     "evidence": "index.html:402-407 (signalName), index.html:408-423 (taskWords/humanTask), index.html:348 option 'Relationships'; live world-state signal 'rainfall_intensity:up:AU' renders as 'rainfall intensity rising in AU'."
+    },
+    {
+     "claim": "The timeline endpoint genuinely unifies past episodes, present world signals, future opportunities, predictions and validations into one event stream with exact ISO timestamps and phase tags, and the UI renders phase-distinct markers (past=gold, present=blue, future=green) with exact date+time on every event.",
+     "evidence": "routes.py:389-496 (single events list with phase past/present/future, sorted by at); live /api/timeline returned 428 events across all five kinds; index.html:307-309 phase dot colors; index.html:510 renders dateOnly(event.at) plus HH:MM:SS."
+    },
+    {
+     "claim": "Continuous ranking exists with 8 working sorts, each accompanied by a plain-language explanation of how the ranking was computed, displayed above the leaderboard.",
+     "evidence": "routes.py:324-363 (explanations dict + sort keys); live /api/products returns sort_explanation 'ranked by live opportunity probability, confidence, validated relationships and pending predictions'; index.html:595 renders it."
+    },
+    {
+     "claim": "The dashboard is honestly read-only and composition-only: routes assemble already-computed rows (opportunities, episodes, mechanisms, predictions) and never mint new scores beyond a documented decision_score blend; empty states say 'pending' instead of faking accuracy.",
+     "evidence": "routes.py:1-5 module docstring ('Read-only; every value returned already exists inside ELECOUS'); routes.py:111-116 (_product_intelligence docstring: 'does not create new mechanisms or predictions'); routes.py:717 accuracy=None when judged==0, and index.html:656 renders 'pending'; live /api/predictions/accuracy shows judged from real rows."
+    },
+    {
+     "claim": "Live-work transparency is real and measured: the activity strip shows actual running scheduler tasks (humanized) and real windowed rates from timestamped rows, refreshed every 30 seconds.",
+     "evidence": "routes.py:671-697 (/activity computes minute/hour/day/week counts via SQL FILTER over real tables); live payload: observations {hour: 4, day: 7588, week: 1703273}, running_now: ['observe:gdelt_media', ...8 tasks]; index.html:781 setInterval re-render every 30s."
+    },
+    {
+     "claim": "Product detail is evidence-rich in the right categories: current forces, live opportunities with lead times, past spikes with per-spike demand scores and confidence, prediction record, and validated environmental relationships with readable causal-chain names.",
+     "evidence": "Live /api/products/sports-equipment: 16 opportunities, 10 spikes, 10 predictions, 12 relationships incl. 'cold stress falls in AU \u2192 cold discomfort drives people indoors \u2192 winter equipment' (lifecycle 'validated', confidence 0.9); index.html:574-588 renders all five panels."
+    },
+    {
+     "claim": "A full scientific audit trail per prediction is one request away, satisfying traceability even though the UI does not yet link to it.",
+     "evidence": "routes.py:945-962 GET /audit/{prediction_id} returns prediction + source opportunity + full mechanism details with evidence fields parsed."
+    }
+   ]
+  },
+  {
+   "dimension": "validation & learning loop closure",
+   "summary": "The loop CAN close and is on track to start: every one of the 152 pending predictions (live count, up from 141 this morning) has a finite judgment deadline (created_at + lead_time_days + 3d tolerance, NULL lead defaulting to 14d), the resolver is scheduled every 6h, and computed from live data the first verdict lands 2026-07-14 (6.8 days from audit time) with the entire current stock judgeable by 2026-07-17 \u2014 no formally unfalsifiable prediction class exists. But the loop currently closes into a dead end: resolution writes calibration records that nothing in production ever recomputes or applies (recompute()/calibrate() are invoked only in tests), prediction outcomes never flow back into the source mechanisms' confidence (that channel is a separate one-shot-per-promotion prospective track), and research lessons are written under need_cluster keys but read back by question kind, so derived lessons are effectively unreachable. Creation is also uncontrolled: predict() runs every 15 minutes with zero dedup, re-minting the same 11 category predictions each tick \u2014 152 pending predictions covering only 11 distinct category sets \u2014 which directly contradicts 'fewer but more reliable' and will pseudo-replicate calibration samples ~14x when the windows close. The genuinely strong parts are the frozen-version prospective validator with TRUSTED gated on real future success, negative-learning investigation of failures, evidence-based retirement (467 retired mechanisms), falsifiable research experiments with entity-specific deadlines, and a complete per-prediction audit trail.",
+   "findings": [
+    {
+     "claim": "The calibration half of the learning loop is write-only: prediction and mechanism outcomes are recorded into calibration_records, but CalibrationEngine.recompute() and calibrate() are never called anywhere in production code, so stated confidence is never disciplined by reality even after predictions resolve.",
+     "evidence": "Writers: /Users/rajdeepmalladeb/ELECOUS/elecous/prediction/engine.py:277 (calibration.record(\"prediction\", ...)) and /Users/rajdeepmalladeb/ELECOUS/elecous/validation/engine.py:300 (calibration.record(\"mechanism\", ...)). Exhaustive grep for recompute(/calibrate(/expected_calibration_error across elecous/ and scripts/ returns only the definitions (/Users/rajdeepmalladeb/ELECOUS/elecous/validation/calibration/calibration.py:35,62,76) and test-only callers (elecous/tests/test_phase6_validation.py:30-37). No scheduler entry in /Users/rajdeepmalladeb/ELECOUS/elecous/scheduler/registration.py touches calibration. The module's own docstring states the mission standard it fails to enforce: \"If ELECOUS says 90% and reality delivers 70%, confidence is wrong\" (calibration.py:3-6).",
+     "severity": "high",
+     "mission_principle": "Continuous learning; validation is the highest authority; confidence must reflect reality; never fake, measure everything.",
+     "fix_direction": "Register a scheduled job (e.g. validation:calibration, daily) that calls calibration.recompute(\"prediction\") and recompute(\"mechanism\") after resolvers run, and route confidence through calibration.calibrate() at prediction-formation time in PredictionEngine._prediction_confidence (prediction/engine.py:122-140)."
+    },
+    {
+     "claim": "No rate control or dedup exists on prediction creation: predict() is scheduled every 15 minutes and unconditionally inserts a fresh opportunity + prediction per category group, re-minting the same ~11 predictions each tick; 152 pending predictions cover only 11 distinct category sets (~14x duplication).",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/scheduler/registration.py:82 (prediction:predict, timedelta(minutes=15)); /Users/rajdeepmalladeb/ELECOUS/elecous/prediction/engine.py:92-117 loops category groups and always calls opportunities.form + _record_prediction; OpportunityStore.form always mints new_id with no check against active opportunities (/Users/rajdeepmalladeb/ELECOUS/elecous/prediction/opportunities/opportunities.py:37-112); _record_prediction is an unconditional INSERT (engine.py:155-181). Live API /api/predictions/accuracy: counts {\"pending\":152}, and the 30 most recent rows are three batches (00:34, 00:48, 01:04 IST on 2026-07-07) repeating the identical 11 confidence values, e.g. 0.6623/5.2d, 0.8658/6.026d appearing in every batch. Live /api/timeline future list: 152 opportunities, exactly 11 distinct category sets (winter_equipment 16, cooling 16, heating 15, ... outdoor_cooking 12), created 2026-07-05 (14), 07-06 (94), 07-07 (44).",
+     "severity": "high",
+     "mission_principle": "Fewer but MORE RELIABLE predictions.",
+     "fix_direction": "Before forming, check for an existing pending prediction/active opportunity with the same category set and an overlapping lead-time window and update/re-version it instead of inserting; alternatively gate predict() on world-state change (new signals since last run). Also dedup at resolution time so one real episode does not produce ~14 correlated calibration records (pseudo-replication)."
+    },
+    {
+     "claim": "Resolved prediction outcomes never flow into the source mechanisms' confidence: resolve_due stores mechanisms_used but only updates the prediction row and calibration; mechanism confidence is updated exclusively by the separate prospective track, which registers at most one prospective test per VALIDATED promotion and never re-registers after resolution, so each mechanism's track_record is built on n\u22481.",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/prediction/engine.py:246-278 (resolve_due: UPDATE predictions + calibration.record only; mechanisms_used from row never consulted for learning). Mechanism confidence writer: /Users/rajdeepmalladeb/ELECOUS/elecous/validation/engine.py:300-306 (resolve_prospective -> update_confidence recent=success_rate). Registration only at promotion with a has_open guard: validation/engine.py:272-273; no re-registration anywhere after ProspectiveValidator.resolve_due (/Users/rajdeepmalladeb/ELECOUS/elecous/validation/prospective/prospective.py:70-99). Live /api/validations/prospective: all shown rows issued 2026-07-06 with resolved_at null, activation 1.0, one per mechanism \u2014 consistent with one-shot registration; 0 resolved to date.",
+     "severity": "medium",
+     "mission_principle": "Every prediction outcome must feed learning; validation is the highest authority over confidence.",
+     "fix_direction": "In resolve_due, iterate json.loads(row[\"mechanisms_used\"]) and record a per-mechanism outcome (extend ProspectiveValidator or MechanismStore.update_confidence with the judged result); re-register a fresh prospective test after each resolution so mechanism track records accumulate beyond n=1."
+    },
+    {
+     "claim": "Derived research lessons are written under need_cluster keys but read back by question kind, so the lesson-consultation step of the self-improvement loop practically never retrieves anything: a lesson stored as applies_to='CONCEPT-010' can never match lessons_for('experiment').",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/research/experience.py:179 (applies_to = need_cluster or \"unknown\") and :164-168 (lessons_for queries WHERE applies_to = ?); sole production caller passes the question kind, not the cluster: /Users/rajdeepmalladeb/ELECOUS/elecous/research/engine.py:101 (lessons = self.experience.lessons_for(question[\"kind\"])). Live /api/experiments shows need_cluster values like \"CONCEPT-010\" while kind is \"experiment\" \u2014 disjoint keyspaces.",
+     "severity": "medium",
+     "mission_principle": "Continuous learning when idle; failures must generalize into reusable lessons (the store's own Requirement 6/8).",
+     "fix_direction": "Change research/engine.py:101 to lessons_for(question[\"need_cluster\"]) (falling back to kind or 'unknown' to match experience.py:179), and add a regression test asserting a derived lesson actually discounts plan_evidence budget for the same need_cluster."
+    },
+    {
+     "claim": "The resolution criterion is weakly specific: a prediction counts 'correct' if ANY genuine episode in the predicted category starts in the window \u2014 entity-, region- and mechanism-agnostic \u2014 despite predictions being driven by region-specific signals, and category membership is noisy, inflating hit probability without proving the predicted causal linkage.",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/prediction/engine.py:252-269 (per-category episode existence check only; opportunity regions and mechanisms_used ignored). Live /api/audit/pred_019f38ec574b4b114e0ac7f8ca2b: opportunity categories [\"outdoor_cooking\"] with products including \"Guy Ritchie\", \"Fianna\", \"Cooking Mama\", \"Luke Nichols\" \u2014 any spike on those entities validates a weather-driven cooking prediction. Mitigating live evidence that it is not tautological: rolling benchmark precision 0.4606 (majority of activation windows do NOT contain an episode), so 'incorrect' is reachable \u2014 the flaw is specificity, not unfalsifiability. Same weakness in ProspectiveValidator (/Users/rajdeepmalladeb/ELECOUS/elecous/validation/prospective/prospective.py:82-88), which additionally resolves 'success' early but 'failure' only at deadline.",
+     "severity": "medium",
+     "mission_principle": "Every prediction must eventually be PROVABLY correct/incorrect \u2014 provably in substance, not just in form; never fake.",
+     "fix_direction": "Tighten the hit test: require the resolving episode's country to intersect the opportunity's regions and/or its entity to belong to the predicted products, and record which mechanism's lead-time window the episode landed in; also clean category->product membership (separate dimension)."
+    },
+    {
+     "claim": "Loop closure depends entirely on the 'elecous run' process being alive at the right time, and 'insufficient_evidence' resolutions are silently excluded from all learning; prediction creation history shows the process runs intermittently (94 predictions on 07-06 vs ~1056 if the 15-min cadence ran all day).",
+     "evidence": "Scheduler-only wiring: /Users/rajdeepmalladeb/ELECOUS/elecous/scheduler/registration.py:85-87 (prediction:resolve every 6h). insufficient_evidence skips calibration: /Users/rajdeepmalladeb/ELECOUS/elecous/prediction/engine.py:262-263,276-277. Live /api/timeline: created per day 07-05:14, 07-06:94, 07-07:44 with batch gaps, versus the 15-minute schedule.",
+     "severity": "low",
+     "mission_principle": "Continuous learning when idle; self-auditing.",
+     "fix_direction": "resolve_due already catches up on restart (queries all outcome IS NULL), so the residual risk is only reporting lag; surface 'oldest unresolved past-deadline prediction' in /health/system self-audit, and count insufficient_evidence outcomes somewhere visible so silent exclusions are measured."
+    }
+   ],
+   "what_works": [
+    {
+     "claim": "A real prediction-outcome resolver now exists, is scheduled, and its window logic guarantees every prediction eventually resolves: NULL lead times default to 14d, still-open windows are skipped rather than judged early, and outcomes are graded correct/partially_correct/incorrect against real episodes only.",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/prediction/engine.py:226-281 (horizon = lead_time_days or 14.0 + 3d tolerance; 'window still open -- too early to judge'; judged against episodes.list_latest(include_controls=False), never estimated) scheduled at /Users/rajdeepmalladeb/ELECOUS/elecous/scheduler/registration.py:85-87. Computed from live /api/timeline (152 opportunities): earliest created 2026-07-05T15:54 IST lead 6.6d -> first judgeable 2026-07-14T11:06 IST (6.8 days from audit time), all current stock judgeable by 2026-07-17. The 0-judged state is age, not breakage: the entire prediction stock is <2 days old relative to its ~8.2-10.4-day windows."
+    },
+    {
+     "claim": "Prospective validation is scientifically honest: mechanism versions are frozen at registration, TRUSTED status is reachable ONLY through real future success (historical validation is explicitly capped at VALIDATED), and prospective failure triggers a concrete negative-learning investigation, a recorded failure, and a drift check.",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/validation/prospective/prospective.py:31-59 (frozen version, deadline); /Users/rajdeepmalladeb/ELECOUS/elecous/validation/engine.py:254-273 (VALIDATED cap with survivorship-bias rationale, prospective registered on promotion) and :307-314 (success->TRUSTED; failure->investigate_failed_prospective + record_failure + drift.check); /Users/rajdeepmalladeb/ELECOUS/elecous/validation/counterfactual/negative_learning.py:24-60 (wrong_timing/missing_factor/wrong_geography/regime_change question ladder computed from real world states). Live /api/validations/prospective shows real frozen-version rows with deadlines 2026-07-22..27."
+    },
+    {
+     "claim": "Failure-driven retirement operates and is evidenced at scale: candidates with >=3 all-failed validation attempts are permanently retired on the same evidence standard as promotions, ending wasted revalidation compute.",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/validation/engine.py:353-384 (retire_persistent_failures, evidence-counted from the validations table), scheduled daily at registration.py:68-70; live system state shows 467 retired vs 147 validated mechanisms (verified this morning), proving the path executes on real data."
+    },
+    {
+     "claim": "Research experiments are falsifiable by construction and auto-generate durable experience: each experiment names a specific untested entity, an explicit deadline, and both if-true and if-false predictions; every resolution writes exactly one research_experience row, and lesson derivation refuses to generalize from fewer than 3 consistent refutations.",
+     "evidence": "/Users/rajdeepmalladeb/ELECOUS/elecous/research/experiments.py (design_experiment: 'a specific claim that can specifically fail'; resolve_due at :190-222 checks the SPECIFIC entity, classifies root_cause, triggers hypothesis evolution); /Users/rajdeepmalladeb/ELECOUS/elecous/research/questions.py:143-190 (resolve always records experience); /Users/rajdeepmalladeb/ELECOUS/elecous/research/experience.py:171-216 (>=3 consistent attempts, 'do not overclaim'). Live /api/experiments: 34 open falsifiable experiments with deadlines 2026-07-26, e.g. \"if 'CONCEPT-010' is a real mechanism, 'Air conditioner' should show a real demand episode within 21 days ... if it does not, 'CONCEPT-010' is weakened\"."
+    },
+    {
+     "claim": "Every prediction has a complete, replayable audit trail exposed via API \u2014 world state id, frozen mechanism versions, matched signals, and the full evidenced behavioural chain \u2014 satisfying explainability and enabling post-hoc judgment review.",
+     "evidence": "Live /api/audit/pred_019f38ec574b4b114e0ac7f8ca2b returns prediction + opportunity + mechanisms with mechanisms_used [{\"id\":\"mech_019f336d4fef03886d66907d29d8\",\"version\":7}], matched_signals (e.g. \"thermal_stress:up:US\"), and per-step evidenced behavioural chain statements; governance gate at /Users/rajdeepmalladeb/ELECOUS/elecous/prediction/engine.py:112 (constitution.require_explainability) runs before any opportunity forms."
     }
    ]
   }

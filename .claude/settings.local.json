@@ -209,7 +209,29 @@
       "Bash(curl -s \"http://127.0.0.1:8321/api/predictions/accuracy\")",
       "Bash(curl -s http://127.0.0.1:8321/api/audit/pred_019f3a78b2e5ed07288d8caa7950)",
       "Bash(curl -s http://127.0.0.1:8321/api/opportunities)",
-      "Bash(git commit -m 'docs: mission-audit evidence — before-state snapshot + demand-first architecture findings *)"
+      "Bash(git commit -m 'docs: mission-audit evidence — before-state snapshot + demand-first architecture findings *)",
+      "Bash(awk '{print $2, $10}')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('API alive | predictions:', d['predictions']['total'], '| running:', len\\(d['running_now']\\)\\)\")",
+      "Bash(ls /Users/rajdeepmalladeb/ELECOUS/.venv/bin/python 2>/dev/null && echo \"venv exists\" || echo \"no venv\")",
+      "Bash(xargs ls)",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/search?q=heating\" -o /private/tmp/claude-501/-Users-rajdeepmalladeb-ELECOUS/a5819c16-aa63-4d9e-806a-dcadabdc45fb/scratchpad/search.json)",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/notifications\" -o /private/tmp/claude-501/-Users-rajdeepmalladeb-ELECOUS/a5819c16-aa63-4d9e-806a-dcadabdc45fb/scratchpad/notif.json)",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/products/sports-equipment\" -o /private/tmp/claude-501/-Users-rajdeepmalladeb-ELECOUS/a5819c16-aa63-4d9e-806a-dcadabdc45fb/scratchpad/pdetail.json)",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/opportunities\" -o /private/tmp/claude-501/-Users-rajdeepmalladeb-ELECOUS/a5819c16-aa63-4d9e-806a-dcadabdc45fb/scratchpad/opps.json)",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/activity\")",
+      "Bash(curl -s http://127.0.0.1:8321/api/audit/pred_019f38ec574b4b114e0ac7f8ca2b)",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/observation/sources\")",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/validations/benchmark\")",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/factors\")",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/knowledge/growth\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d\\)[:600]\\)\")",
+      "Bash(git -C /Users/rajdeepmalladeb/ELECOUS show -s --format='%h %ad %s' 927fdf0 d93435b ef8f841)",
+      "Bash(python3)",
+      "Bash(curl -s http://127.0.0.1:8321/api/products)",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/products?sort=future_demand\")",
+      "Bash(grep -oE '\"/[a-z_/${}.A-Za-z-]*\"|`/[a-z_/${}.A-Za-z-]*`')",
+      "Bash(curl -s \"http://127.0.0.1:8321/api/observation/gaps\")",
+      "Bash(git commit -m 'docs: mission audit — 3 of 6 dimensions \\(demand-first CONFIRMED via adversarial verification\\) *)"
     ]
   }
 }
