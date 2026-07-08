@@ -114,7 +114,8 @@ The 10-second answers (what deserves attention / why / what changed / what faile
 
 ### R7 — Knowledge hygiene: bounded, ranked relationships (PART 1 ✅ 2026-07-08)
 **Done — factor naming:** generation now aggregates per-region signal keys into one human sentence per (phenomenon, direction) ("media attention rising across 195 regions + ... → sun protection"); hygiene script rewrote **213,460 stored rows, longest name 6,687 → 239 chars** (measured; scripts/factor_name_hygiene.py — MUST re-run after the production data flip).
-**Remaining:** per-(product, force) ecosystem lifecycle (strengthen/weaken/merge/remove driven by prediction outcomes — correction #4); relationship archive policy for append-only growth. Mechanism-level lifecycle already exists (retire_persistent_failures + R1's outcome-driven confidence).
+**Done — per-(product, force) ecosystem lifecycle (correction #4), 2026-07-08:** `demand/ecosystem.py` + `product_force_links` table — every judged product claim strengthens/weakens that product's links to the force phenomena in the claim's evidence; `refresh_associated_forces()` keeps under-explored links (exploration floor, min_samples=5) and prunes judged-and-failing ones (support ratio < 0.5); wired into resolve_due after product_hits. Thresholds documented as initial policy pending recalibration. 2 unit tests.
+**Remaining:** relationship archive policy for append-only factor growth (mechanism-level lifecycle already exists: retire_persistent_failures + R1's outcome-driven confidence); force MERGE (splitting/merging phenomena) deferred until real outcome volume justifies design.
 
 ### R8 — Independence remediation (parallel, mostly user actions)
 Replace pytrends with a licensed search-interest source; Open-Meteo commercial plan decision; EIA/FRED keys. Add license verdict as a hard field on every source; expansion engine must reject non-commercial candidates at discovery time.

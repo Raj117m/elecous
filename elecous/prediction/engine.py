@@ -59,10 +59,13 @@ class PredictionEngine:
         self.uncertainty = UncertaintyEngine()
         self.scoring = ScoringEngine(self.config)
         self.opportunities = OpportunityStore(self.databases, self.bus, self.config)
+        from elecous.demand.ecosystem import ProductEcosystem
         from elecous.validation.calibration.calibration import CalibrationEngine
         # Calibration is applied at prediction time and recomputed at
         # resolution time — the loop the roadmap's D4 audit found dead.
         self.calibration = CalibrationEngine(self.databases, self.config)
+        # Per-product force ecosystems learn from every judged product claim.
+        self.ecosystem = ProductEcosystem(self.databases, self.config)
 
     # ------------------------------------------------------------ predict
     def predict(self, as_of: datetime | None = None) -> list[str]:
@@ -455,6 +458,18 @@ class PredictionEngine:
                     )
                     for p in claimed_products
                 }
+                # Per-product force ecosystems (correction #4): every judged
+                # product claim strengthens or weakens that product's links to
+                # the force phenomena that were the claim's evidence.
+                phenomena = sorted({
+                    s.split(":")[0]
+                    for am in json.loads(opportunity["evidence"]).get("activated_mechanisms", [])
+                    for s in am.get("matched_signals", [])
+                })
+                if phenomena:
+                    for product, hit in detail["product_hits"].items():
+                        self.ecosystem.record_outcome(product, phenomena, hit)
+                        self.ecosystem.refresh_associated_forces(product)
 
             # ------- close the learning loop (roadmap R1) -------
             # Each outcome flows back into the mechanisms that made the claim:

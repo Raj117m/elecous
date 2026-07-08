@@ -137,3 +137,24 @@ DEMAND_MIGRATION_0003 = Migration(
         "ALTER TABLE research_episodes ADD COLUMN IF NOT EXISTS target_window_end TIMESTAMPTZ",
     ),
 )
+
+DEMAND_MIGRATION_0004 = Migration(
+    "demand.0004.product_force_links",
+    "demand",
+    (
+        # Per-product force ecosystems (roadmap correction #4): each
+        # (product, force) relationship carries its own real outcome
+        # counters, strengthened/weakened by prediction resolutions —
+        # never a shared static config.
+        """
+        CREATE TABLE IF NOT EXISTS product_force_links (
+            product VARCHAR NOT NULL,
+            force VARCHAR NOT NULL,
+            supports INTEGER NOT NULL DEFAULT 0,
+            contradictions INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMPTZ NOT NULL,
+            PRIMARY KEY (product, force)
+        )
+        """,
+    ),
+)

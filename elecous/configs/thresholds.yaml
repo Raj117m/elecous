@@ -4,6 +4,14 @@
 # hardcoded scientific assumption inside code.
 
 demand:
+  # Per-product force ecosystems (roadmap correction #4). Initial policy,
+  # to be recalibrated once real prediction outcomes accumulate (first
+  # verdicts 2026-07-14+): a (product, force) link needs min_samples judged
+  # outcomes before it can be removed (exploration floor), and survives
+  # while it supports at least as often as it contradicts.
+  ecosystem:
+    min_samples: 5
+    min_ratio: 0.5
   # Eligibility (spec 3.5): research begins only with stable history.
   min_history_days: 42
   min_observations: 30
