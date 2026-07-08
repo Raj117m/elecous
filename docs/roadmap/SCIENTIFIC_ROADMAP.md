@@ -70,10 +70,11 @@ Uncommitted parallel work now preserved in `production-copy-snapshot`:
 
 Ranking = (expected improvement in profitable prediction quality × confidence) ÷ cost. Sequenced where dependencies demand it.
 
-### R0 — Reconcile the two trees (P0, prerequisite, ~hours)
-One canonical repo. Merge `production-copy-snapshot` with master (conflicts concentrated in routes.py/index.html — two independent dashboard redesigns; the user's new dashboard directive supersedes both, so resolve conflicts minimally and let R6 rebuild). Retire `~/ELECOUS copy` as a runtime location; production must run from the canonical repo, from committed code. **Verification:** live process serves from canonical tree; `git status` clean; all tests pass.
+### R0 — Reconcile the two trees ✅ DONE 2026-07-08 (code); production flip pending user
+Merged `production-copy-snapshot` into master (9e62b95), fixed 3 tests the parallel line left mid-work, live 8.4GB data rsynced into canonical. **Remaining:** the `ELECOUS copy` workspace is open in Antigravity (Google's agentic IDE) whose language server respawns the server from the copy — user must close it; then final incremental data rsync + start canonical process.
 
-### R1 — Repair the learning loop before the first verdicts land (deadline 2026-07-14, ~1 day, HIGHEST EV/cost)
+### R1 — Repair the learning loop ✅ DONE 2026-07-08 (deadline 2026-07-14 met; all six items below implemented, 2 regression tests, 113/113 pass)
+Bonus fix discovered en route: migration 0002 had silently **broken every prediction INSERT in production since 2026-07-08 03:57 UTC** (positional VALUES vs widened table; scheduler log shows `prediction:predict` consecutive failures; count frozen at 141; no test covered `_record_prediction`). Rewritten with named columns. Evolve-in-place preserves the falsifiability anchor: created_at/expires_at never move, lead_time may only tighten — a prediction cannot dodge judgment by refreshing itself.
 Four verified point-fixes, all cheap:
 1. Prediction dedup/rate control: update-don't-remint when a pending prediction covers the same category set + overlapping window.
 2. Schedule `calibration.recompute("prediction"/"mechanism")` after each resolver pass, and *apply* calibrated confidence.

@@ -204,3 +204,122 @@ def test_prediction_outcomes_resolve_against_reality(isolated_config):
     assert rows["pred_open"]["outcome"] is None  # never judged early
     assert rows["pred_hit"]["validation_status"] == "correct"
     assert rows["pred_miss"]["validation_status"] == "incorrect"
+
+
+def _prediction_engine_with_live_world(mechanisms, monkeypatch=None):
+    """PredictionEngine whose world is a fixed stub state matching the test
+    mechanism's signals — lets predict() run end-to-end without observations."""
+    from elecous.prediction.engine import PredictionEngine
+    from elecous.validation.prospective.prospective import ProspectiveValidator
+
+    class EpisodeReadStub:
+        episodes = []
+
+        def list_latest(self, category=None, include_controls=False, entity=None):
+            return [e for e in self.episodes if e.get("category") == category or category is None]
+
+    class WorldStub:
+        def __init__(self):
+            self.state = _world_state(["thermal_stress:up:US", "energy_demand:up:US"])
+
+        def latest_state(self):
+            return self.state
+
+        def build(self, as_of=None):
+            return self.state
+
+    episodes = EpisodeReadStub()
+    engine = PredictionEngine(mechanisms, WorldStub(), ProspectiveValidator(episodes))
+    return engine, episodes
+
+
+def test_predict_evolves_pending_prediction_instead_of_duplicating(isolated_config):
+    """Roadmap R1: a second predict() over the same world state must UPDATE
+    the pending prediction (revisions+1, new opportunity version), never mint
+    a duplicate row — and the judgment window must not move."""
+    mechanisms = MechanismStore()
+    mid = mechanisms.create(_mechanism_payload("cool mech", ["thermal_stress:up:US"], ["cooling"]))
+    # predict() filters on lifecycle: force the stored row into a predictive one.
+    mechanisms.db.execute("UPDATE mechanisms SET lifecycle = 'validated' WHERE mechanism_id = ?", [mid])
+
+    engine, _ = _prediction_engine_with_live_world(mechanisms)
+
+    first = engine.predict()
+    assert len(first) == 1
+    rows = engine.db.query_dicts("SELECT * FROM predictions")
+    assert len(rows) == 1 and rows[0]["revisions"] == 0
+    deadline_before = (rows[0]["created_at"], rows[0]["lead_time_days"])
+
+    second = engine.predict()
+    assert second == []  # nothing new minted
+    rows = engine.db.query_dicts("SELECT * FROM predictions")
+    assert len(rows) == 1
+    assert rows[0]["revisions"] == 1
+    assert rows[0]["updated_at"] is not None
+    # falsifiability anchor unchanged: created_at same, lead time never extended
+    assert rows[0]["created_at"] == deadline_before[0]
+    assert float(rows[0]["lead_time_days"]) <= float(deadline_before[1])
+    # the opportunity advanced one version instead of duplicating
+    opp = engine.opportunities.latest(rows[0]["opportunity_id"])
+    assert int(opp["version"]) == 2
+
+
+def test_resolution_feeds_mechanisms_calibration_and_failure_attribution(isolated_config):
+    """Roadmap R1: a resolved outcome must land in (1) the source mechanism's
+    prospective track record, (2) its 'recent' confidence channel, (3) the
+    calibration curve, and — on failure — (4) a structured attribution naming
+    what failed and what was missing."""
+    from datetime import timedelta
+
+    from elecous.common import timeutil
+
+    mechanisms = MechanismStore()
+    mid = mechanisms.create(_mechanism_payload("cool mech", ["thermal_stress:up:US"], ["cooling"]))
+    mechanisms.db.execute("UPDATE mechanisms SET lifecycle = 'validated' WHERE mechanism_id = ?", [mid])
+    engine, episodes = _prediction_engine_with_live_world(mechanisms)
+
+    created = engine.predict()
+    assert len(created) == 1
+    # age the prediction past its judgment window (timestamp bookkeeping on
+    # our own isolated row — no fabricated observations involved)
+    engine.db.execute(
+        "UPDATE predictions SET created_at = ?", [timeutil.utcnow() - timedelta(days=30)]
+    )
+
+    recent_before = json.loads(mechanisms.latest(mid)["confidence"])["recent"]
+
+    # no cooling episode occurred -> incorrect
+    episodes.episodes = []
+    resolved = engine.resolve_due()
+    assert len(resolved) == 1 and resolved[0]["outcome"] == "incorrect"
+
+    # (1) prospective track record saw the failure
+    record = engine.prospective.track_record(mid)
+    assert record["failures"] >= 1
+
+    # (2) 'recent' confidence moved down, damped, by prediction_resolution
+    latest = mechanisms.latest(mid)
+    recent_after = json.loads(latest["confidence"])["recent"]
+    assert recent_after == pytest.approx(0.7 * recent_before, abs=1e-6)
+
+    # (3) calibration records + recomputed curve exist for predictions
+    n_records = engine.calibration.db.query_one(
+        "SELECT count(*) FROM calibration_records WHERE object_type = 'prediction'"
+    )[0]
+    assert n_records >= 1
+    assert engine.calibration.db.query_one(
+        "SELECT count(*) FROM calibration_adjustments WHERE object_type = 'prediction'"
+    )[0] >= 1
+
+    # (4) failure attribution names the miss precisely
+    outcome = json.loads(engine.db.query_dicts("SELECT outcome FROM predictions")[0]["outcome"])
+    attribution = outcome["failure_attribution"]
+    assert attribution["missed_categories"] == ["cooling"]
+    assert attribution["failed_relationships"] == [{"mechanism_id": mid, "outcome": "failure"}]
+    assert "thermal_stress:up:US" in attribution["signals_present_at_prediction"]
+
+    # and the failure is durably attached to the mechanism for retirement logic
+    failures = mechanisms.db.query_dicts(
+        "SELECT * FROM mechanism_failures WHERE mechanism_id = ? AND kind = 'prediction_failure'", [mid]
+    )
+    assert len(failures) == 1

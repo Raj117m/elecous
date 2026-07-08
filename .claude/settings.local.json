@@ -250,7 +250,15 @@
       "Bash(.venv/bin/python -m pytest elecous/tests -m \"not network\" -q --tb=line)",
       "Bash(.venv/bin/python -m pytest elecous/tests/test_phase7_knowledge.py::test_integrity_scan_repairs_broken_edges elecous/tests/test_phase9_dashboard.py::test_home_reflects_zero_state_honestly -q --tb=short)",
       "Bash(time rsync -a --delete \"/Users/rajdeepmalladeb/ELECOUS copy/elecous/data/\" /Users/rajdeepmalladeb/ELECOUS/elecous/data/)",
-      "Bash(curl -s -m 3 http://127.0.0.1:8321/api/activity)"
+      "Bash(curl -s -m 3 http://127.0.0.1:8321/api/activity)",
+      "Read(//Library/LaunchDaemons/**)",
+      "Bash(crontab -l)",
+      "Bash(ps -p 32061 -o ppid=)",
+      "Bash(xargs -I{} ps -p {} -o pid,command)",
+      "Bash(.venv/bin/python -)",
+      "Bash(python3 -)",
+      "Bash(.venv/bin/python -m pytest elecous/tests/test_phase8_prediction.py -q --tb=short)",
+      "Bash(git commit -q -m 'R1: close the learning loop — evolve-don'\\\\''t-duplicate, calibration applied, outcomes feed mechanisms, failure attribution *)"
     ]
   }
 }

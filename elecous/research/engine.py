@@ -98,7 +98,10 @@ class ResearchEngine:
             if not candidate_sources:
                 continue
 
-            lessons = self.experience.lessons_for(question["kind"])
+            # Lessons are WRITTEN under need_cluster (experience.py: applies_to =
+            # need_cluster or "unknown") -- reading by kind retrieved nothing, ever
+            # (mission-audit D4). Read by the same key the writer uses.
+            lessons = self.experience.lessons_for(question["need_cluster"] or "unknown")
             plan = plan_evidence(
                 need_cluster=question["need_cluster"] or "unknown",
                 candidate_sources=candidate_sources,

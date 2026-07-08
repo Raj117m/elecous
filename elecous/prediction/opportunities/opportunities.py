@@ -17,7 +17,12 @@ from elecous.common.vocabulary import OpportunityStage
 from elecous.infrastructure.config import Config, active_config
 from elecous.infrastructure.event_bus import EventBus, EventType, global_bus
 from elecous.infrastructure.logging import get_logger
-from elecous.prediction.schema import PREDICTION_MIGRATION, PREDICTION_MIGRATION_0002, PREDICTION_MIGRATION_0003
+from elecous.prediction.schema import (
+    PREDICTION_MIGRATION,
+    PREDICTION_MIGRATION_0002,
+    PREDICTION_MIGRATION_0003,
+    PREDICTION_MIGRATION_0004,
+)
 from elecous.storage.database import DatabaseManager, global_databases
 
 
@@ -27,6 +32,7 @@ class OpportunityStore:
         self.databases.register_schema(PREDICTION_MIGRATION)
         self.databases.register_schema(PREDICTION_MIGRATION_0002)
         self.databases.register_schema(PREDICTION_MIGRATION_0003)
+        self.databases.register_schema(PREDICTION_MIGRATION_0004)
         self.db = self.databases.get("predictions")
         self.bus = bus or global_bus()
         self.config = config or active_config()
@@ -36,19 +42,19 @@ class OpportunityStore:
         topics = self.config.load_file("entities.yaml").get("topics", [])
         return [t["entity"] for t in topics if t.get("category") in categories]
 
-    def form(
+    def _compose(
         self,
-        world_state_id: str,
         activated: list[dict[str, Any]],  # [{mechanism, match, lead_time}]
         scores: dict[str, float],
         confidence: dict[str, float],
         uncertainty: dict[str, Any],
         business_value: dict[str, Any],
-    ) -> str:
+    ) -> dict[str, Any]:
+        """Everything an opportunity row derives from its activated mechanisms,
+        shared by form() (new opportunity) and evolve() (new version of an
+        existing one) so both paths stay scientifically identical."""
         categories = sorted({c for a in activated for c in json.loads(a["mechanism"]["affected_categories"])})
         products = self.products_for(categories)
-        opportunity_id = new_id("opportunity")
-        expiry_days = int(self.config.load_file("thresholds.yaml")["prediction"]["opportunity_expiry_days"])
         lead_times = [a["lead_time"] for a in activated if a["lead_time"].get("most_probable") is not None]
         combined_lead_time = (
             {
@@ -81,18 +87,16 @@ class OpportunityStore:
             4,
         ) if activated else 0.0
         stage = self._stage_for(probability, scores.get("overall", 0.0))
-        from datetime import timedelta
-        
+
         expected_roi = business_value.get("expected_roi", 0.0)
         risk = business_value.get("risk", 0.0)
         capital = business_value.get("capital", 0.0)
         urgency = business_value.get("urgency", 0.0)
-        
-        opportunity_score = (expected_roi * probability) - (risk * capital) + urgency
-        opportunity_score = round(opportunity_score, 2)
-        
+
+        opportunity_score = round((expected_roi * probability) - (risk * capital) + urgency, 2)
+
         sigma_p = confidence.get("sigma_p", 0.0)
-        
+
         if sigma_p > 0.5:
             decision = "Review"
         elif opportunity_score >= 60:
@@ -103,9 +107,33 @@ class OpportunityStore:
             decision = "Monitor"
         else:
             decision = "Ignore"
-            
-        t_dec = timeutil.utcnow() if decision != "Ignore" else None
 
+        return {
+            "categories": categories,
+            "products": products,
+            "evidence": evidence,
+            "combined_lead_time": combined_lead_time,
+            "probability": probability,
+            "stage": stage,
+            "opportunity_score": opportunity_score,
+            "decision": decision,
+            "regions": sorted({c for a in activated for c in json.loads(a["mechanism"]["countries"])}),
+        }
+
+    def _insert_version(
+        self,
+        opportunity_id: str,
+        version: int,
+        world_state_id: str,
+        composed: dict[str, Any],
+        scores: dict[str, float],
+        confidence: dict[str, float],
+        uncertainty: dict[str, Any],
+        business_value: dict[str, Any],
+        created_at,
+        expires_at,
+    ) -> None:
+        t_dec = timeutil.utcnow() if composed["decision"] != "Ignore" else None
         self.db.execute(
             """
             INSERT INTO opportunities (
@@ -118,36 +146,103 @@ class OpportunityStore:
             """,
             [
                 opportunity_id,
-                1,
+                version,
                 world_state_id,
-                json.dumps(categories),
-                json.dumps(products),
-                json.dumps(evidence["activated_mechanisms"]),
-                json.dumps(evidence["environmental_factors"]),
-                json.dumps(evidence),
+                json.dumps(composed["categories"]),
+                json.dumps(composed["products"]),
+                json.dumps(composed["evidence"]["activated_mechanisms"]),
+                json.dumps(composed["evidence"]["environmental_factors"]),
+                json.dumps(composed["evidence"]),
                 json.dumps(scores),
-                json.dumps(combined_lead_time),
+                json.dumps(composed["combined_lead_time"]),
                 json.dumps(confidence),
-                probability,
+                composed["probability"],
                 json.dumps(uncertainty),
                 json.dumps(business_value),
-                json.dumps(sorted({c for a in activated for c in json.loads(a["mechanism"]["countries"])})),
-                stage.value,
-                timeutil.utcnow(),
-                timeutil.utcnow() + timedelta(days=expiry_days),
-                opportunity_score,
-                decision,
+                json.dumps(composed["regions"]),
+                composed["stage"].value,
+                created_at,
+                expires_at,
+                composed["opportunity_score"],
+                composed["decision"],
                 t_dec,
                 json.dumps(scores.get("dpi_forces", {})),
                 scores.get("overall", 0.0),
             ],
         )
-        self.bus.emit(
-            EventType.OPPORTUNITY_UPDATED, source="prediction", opportunity_id=opportunity_id, stage=stage.value,
-            probability=probability,
+
+    def form(
+        self,
+        world_state_id: str,
+        activated: list[dict[str, Any]],  # [{mechanism, match, lead_time}]
+        scores: dict[str, float],
+        confidence: dict[str, float],
+        uncertainty: dict[str, Any],
+        business_value: dict[str, Any],
+    ) -> str:
+        from datetime import timedelta
+
+        composed = self._compose(activated, scores, confidence, uncertainty, business_value)
+        opportunity_id = new_id("opportunity")
+        expiry_days = int(self.config.load_file("thresholds.yaml")["prediction"]["opportunity_expiry_days"])
+        now = timeutil.utcnow()
+        self._insert_version(
+            opportunity_id, 1, world_state_id, composed, scores, confidence, uncertainty, business_value,
+            now, now + timedelta(days=expiry_days),
         )
-        self.log.info("opportunity formed", opportunity_id=opportunity_id, categories=categories, probability=probability)
+        self.bus.emit(
+            EventType.OPPORTUNITY_UPDATED, source="prediction", opportunity_id=opportunity_id,
+            stage=composed["stage"].value, probability=composed["probability"],
+        )
+        self.log.info(
+            "opportunity formed", opportunity_id=opportunity_id,
+            categories=composed["categories"], probability=composed["probability"],
+        )
         return opportunity_id
+
+    def evolve(
+        self,
+        opportunity_id: str,
+        world_state_id: str,
+        activated: list[dict[str, Any]],
+        scores: dict[str, float],
+        confidence: dict[str, float],
+        uncertainty: dict[str, Any],
+        business_value: dict[str, Any],
+    ) -> dict[str, Any]:
+        """New version of an existing opportunity as fresh evidence arrives
+        (roadmap R1: evolve, never duplicate). created_at and expires_at are
+        preserved from the original — an opportunity cannot dodge expiry or
+        judgment by refreshing itself. Returns the deltas so the caller can
+        explain WHY the opportunity changed."""
+        current = self.latest(opportunity_id)
+        if current is None:
+            raise KeyError(opportunity_id)
+        composed = self._compose(activated, scores, confidence, uncertainty, business_value)
+        version = int(current["version"]) + 1
+        self._insert_version(
+            opportunity_id, version, world_state_id, composed, scores, confidence, uncertainty, business_value,
+            current["created_at"], current["expires_at"],
+        )
+        deltas = {
+            "version": version,
+            "probability": composed["probability"],
+            "probability_delta": round(composed["probability"] - float(current["probability"]), 4),
+            "stage": composed["stage"].value,
+            "stage_was": current["stage"],
+            "decision": composed["decision"],
+            "decision_was": current["decision"],
+        }
+        self.bus.emit(
+            EventType.OPPORTUNITY_UPDATED, source="prediction", opportunity_id=opportunity_id,
+            stage=composed["stage"].value, probability=composed["probability"],
+            probability_delta=deltas["probability_delta"],
+        )
+        self.log.info(
+            "opportunity evolved", opportunity_id=opportunity_id, version=version,
+            probability_delta=deltas["probability_delta"],
+        )
+        return deltas
 
     @staticmethod
     def _stage_for(probability: float, overall_score: float) -> OpportunityStage:

@@ -80,3 +80,16 @@ PREDICTION_MIGRATION_0003 = Migration(
         "ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS certainty_score DOUBLE DEFAULT 0.0",
     ),
 )
+
+PREDICTION_MIGRATION_0004 = Migration(
+    "predictions.0004.evolve_in_place",
+    "predictions",
+    (
+        # Evolve-don't-duplicate (roadmap R1): a pending prediction covering the
+        # same category set is UPDATED as new evidence arrives, never re-minted.
+        # revisions counts evidence updates; created_at + lead_time_days stays
+        # the falsifiability anchor — evolution never extends the judgment window.
+        "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS revisions INTEGER DEFAULT 0",
+        "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ",
+    ),
+)

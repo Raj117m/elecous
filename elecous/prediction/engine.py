@@ -60,7 +60,11 @@ class PredictionEngine:
         self.scoring = ScoringEngine(self.config)
         self.opportunities = OpportunityStore(self.databases, self.bus, self.config)
         from elecous.demand.pressure.dpi import DemandPressureIndex
+        from elecous.validation.calibration.calibration import CalibrationEngine
         self.dpi_engine = DemandPressureIndex(self.databases)
+        # Calibration is applied at prediction time and recomputed at
+        # resolution time — the loop the roadmap's D4 audit found dead.
+        self.calibration = CalibrationEngine(self.databases, self.config)
 
     # ------------------------------------------------------------ predict
     def predict(self, as_of: datetime | None = None) -> list[str]:
@@ -90,6 +94,7 @@ class PredictionEngine:
                 by_category.setdefault(category, []).append(entry)
 
         created = []
+        pending = self._pending_by_categories()
         category_groups = list(by_category.values())
         for activated in category_groups:
             scores = self.scoring.opportunity_scores(activated, historical_success)
@@ -125,6 +130,16 @@ class PredictionEngine:
                 "uncertainty": uncertainty.get("overall", 0),
             }
             constitution.require_explainability(payload_for_governance)
+
+            # Evolve, never duplicate (roadmap R1): if a pending prediction
+            # already covers this exact category set and its judgment window
+            # is still open, update it with the fresh evidence instead of
+            # re-minting a copy every scheduler tick.
+            existing = pending.get(frozenset(cats))
+            if existing is not None:
+                self._evolve_prediction(existing, state["state_id"], activated, confidence, uncertainty, scores, business_value)
+                continue
+
             opportunity_id = self.opportunities.form(
                 state["state_id"], activated, scores, confidence, uncertainty, business_value
             )
@@ -133,6 +148,64 @@ class PredictionEngine:
 
         self.opportunities.detect_conflicts([self.opportunities.latest(o) for o in created])
         return created
+
+    def _pending_by_categories(self, tolerance_days: float = 3.0) -> dict[frozenset, dict[str, Any]]:
+        """Pending predictions whose judgment window is still open, keyed by
+        their opportunity's exact category set. Windows already past their
+        deadline are left for resolve_due — evolving them would let a
+        prediction dodge falsification."""
+        now = timeutil.utcnow()
+        out: dict[frozenset, dict[str, Any]] = {}
+        for row in self.db.query_dicts("SELECT * FROM predictions WHERE outcome IS NULL ORDER BY created_at"):
+            deadline = timeutil.ensure_utc(row["created_at"]) + timedelta(
+                days=float(row["lead_time_days"] or 14.0) + tolerance_days
+            )
+            if now >= deadline:
+                continue
+            opportunity = self.opportunities.latest(row["opportunity_id"])
+            if opportunity is None:
+                continue
+            out[frozenset(json.loads(opportunity["categories"]))] = row
+        return out
+
+    def _evolve_prediction(
+        self,
+        existing: dict[str, Any],
+        world_state_id: str,
+        activated: list[dict[str, Any]],
+        confidence: dict[str, float],
+        uncertainty: dict[str, Any],
+        scores: dict[str, float],
+        business_value: dict[str, Any],
+    ) -> None:
+        deltas = self.opportunities.evolve(
+            existing["opportunity_id"], world_state_id, activated, scores, confidence, uncertainty, business_value
+        )
+        lead_times = [a["lead_time"]["most_probable"] for a in activated if a["lead_time"].get("most_probable")]
+        new_lead = sum(lead_times) / len(lead_times) if lead_times else None
+        old_lead = existing["lead_time_days"]
+        # Timing may tighten but never extend: the judgment deadline set at
+        # creation is the falsifiability anchor (roadmap R1 design rule).
+        if new_lead is not None and old_lead is not None:
+            new_lead = min(float(old_lead), float(new_lead))
+        elif new_lead is None:
+            new_lead = old_lead
+        evidence = {
+            "matched_signals": [a["match"].matched_signals for a in activated],
+            "behavioural_chains": [json.loads(a["mechanism"]["behavioural_chain"]) for a in activated],
+        }
+        self.db.execute(
+            "UPDATE predictions SET confidence = ?, lead_time_days = ?, evidence = ?, "
+            "revisions = COALESCE(revisions, 0) + 1, updated_at = ? WHERE prediction_id = ?",
+            [confidence["overall"], new_lead, json.dumps(evidence), timeutil.utcnow(), existing["prediction_id"]],
+        )
+        self.log.info(
+            "prediction evolved",
+            prediction_id=existing["prediction_id"],
+            confidence=confidence["overall"],
+            confidence_delta=round(confidence["overall"] - float(existing["confidence"]), 4),
+            probability_delta=deltas["probability_delta"],
+        )
 
     def _prediction_confidence(self, activated: list[dict[str, Any]], state: dict[str, Any]) -> dict[str, float]:
         """Prediction Confidence components (spec 8.16)."""
@@ -145,7 +218,10 @@ class PredictionEngine:
             if record["success_rate"] is not None:
                 prospective_rates.append(record["success_rate"])
         prospective = sum(prospective_rates) / len(prospective_rates) if prospective_rates else mech_conf
-        overall = round(0.3 * mech_conf + 0.3 * world_match + 0.25 * prospective + 0.15 * factor_conf, 4)
+        raw_overall = round(0.3 * mech_conf + 0.3 * world_match + 0.25 * prospective + 0.15 * factor_conf, 4)
+        # Stated confidence passes through the observed-reality curve built
+        # from resolved outcomes (identity until >=5 samples exist per bin).
+        overall = self.calibration.calibrate("prediction", raw_overall)
         
         # Calculate sigma_p (Confidence Confidence)
         if len(activated) > 1:
@@ -160,6 +236,7 @@ class PredictionEngine:
             "world_match": round(world_match, 4),
             "prospective_validation_history": round(prospective, 4),
             "sigma_p": sigma_p,
+            "raw_overall": raw_overall,
             "overall": overall,
         }
 
@@ -197,8 +274,14 @@ class PredictionEngine:
     ) -> str:
         prediction_id = new_id("prediction")
         lead_times = [a["lead_time"]["most_probable"] for a in activated if a["lead_time"].get("most_probable")]
+        # Named columns: the table has grown via additive migrations (t_pred,
+        # t_spike, revisions, updated_at) — a positional INSERT here silently
+        # broke prediction creation in production on 2026-07-08 when migration
+        # 0002 landed without updating this statement.
         self.db.execute(
-            "INSERT INTO predictions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO predictions (prediction_id, world_state_id, opportunity_id, mechanisms_used, "
+            "confidence, lead_time_days, evidence, outcome, validation_status, created_at, revisions) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 prediction_id,
                 world_state_id,
@@ -215,6 +298,7 @@ class PredictionEngine:
                 None,
                 "pending",
                 timeutil.utcnow(),
+                0,
             ],
         )
         self.bus.emit(EventType.PREDICTION_CREATED, source="prediction", prediction_id=prediction_id, opportunity_id=opportunity_id)
@@ -264,8 +348,7 @@ class PredictionEngine:
 
     # ------------------------------------------------------------ resolution
     def resolve_due(self, tolerance_days: float = 3.0) -> list[dict[str, Any]]:
-        from elecous.validation.calibration.calibration import CalibrationEngine
-        calibration = CalibrationEngine(self.databases, self.config)
+        calibration = self.calibration
         now = timeutil.utcnow()
         resolved = []
         for row in self.db.query_dicts("SELECT * FROM predictions WHERE outcome IS NULL"):
@@ -318,9 +401,9 @@ class PredictionEngine:
                 magnitude_error = round(abs(avg_magnitude - 1.0), 2)
 
             detail = {
-                "outcome": outcome, 
+                "outcome": outcome,
                 "resolved_at": timeutil.to_iso(now),
-                "hit_categories": hit_categories, 
+                "hit_categories": hit_categories,
                 "categories": categories,
                 "metrics": {
                     "brier_score": brier_score,
@@ -330,15 +413,107 @@ class PredictionEngine:
                     "roi_actual": None # Pending financial integration
                 }
             }
-            
+
+            # ------- close the learning loop (roadmap R1) -------
+            # Each outcome flows back into the mechanisms that made the claim:
+            # their prospective track record (read by every future prediction's
+            # confidence), their 'recent' confidence channel, and — on failure —
+            # a structured attribution naming exactly what went wrong.
+            mechanism_outcomes = []
+            if outcome != "insufficient_evidence":
+                mechanism_outcomes = self._feed_mechanisms(
+                    row, opportunity, categories, hit_categories, outcome, created, deadline, now
+                )
+                if outcome in ("incorrect", "partially_correct"):
+                    detail["failure_attribution"] = self._attribute_failure(
+                        opportunity, categories, hit_categories, mechanism_outcomes
+                    )
+
             self.db.execute(
                 "UPDATE predictions SET outcome = ?, validation_status = ? WHERE prediction_id = ?",
                 [json.dumps(detail), outcome, row["prediction_id"]],
             )
             if outcome != "insufficient_evidence":
                 calibration.record("prediction", P, outcome == "correct")
+            self.bus.emit(
+                EventType.PREDICTION_RESOLVED, source="prediction",
+                prediction_id=row["prediction_id"], outcome=outcome, brier_score=brier_score,
+            )
             resolved.append({"prediction_id": row["prediction_id"], **detail})
-            
+
         if resolved:
+            # Outcomes exist -> the confidence curve must reflect them now,
+            # not whenever someone remembers to recompute (dead-loop fix, D4).
+            calibration.recompute("prediction")
+            calibration.recompute("mechanism")
             self.log.info("predictions resolved against reality", count=len(resolved))
         return resolved
+
+    def _feed_mechanisms(
+        self, row, opportunity, categories, hit_categories, outcome, created, deadline, now
+    ) -> list[dict[str, Any]]:
+        """Write each contributing mechanism's real outcome into the
+        prospective track record and its 'recent' confidence channel."""
+        activations = {}
+        if opportunity:
+            for am in json.loads(opportunity["evidence"]).get("activated_mechanisms", []):
+                activations[am["mechanism_id"]] = am.get("activation", 0.0)
+        results = []
+        mechanisms_by_id = {m["mechanism_id"]: m for m in self.mechanisms.list_latest()}
+        for used in json.loads(row["mechanisms_used"]):
+            mech = mechanisms_by_id.get(used["id"])
+            if mech is None:
+                continue  # retired since prediction was made; nothing to update
+            mech_cats = set(json.loads(mech["affected_categories"])) & set(categories)
+            success = bool(mech_cats & set(hit_categories)) if mech_cats else outcome == "correct"
+            self.prospective.db.execute(
+                "INSERT INTO prospective_predictions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    new_id("validation"),
+                    used["id"],
+                    int(used["version"]),
+                    sorted(mech_cats)[0] if mech_cats else (categories[0] if categories else "unknown"),
+                    created,
+                    round(float(activations.get(used["id"], 0.0)), 4),
+                    deadline,
+                    now,
+                    "success" if success else "failure",
+                    None,
+                ],
+            )
+            old_recent = json.loads(mech["confidence"]).get("recent", float(mech["current_confidence"]))
+            # Damped update: one outcome moves 'recent' 30% toward reality,
+            # so a single fluke never whipsaws a mechanism's confidence.
+            new_recent = round(0.7 * float(old_recent) + 0.3 * (1.0 if success else 0.0), 4)
+            self.mechanisms.update_confidence(used["id"], {"recent": new_recent}, actor="prediction_resolution")
+            self.calibration.record("mechanism", float(mech["current_confidence"]), success)
+            if not success:
+                self.mechanisms.record_failure(
+                    used["id"],
+                    "prediction_failure",
+                    {
+                        "prediction_id": row["prediction_id"],
+                        "missed_categories": sorted(set(categories) - set(hit_categories)),
+                        "activation_at_prediction": activations.get(used["id"]),
+                    },
+                )
+            results.append({"mechanism_id": used["id"], "outcome": "success" if success else "failure"})
+        return results
+
+    @staticmethod
+    def _attribute_failure(opportunity, categories, hit_categories, mechanism_outcomes) -> dict[str, Any]:
+        """Structured answer to 'what exactly went wrong' (roadmap R1.5):
+        which relationships failed, what evidence was present, and what the
+        mechanisms themselves said was missing when the claim was made."""
+        present: set[str] = set()
+        missing: set[str] = set()
+        if opportunity:
+            for am in json.loads(opportunity["evidence"]).get("activated_mechanisms", []):
+                present.update(am.get("matched_signals", []))
+                missing.update(am.get("missing_signals", []))
+        return {
+            "missed_categories": sorted(set(categories) - set(hit_categories)),
+            "failed_relationships": [m for m in mechanism_outcomes if m["outcome"] == "failure"],
+            "signals_present_at_prediction": sorted(present),
+            "signals_missing_at_prediction": sorted(missing),
+        }
