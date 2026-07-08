@@ -26,7 +26,7 @@ def test_supervisor_repairs_knowledge_integrity(isolated_config):
     graph = stack.knowledge.graph
     node = graph.upsert_node("signal", "sig_x", "x", confidence=0.5)
     graph.db.execute(
-        "INSERT INTO knowledge_edges VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO knowledge_edges (edge_id, source_node, target_node, relationship, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         ["edge_dangling", node, "does_not_exist", "supports", 1.0, timeutil.utcnow()],
     )
     report = stack.supervisor.check_knowledge()

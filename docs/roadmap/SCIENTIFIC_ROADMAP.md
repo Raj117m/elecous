@@ -1,7 +1,10 @@
 # ELECOUS Scientific Roadmap
 
-**Version:** 2026-07-08 (supersedes docs/handoff/10_NEXT_STEPS.md)
-**Objective (restated, canonical):** maximize profitable business decisions by identifying products that will experience exceptional sales growth within the next 14 days, before the market notices. Scientific understanding is the mechanism; profit is the objective.
+**Version:** 2026-07-08.2 (supersedes docs/handoff/10_NEXT_STEPS.md; v2 folds in the user's 15 architectural corrections — all confirmed compatible with v1's diagnosis, four genuinely new requirements added below)
+**Objective (restated, canonical):** maximize profitable business decisions by identifying products that will experience exceptional SALES growth within the next 14 days, before the market notices. Scientific understanding exists only to improve profitable predictions.
+**Canonical causal chain (every prediction must be explainable by it):**
+World → External Business Environment → External Business Forces → Relationships between Forces → Expected Sales Pressure → Expected Sales Growth → Products → Opportunity Ranking → Decision → Validation → Learning.
+Attention signals (pageviews, news volume, search trends, social discussion) are EVIDENCE inside this chain, never the ground truth.
 **Evidence base:** docs/audit/state_snapshot_2026-07-07.json (live metrics), docs/audit/mission_audit_partial_2026-07-07.json (3 audited dimensions; demand-first findings adversarially CONFIRMED), branch `production-copy-snapshot` (7118a3b, the running production tree).
 
 This document is the cache of verified conclusions. Future sessions: read this FIRST, do not re-derive anything marked CONFIRMED or MEASURED.
@@ -76,7 +79,9 @@ Four verified point-fixes, all cheap:
 2. Schedule `calibration.recompute("prediction"/"mechanism")` after each resolver pass, and *apply* calibrated confidence.
 3. Feed resolved outcomes into source mechanisms' confidence (iterate `mechanisms_used` in resolve_due).
 4. Fix the lessons key mismatch (`research/engine.py:101` reads by `kind`; writes are by `need_cluster`).
-**Verification:** pending count stops inflating (~11 stable, not +11/day); after 07-14, calibration curves exist and mechanism confidences move with outcomes.
+5. **Failure attribution (new, correction #6):** when a prediction resolves incorrect, the resolver must record WHICH relationships failed (the mechanisms/factors that fired) and WHICH forces were absent from the evidence (categories with no active signal), so failures name the model change they demand — not just a counter increment.
+6. **Predictions evolve, never duplicate (correction #7):** dedup is not just suppression — when new evidence arrives for a covered category+window, UPDATE the existing prediction's confidence, magnitude, timing, and explanation, with the change recorded as an event (feeds R6's live feed).
+**Verification:** pending count stops inflating (~11 stable, not +11/day); after 07-14, calibration curves exist, mechanism confidences move with outcomes, and every failed prediction carries a structured failure-attribution record.
 
 ### R2 — Falsifiable, precision-first predictions (~2-3 days)
 - Resolve at the granularity claimed: predict product-level only where product-level evidence exists (per-entity episode history), else predict category-only and say so.
@@ -90,6 +95,8 @@ Redefine episodes against a sales-adjacent outcome: marketplace rank velocity / 
 
 ### R4 — Validate the copy's DPI + product force ecosystems (after R0, ~1-2 days)
 Historical replay A/B: DPI-ranked products vs current activation-ranked vs naive baseline on the same episode history. Adopt, fix, or reject with numbers. Remove magic numbers either way (derive from thresholds.yaml with measured justification).
+**Ecosystem lifecycle (correction #4, hard requirement):** each product's `associated_forces` is a DYNAMIC learned set, not config — per-product force relationships must be continuously strengthened/weakened by prediction outcomes and merged/removed when evidence decays (reuse the mechanism-lifecycle machinery; per-(product, force) evidence counters). No generic force set shared across products survives this item.
+**Domain prioritization (correction #5):** track each force domain's measured contribution to profitable predictions (hit-rate of predictions whose evidence includes that domain); new-source acquisition (R8) is ranked by this number, not by convenience. Weather becomes one domain among many by measurement, not decree.
 
 ### R5 — Idle-time rebalance: learn more, predict less (~1 day)
 Scheduler currently re-predicts every 15 min while calibration never runs. Rebalance: prediction on world-state *change* (not clock), freed budget → historical replay refreshes, relationship re-validation, blind-spot scans, factor hygiene. Aligns with "majority of idle runtime on discovery/validation."
@@ -97,7 +104,8 @@ Scheduler currently re-predicts every 15 min while calibration never runs. Rebal
 
 ### R6 — Dashboard rebuilt as the intelligence surface (after R1/R2 so real events exist, ~3-5 days)
 The 10-second answers (what deserves attention / why / what changed / what failed / what was learned / what to do), the living event feed (wire the four existing NotificationEngine checks — the engine exists, 0 events ever emitted), rank-move explanations in plain sentences ("moved #8→#3 because search volume rose and supplier lead times lengthened"), the continuous past→+14d timeline with did-we-predict-it/were-we-right badges (currently absent; history caps at 50 of 2,383 episodes), factor-ID→plain-language resolution, hardcoded coverage panel → live registry data, "outperforms baseline" pill → honest precision/recall statement, all engineering vocabulary behind a Developer Mode.
-**Verification:** first-screen answers auditable against live payloads; zero implementation jargon outside dev mode; feed events all trace to real stored state changes.
+**Recommendation contract (correction #13):** every recommendation renders exactly these fields, each from stored data — why ELECOUS believes it, supporting evidence, contradicting evidence, expected sales increase, expected timing, expected profit opportunity, risk, remaining uncertainty, similar historical situations. If a field cannot be honestly populated, it says so ("no contradicting evidence found in N checks") rather than being omitted — absence of counter-evidence is itself information.
+**Verification:** first-screen answers auditable against live payloads; zero implementation jargon outside dev mode; feed events all trace to real stored state changes; every recommendation renders the full 9-field contract.
 
 ### R7 — Knowledge hygiene: bounded, ranked relationships (~2 days)
 700 factors with garbage collision names; append-only growth. Continuous rank/strengthen/weaken/merge/archive with evidence-based scoring. Prerequisite for a browsable "environmental force" vocabulary in the UI.

@@ -41,7 +41,7 @@ def test_home_reflects_zero_state_honestly(client):
     test_client, _ = client
     data = test_client.get("/api/home").json()
     assert data["opportunities"] == []
-    assert data["knowledge_growth"]["factors"] == 0
+    assert data["knowledge_growth"]["totals"]["factors"] == 0
     assert data["observation_network"]["sources"] > 0  # sources registered even with no runs yet
 
 

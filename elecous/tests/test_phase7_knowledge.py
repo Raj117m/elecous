@@ -138,7 +138,7 @@ def test_integrity_scan_repairs_broken_edges(isolated_config):
     revision = KnowledgeRevisionEngine(graph)
     a = graph.upsert_node("signal", "sig_a", "a", confidence=0.5)
     graph.db.execute(
-        "INSERT INTO knowledge_edges VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO knowledge_edges (edge_id, source_node, target_node, relationship, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         ["edge_dangling", a, "node_does_not_exist", "supports", 1.0, timeutil.utcnow()],
     )
     report = revision.integrity_scan()

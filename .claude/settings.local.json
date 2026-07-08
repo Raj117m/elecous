@@ -243,7 +243,14 @@
       "Bash(rsync -a --delete --exclude=__pycache__ --exclude=data/ --exclude=*.duckdb --exclude=*.wal --exclude=.git --exclude=*.log --exclude=.pytest_cache '/Users/rajdeepmalladeb/ELECOUS copy/elecous/' /Users/rajdeepmalladeb/ELECOUS/elecous/)",
       "Bash(rsync -a --exclude='.git' \"/Users/rajdeepmalladeb/ELECOUS copy/docs/\" /Users/rajdeepmalladeb/ELECOUS/docs/)",
       "Bash(git commit -q -m 'snapshot: production tree from '\\\\''~/ELECOUS copy'\\\\'' \\(uncommitted parallel work, verbatim\\) *)",
-      "Bash(git commit -q -m 'roadmap: first-principles scientific roadmap — profit objective, drift diagnosis, ranked EV plan *)"
+      "Bash(git commit -q -m 'roadmap: first-principles scientific roadmap — profit objective, drift diagnosis, ranked EV plan *)",
+      "Bash(git stash *)",
+      "Bash(git merge *)",
+      "Bash(.venv/bin/python -m py_compile elecous/demand/pressure/dpi.py elecous/demand/blind_spots.py elecous/observation/connectors/trends.py elecous/dashboard/api/routes.py elecous/demand/engine.py elecous/prediction/engine.py)",
+      "Bash(.venv/bin/python -m pytest elecous/tests -m \"not network\" -q --tb=line)",
+      "Bash(.venv/bin/python -m pytest elecous/tests/test_phase7_knowledge.py::test_integrity_scan_repairs_broken_edges elecous/tests/test_phase9_dashboard.py::test_home_reflects_zero_state_honestly -q --tb=short)",
+      "Bash(time rsync -a --delete \"/Users/rajdeepmalladeb/ELECOUS copy/elecous/data/\" /Users/rajdeepmalladeb/ELECOUS/elecous/data/)",
+      "Bash(curl -s -m 3 http://127.0.0.1:8321/api/activity)"
     ]
   }
 }
