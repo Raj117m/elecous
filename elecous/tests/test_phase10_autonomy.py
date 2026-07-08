@@ -125,3 +125,42 @@ def test_expansion_engine_discovers_sandboxes_and_promotes_real_source(isolated_
     # re-running does not re-register an already-known source
     result2 = stack.expansion.run_expansion_cycle()
     assert result2["discovered"] == 0
+
+
+def test_sandbox_rejects_non_commercial_licenses(isolated_config):
+    """Independence constraint (roadmap R8): sources whose license restricts
+    commercial use are rejected at discovery time, before any request."""
+    from elecous.observation.registry.registry import Source, SourceRegistry
+    from elecous.observation.sandbox.sandbox import ObservationSandbox
+
+    registry = SourceRegistry()
+
+    def _register(source_id, license_text, access_method="open_data"):
+        registry._insert(Source(  # noqa: SLF001 - same insertion path expansion uses
+            source_id=source_id,
+            name=source_id,
+            provider="example.org",
+            category="test",
+            observation_capability="test",
+            license=license_text,
+            access_method=access_method,
+            update_frequency="daily",
+            countries=[],
+            coverage="global",
+            connector="elecous.observation.connectors.auto.AutoConnector",
+            connector_config={"url": "https://example.org/feed", "kind": "atom", "path": "items", "field_roles": {}},
+            status="sandbox",
+            domain="test",
+        ))
+        return source_id
+
+    nc_id = _register("nc_feed", "CC BY-NC 4.0 (non-commercial)")
+    ok_id = _register("open_feed", "CC BY 4.0")
+    unofficial_id = _register("scraped_feed", "Terms of Service", access_method="unofficial_api")
+
+    sandbox = ObservationSandbox(registry)
+    assert sandbox.evaluate(nc_id).checks["licensing"] is False
+    assert sandbox.evaluate(unofficial_id).checks["licensing"] is False
+    # the commercially-usable source passes the licensing gate (later checks
+    # may still fail on real collection — not asserted here)
+    assert sandbox.evaluate(ok_id).checks["licensing"] is True

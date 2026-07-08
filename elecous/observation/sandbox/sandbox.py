@@ -49,8 +49,20 @@ class ObservationSandbox:
         report = SandboxReport(source_id=source_id, started_at=timeutil.to_iso(timeutil.utcnow()))
 
         # Licensing compatibility: a declared license and legal access method
-        # are mandatory before any request is made.
-        report.checks["licensing"] = bool(source["license"]) and source["access_method"] in (
+        # are mandatory before any request is made. Independence constraint
+        # (roadmap R8): ELECOUS must remain commercially usable at scale, so
+        # licenses that restrict commercial use are rejected at discovery
+        # time — a source that cannot be licensed, self-hosted, or replaced
+        # is a foundation the platform must never build on. (google_trends/
+        # pytrends entered production by bypassing this sandbox entirely —
+        # its access_method 'unofficial_api' has never been allowed here.)
+        non_commercial_markers = (
+            "non-commercial", "noncommercial", "nc 4.0", "by-nc", "research only",
+            "research use only", "personal use", "evaluation only",
+        )
+        license_text = (source["license"] or "").lower()
+        commercially_usable = bool(license_text) and not any(m in license_text for m in non_commercial_markers)
+        report.checks["licensing"] = commercially_usable and source["access_method"] in (
             "official_api",
             "open_data",
             "public_dataset",

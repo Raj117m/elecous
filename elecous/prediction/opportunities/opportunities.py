@@ -47,10 +47,13 @@ class OpportunityStore:
     def products_with_evidence(self, categories: list[str]) -> list[str]:
         """Products an opportunity may CLAIM (roadmap R2): only catalog members
         with at least one genuine demand episode of their own in these
-        categories, ordered by real evidence strength (episode count, then
-        recency). The old behaviour — copying the whole category roster onto
-        every opportunity with identical scores — made per-product claims
-        unfalsifiable decoration (mission audit, CONFIRMED finding)."""
+        categories, ordered recency-first: on 400 real episodes, spike
+        recency ranked the about-to-spike entity at the 67.9th percentile
+        among peers vs 50.8 for DPI (docs/audit/dpi_validation_2026-07-08
+        .json) — the best measured ranking signal we currently have. The old
+        behaviour — copying the whole category roster onto every opportunity
+        with identical scores — made per-product claims unfalsifiable
+        decoration (mission audit, CONFIRMED finding)."""
         roster = set(self.products_for(categories))
         if not roster:
             return []
@@ -64,7 +67,7 @@ class OpportunityStore:
                 WHERE version = (SELECT max(version) FROM research_episodes WHERE episode_id = e.episode_id)
                   AND category IN ({placeholders})
                   AND is_control = FALSE AND is_negative = FALSE
-                GROUP BY entity ORDER BY n DESC, latest DESC
+                GROUP BY entity ORDER BY latest DESC, n DESC
                 """,
                 list(categories),
             )

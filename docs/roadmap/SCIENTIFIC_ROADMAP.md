@@ -117,8 +117,9 @@ The 10-second answers (what deserves attention / why / what changed / what faile
 **Done — per-(product, force) ecosystem lifecycle (correction #4), 2026-07-08:** `demand/ecosystem.py` + `product_force_links` table — every judged product claim strengthens/weakens that product's links to the force phenomena in the claim's evidence; `refresh_associated_forces()` keeps under-explored links (exploration floor, min_samples=5) and prunes judged-and-failing ones (support ratio < 0.5); wired into resolve_due after product_hits. Thresholds documented as initial policy pending recalibration. 2 unit tests.
 **Remaining:** relationship archive policy for append-only factor growth (mechanism-level lifecycle already exists: retire_persistent_failures + R1's outcome-driven confidence); force MERGE (splitting/merging phenomena) deferred until real outcome volume justifies design.
 
-### R8 — Independence remediation (parallel, mostly user actions)
-Replace pytrends with a licensed search-interest source; Open-Meteo commercial plan decision; EIA/FRED keys. Add license verdict as a hard field on every source; expansion engine must reject non-commercial candidates at discovery time.
+### R8 — Independence remediation (agent-side ✅ 2026-07-08; data decisions remain with user)
+**Done:** the discovery sandbox now rejects commercially-unusable sources before any request is made — non-commercial license markers (BY-NC, research-only, personal-use, ...) fail the licensing gate alongside the existing unofficial-access block (which pytrends had bypassed by direct registration, never through the sandbox). Regression test with real Source rows.
+**Remaining (user):** replace pytrends with a licensed search-interest source; Open-Meteo commercial plan; EIA/FRED keys.
 
 **Explicitly deprioritized** (low EV now): more extraction modes (7 pending — no evidence current 3 are the bottleneck), storage compaction (5.6GB vs 150GB budget), adaptive attention (trigger ~10K entities, at ~300), multi-machine anything.
 
