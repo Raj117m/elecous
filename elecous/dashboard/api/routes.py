@@ -492,6 +492,90 @@ def opportunity_detail(opportunity_id: str, request: Request):
     return parsed
 
 
+@router.get("/opportunities/{opportunity_id}/forces")
+def opportunity_forces(opportunity_id: str, request: Request):
+    """The force timeline (roadmap P3): watch the reasoning evolve. For every
+    force the story's relationships care about — supporting AND wanted-but-
+    absent — the real z trajectory across stored world states, when it
+    appeared, whether it is strengthening/weakening/gone, plus how the
+    story's probability moved version by version. Pure serialization of
+    world_states + opportunity versions; nothing computed that isn't stored."""
+    stack = _stack(request)
+    versions = stack.prediction.db.query_dicts(
+        "SELECT version, probability, world_state_id, evidence, created_at "
+        "FROM opportunities WHERE opportunity_id = ? ORDER BY version",
+        [opportunity_id],
+    )
+    if not versions:
+        raise HTTPException(404, "opportunity not found")
+    latest = versions[-1]
+    evidence = _as_dict(_parse(latest, ("evidence",)).get("evidence"))
+    matched: set[str] = set()
+    missing: set[str] = set()
+    for am in evidence.get("activated_mechanisms", []):
+        matched.update(am.get("matched_signals") or [])
+        missing.update(am.get("missing_signals") or [])
+    created = _coerce_datetime(latest["created_at"]) or timeutil.utcnow()
+    window_start = created - timedelta(days=7)
+
+    world_db = stack.environment.world.db
+    states = world_db.query_dicts(
+        "SELECT state_id, as_of, signals FROM world_states WHERE as_of >= ? ORDER BY as_of",
+        [window_start],
+    )
+    series: dict[str, list[dict[str, Any]]] = {k: [] for k in matched | missing}
+    last_state_asof = None
+    for st in states:
+        at = timeutil.to_iso(_coerce_datetime(st["as_of"]))
+        last_state_asof = at
+        z_by_key = {s.get("signal_key"): s.get("z") for s in (_as_list(_parse(st, ("signals",)).get("signals")))}
+        for key, points in series.items():
+            if key in z_by_key:
+                points.append({"at": at, "z": z_by_key[key]})
+
+    forces = []
+    for key, points in series.items():
+        role = "supporting" if key in matched else "wanted_but_absent"
+        if not points:
+            status = "not seen in this window"
+        elif points[-1]["at"] != last_state_asof:
+            status = "disappeared"
+        elif len(points) >= 2 and abs(_coerce_float(points[-1]["z"])) > abs(_coerce_float(points[0]["z"])) * 1.1:
+            status = "strengthening"
+        elif len(points) >= 2 and abs(_coerce_float(points[-1]["z"])) < abs(_coerce_float(points[0]["z"])) * 0.9:
+            status = "weakening"
+        else:
+            status = "holding"
+        forces.append({
+            "signal_key": key,
+            "force": _human_signals([key]),
+            "role": role,
+            "status": status,
+            "first_seen": points[0]["at"] if points else None,
+            "latest_z": points[-1]["z"] if points else None,
+            "series": points,
+        })
+    # contributed most first: supporting forces by current strength
+    forces.sort(key=lambda f: (f["role"] != "supporting", -abs(_coerce_float(f["latest_z"], 0.0))))
+
+    state_times = {
+        r["state_id"]: timeutil.to_iso(_coerce_datetime(r["as_of"]))
+        for r in world_db.query_dicts(
+            f"SELECT state_id, as_of FROM world_states WHERE state_id IN ({','.join('?' * len(versions))})",
+            [v["world_state_id"] for v in versions],
+        )
+    } if versions else {}
+    confidence_path = [
+        {
+            "version": v["version"],
+            "probability": _coerce_float(v["probability"]),
+            "at": state_times.get(v["world_state_id"]),
+        }
+        for v in versions
+    ]
+    return {"opportunity_id": opportunity_id, "forces": forces, "confidence_path": confidence_path}
+
+
 def _recommendation_contract(stack: ElecousStack, opportunity: dict[str, Any]) -> dict[str, Any]:
     """The 9-field recommendation contract (roadmap correction #13). Every
     field comes from stored rows; a field that cannot be honestly populated
@@ -1596,10 +1680,12 @@ def home(request: Request):
             continue
         seen_category_sets.add(cat_key)
         signals = _opportunity_signals(parsed)
+        product_scores = _as_dict(parsed.get("evidence")).get("product_scores") or []
         attention.append({
             "opportunity_id": opp["opportunity_id"],
             "headline": _human_categories(categories),
             "products": _as_list(parsed.get("products"))[:5],
+            "product_scores": product_scores[:10],
             "probability": _coerce_float(opp.get("probability")),
             "probability_delta": delta_by_opp.get(opp["opportunity_id"]),
             "decision": opp.get("decision"),
@@ -1616,20 +1702,28 @@ def home(request: Request):
     # signal). Pure aggregation of rows already selected above.
     top_products: list[dict[str, Any]] = []
     seen_products: set[str] = set()
-    for item in sorted(attention, key=lambda a: -(a["probability"] or 0)):
+    for item in attention:
+        scored = {s["product"]: s for s in item.get("product_scores", [])}
         for product in item["products"]:
             if product in seen_products:
                 continue
             seen_products.add(product)
+            score = scored.get(product) or {}
             top_products.append({
                 "product": product,
-                "probability": item["probability"],
+                # per-product probability = story x measured participation
+                # (roadmap P2); falls back to the story probability only
+                # when no participation history exists.
+                "probability": score.get("probability", item["probability"]),
+                "participation": score.get("participation"),
+                "story_probability": item["probability"],
                 "story": item["headline"],
                 "why": item["why"],
                 "expected_window": item["expected_window"],
                 "typical_past_spike": item["typical_past_spike"],
                 "opportunity_id": item["opportunity_id"],
             })
+    top_products.sort(key=lambda p: -(p["probability"] or 0))
     top_products = top_products[:10]
 
     # what changed since yesterday — from the same real event derivation as /feed

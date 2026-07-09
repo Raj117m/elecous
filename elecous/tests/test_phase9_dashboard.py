@@ -319,3 +319,58 @@ def test_frontend_jargon_gate(client):
         assert banned not in primary, f"jargon '{banned}' leaked outside the developer-mode block"
     # and the dev block genuinely exists (the gate is a gate, not an absence)
     assert "developer" in html[start:end].lower()
+
+
+def test_force_timeline_serializes_stored_world_states(client):
+    """Roadmap P3: the force timeline is pure serialization of stored world
+    states + opportunity versions — appearance, strengthening, absence and
+    the probability path are all derived from real rows."""
+    test_client, stack = client
+    now = datetime.now(timezone.utc)
+
+    # three stored world states: the signal appears, then strengthens
+    for i, (state_id, z) in enumerate((("wst_f1", 2.0), ("wst_f2", 3.5), ("wst_f3", 8.0))):
+        stack.environment.world.db.execute(
+            "INSERT INTO world_states VALUES (?, ?, ?, ?, ?, ?)",
+            [state_id, now - timedelta(days=3 - i), json.dumps(
+                [{"signal_key": "thermal_stress:up:US", "z": z}]
+            ), "[]", 10, now - timedelta(days=3 - i)],
+        )
+    evidence = {
+        "activated_mechanisms": [{
+            "mechanism_id": "m-f", "mechanism_version": 1, "activation": 0.9,
+            "matched_signals": ["thermal_stress:up:US"],
+            "missing_signals": ["energy_demand:up:US"], "behavioural_chain": [],
+        }],
+        "environmental_factors": [],
+    }
+    for version, (state_id, prob) in enumerate((("wst_f1", 0.5), ("wst_f3", 0.7)), start=1):
+        stack.prediction.db.execute(
+            "INSERT INTO opportunities (opportunity_id, version, world_state_id, categories, products, "
+            "activated_mechanisms, environmental_factors, evidence, scores, lead_time, confidence, probability, "
+            "uncertainty, business_value, regions, stage, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ["opp-forces", version, state_id, json.dumps(["cooling"]), "[]", "[]", "[]",
+             json.dumps(evidence), "{}", "{}", "{}", prob, "{}", "{}", "[]",
+             "emerging", now - timedelta(days=3), now + timedelta(days=14)],
+        )
+
+    data = test_client.get("/api/opportunities/opp-forces/forces").json()
+    by_key = {f["signal_key"]: f for f in data["forces"]}
+
+    supporting = by_key["thermal_stress:up:US"]
+    assert supporting["role"] == "supporting"
+    assert supporting["status"] == "strengthening"          # |z| 2.0 -> 8.0
+    assert len(supporting["series"]) == 3
+    assert supporting["first_seen"] is not None
+
+    absent = by_key["energy_demand:up:US"]
+    assert absent["role"] == "wanted_but_absent"
+    assert absent["series"] == []                            # never appeared
+
+    # confidence path carries real per-version probabilities with real times
+    path = data["confidence_path"]
+    assert [p["probability"] for p in path] == [0.5, 0.7]
+    assert all(p["at"] for p in path)
+
+    assert test_client.get("/api/opportunities/nope/forces").status_code == 404

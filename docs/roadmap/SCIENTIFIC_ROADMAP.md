@@ -157,3 +157,15 @@ Rebuilt from first principles (background agent + main-session verification; not
 2. **Open-Meteo commercial license** (or accept non-commercial status during development and defer).
 3. **EIA + FRED API keys** (free registration, ~10 minutes, unlocks economics/energy forces).
 4. **Canonical tree confirmation:** merge plan per R0 — `~/ELECOUS` becomes canonical, `~/ELECOUS copy` retired after merge. Confirm no other session is mid-work there.
+
+
+---
+
+## 5b. Priority cycle 2026-07-09 (post-live-audit) — status
+
+- **P4 spike magnitude ✅ MEASURED**: volume_multiplier backfilled from frozen evidence bundles for **1,860 of 2,382 episodes** (median ×3.12, max ×150; 522 honestly underivable, stay 'unknown'). New episodes already compute it at creation. Dashboard now renders real magnitudes ("typical past spike ×2.95, 141 episodes" live) and admits absence otherwise.
+- **P2 per-product differentiation ✅ CODE + TEST; visible on next world change**: P(product) = P(story) × P(product | story), participation measured from real story-weeks (ISO weeks with ≥1 category episode). Stored in evidence.product_scores; home top-products ranked by per-product probability with participation shown. Live rows predate the code — differentiation appears as opportunities evolve.
+- **P3 force timeline ✅ LIVE**: /api/opportunities/{id}/forces serializes per-force z trajectories across stored world states (appeared / strengthening / weakening / disappeared / wanted-but-absent-as-counter-evidence) + probability path per version. Verified live: 105 forces on the current story, "rainfall intensity rising in AU — strengthening, z→39.1". UI: lazy-loaded into Full Reasoning.
+- **P1 sales target**: still externally blocked (licensed sales-proxy feeds — Open Decision #1). Nothing built speculatively.
+- **P5 breadth**: next candidates that are free AND commercially usable AND business-domain: Federal Register API (regulation, US public domain), SEC EDGAR (finance/competitor filings, public domain). Not yet built — each needs connector + semantics + sandbox + measured contribution; one focused session each.
+- **P6**: consumed by the above (products lead, honest magnitudes, force evolution inside reasoning).

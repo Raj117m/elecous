@@ -431,3 +431,36 @@ def test_predict_skips_unchanged_world_state(isolated_config):
     engine.world.state = dict(engine.world.state, state_id="wst_test_2")
     assert engine.predict() == []  # evolved, not created
     assert int(engine.opportunities.latest(opp_id)["version"]) == 2
+
+
+def test_products_carry_measured_participation_probabilities(isolated_config):
+    """Roadmap P2: two products in the same story get DIFFERENT probabilities,
+    decomposed as P(story) x P(product | story) where participation is
+    measured from real story-weeks in episode history."""
+    from datetime import timedelta
+
+    from elecous.common import timeutil
+
+    now = timeutil.utcnow()
+    # four story-weeks; Air conditioner spiked in all four, Portable fan in one
+    for weeks_ago in (1, 2, 3, 4):
+        _register_demand_and_insert_episode("Air conditioner", "cooling", now - timedelta(weeks=weeks_ago))
+    _register_demand_and_insert_episode("Portable fan", "cooling", now - timedelta(weeks=2))
+
+    store = OpportunityStore()
+    rates = store.participation_rates(["cooling"])
+    assert rates["Air conditioner"] == 1.0
+    assert rates["Portable fan"] == 0.25
+
+    mechanisms = MechanismStore()
+    mid = mechanisms.create(_mechanism_payload("cool mech", ["thermal_stress:up:US"], ["cooling"]))
+    mechanisms.db.execute("UPDATE mechanisms SET lifecycle = 'validated' WHERE mechanism_id = ?", [mid])
+    engine, _ = _prediction_engine_with_live_world(mechanisms)
+    assert len(engine.predict()) == 1
+
+    opp = engine.opportunities.active()[0]
+    scores = {s["product"]: s for s in json.loads(opp["evidence"])["product_scores"]}
+    story_p = float(opp["probability"])
+    assert scores["Air conditioner"]["probability"] == pytest.approx(story_p, abs=1e-4)
+    assert scores["Portable fan"]["probability"] == pytest.approx(story_p * 0.25, abs=1e-4)
+    assert scores["Air conditioner"]["probability"] != scores["Portable fan"]["probability"]

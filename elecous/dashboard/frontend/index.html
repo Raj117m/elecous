@@ -339,6 +339,35 @@ function toggleContract(id) {
   if (!el) return;
   el.classList.toggle("open");
   if (el.classList.contains("open")) expandedContracts.add(id); else expandedContracts.delete(id);
+  if (el.classList.contains("open") && el.dataset.opp && !el.dataset.forcesLoaded) {
+    el.dataset.forcesLoaded = "1";
+    loadForces(el, el.dataset.opp);
+  }
+}
+async function loadForces(el, oppId) {
+  const host = document.createElement("div");
+  host.innerHTML = `<div class="c-row"><div class="c-label">How the forces evolved</div><div class="c-val muted">loading force timeline…</div></div>`;
+  el.appendChild(host);
+  try {
+    const d = await fetchJSON(`/opportunities/${oppId}/forces`);
+    const statusWord = { strengthening: `<span class="pill up">strengthening</span>`, weakening: `<span class="pill warn">weakening</span>`,
+      holding: `<span class="pill info">holding</span>`, disappeared: `<span class="pill down">disappeared</span>` };
+    const spark = pts => pts && pts.length > 1
+      ? `<span class="mono muted small"> z ${num(Math.abs(pts[0].z), 1)} → ${num(Math.abs(pts[pts.length - 1].z), 1)}</span>` : "";
+    const rows = (d.forces || []).slice(0, 8).map(f => `
+      <div class="feed-item">
+        <div class="feed-title">${f.role === "supporting" ? `<span class="fk gold"></span>` : `<span class="fk down"></span>`}${esc(f.force)}
+          ${statusWord[f.status] || `<span class="pill">${esc(f.status)}</span>`}${spark(f.series)}</div>
+        <div class="feed-why">${f.role === "supporting" ? "supporting this story" : "the relationships also wanted this force — its absence weighs against the story"}${f.first_seen ? ` · first seen ${fmtDate(f.first_seen)}` : ""}</div>
+      </div>`).join("") || `<div class="empty">no force history stored inside this window</div>`;
+    const cp = (d.confidence_path || []).filter(p => p.at);
+    const conf = cp.length > 1
+      ? `<div class="c-row"><div class="c-label">Confidence as forces evolved</div><div class="c-val mono small">${cp.map(p => `${pct(p.probability)} <span class="muted">(${fmtDate(p.at)})</span>`).join(" → ")}</div></div>`
+      : "";
+    host.innerHTML = `<div class="c-row"><div class="c-label">How the forces evolved</div><div class="c-val">${rows}</div></div>${conf}`;
+  } catch (e) {
+    host.innerHTML = `<div class="c-row"><div class="c-label">How the forces evolved</div><div class="c-val muted">force timeline unavailable</div></div>`;
+  }
 }
 function decisionPill(d) {
   if (d === "Act") return `<span class="pill up">Act now</span>`;
@@ -374,7 +403,7 @@ VIEWS.today = async function (app) {
           <span class="mono muted" style="min-width:1.6em;text-align:right">${i + 1}</span>
           <div style="flex:1">
             <div class="feed-title"><b>${esc(p.product)}</b> <span class="muted small">· ${esc(p.story)}</span></div>
-            <div class="feed-why">${pct(p.probability)} probability · ${windowText(p.expected_window)}${p.typical_past_spike && p.typical_past_spike.multiplier ? ` · past spikes ×${p.typical_past_spike.multiplier}` : ""} — ${esc(p.why)}</div>
+            <div class="feed-why">${pct(p.probability)} probability${p.participation != null ? ` <span class="muted">(spiked in ${Math.round(p.participation * 100)}% of this story's past waves)</span>` : ""} · ${windowText(p.expected_window)}${p.typical_past_spike && p.typical_past_spike.multiplier ? ` · past spikes ×${p.typical_past_spike.multiplier}` : ""} — ${esc(p.why)}</div>
           </div>
         </div>`).join("")}
     </div>` : "";
@@ -393,7 +422,7 @@ VIEWS.today = async function (app) {
         ${a.products && a.products.length ? `<span>products with evidence: <b style="font-family:var(--sans)">${esc(a.products.slice(0, 3).join(", "))}</b></span>` : `<span class="muted">no product has earned evidence yet</span>`}
       </div>
       <button class="expand-btn" onclick="toggleContract(${i})">Full reasoning ▾</button>
-      <div class="contract${expandedContracts.has(i) ? " open" : ""}" id="contract-${i}">${contractHTML(a.contract)}</div>
+      <div class="contract${expandedContracts.has(i) ? " open" : ""}" id="contract-${i}" data-opp="${esc(a.opportunity_id)}">${contractHTML(a.contract)}</div>
     </div>`).join("")
     : `<div class="panel"><div class="empty">No live opportunities right now. ELECOUS is watching ${home.observation_network?.sources ?? 0} evidence sources and will surface an opportunity the moment learned relationships match the live world. ${home.verdicts?.first_verdict_due ? `First prediction verdicts due ${fmtDate(home.verdicts.first_verdict_due)}.` : "No predictions have been issued yet."}</div></div>`;
 

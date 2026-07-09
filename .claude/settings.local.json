@@ -282,7 +282,9 @@
       "Bash(curl -s http://127.0.0.1:8322/api/home)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('top_products:', len\\(d.get\\('top_products',[]\\)\\)\\); print\\('attention:', len\\(d['attention']\\)\\); print\\('opps_active:', d.get\\('opportunities_active'\\)\\)\")",
       "Bash(curl -s -m 10 http://127.0.0.1:8322/api/home)",
-      "Bash(git commit -q -m 'Live first-time-user audit: products lead, duplicates purged, magnitude honest, responsive *)"
+      "Bash(git commit -q -m 'Live first-time-user audit: products lead, duplicates purged, magnitude honest, responsive *)",
+      "Bash(.venv/bin/python elecous/scripts/backfill_volume_multiplier.py)",
+      "Bash(git commit -q -m 'Priority cycle: measured magnitudes \\(P4\\), per-product probabilities \\(P2\\), force timeline \\(P3\\) *)"
     ]
   }
 }

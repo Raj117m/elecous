@@ -77,6 +77,41 @@ class OpportunityStore:
             return []
         return [r["entity"] for r in rows if r["entity"] in roster]
 
+    def participation_rates(self, categories: list[str]) -> dict[str, float]:
+        """P(product spikes | a demand story is active in its categories),
+        measured from real history (roadmap P2): a story-week is an ISO week
+        containing >=1 genuine episode in these categories; a product's rate
+        is the share of story-weeks in which the product itself spiked. This
+        is what lets two products in the same story carry DIFFERENT
+        probabilities — P(product) = P(story) x P(product | story) — instead
+        of inheriting one identical number."""
+        if not categories:
+            return {}
+        try:
+            demand_db = self.databases.get("demand")
+            placeholders = ",".join("?" for _ in categories)
+            rows = demand_db.query_dicts(
+                f"""
+                SELECT entity, date_trunc('week', spike_start) AS wk
+                FROM research_episodes e
+                WHERE version = (SELECT max(version) FROM research_episodes WHERE episode_id = e.episode_id)
+                  AND category IN ({placeholders})
+                  AND is_control = FALSE AND is_negative = FALSE
+                """,
+                list(categories),
+            )
+        except Exception:
+            return {}
+        story_weeks: set = set()
+        weeks_by_entity: dict[str, set] = {}
+        for r in rows:
+            story_weeks.add(r["wk"])
+            weeks_by_entity.setdefault(r["entity"], set()).add(r["wk"])
+        if not story_weeks:
+            return {}
+        n = len(story_weeks)
+        return {entity: round(len(weeks) / n, 4) for entity, weeks in weeks_by_entity.items()}
+
     def _compose(
         self,
         activated: list[dict[str, Any]],  # [{mechanism, match, lead_time}]
@@ -121,6 +156,18 @@ class OpportunityStore:
             min(0.99, sum(a["match"].activation * float(a["mechanism"]["current_confidence"]) for a in activated) / len(activated)),
             4,
         ) if activated else 0.0
+        # Per-product probabilities (roadmap P2): the story probability
+        # decomposed by each product's measured historical participation —
+        # stored inside the explainability bundle where all evidence lives.
+        rates = self.participation_rates(categories)
+        evidence["product_scores"] = [
+            {
+                "product": p,
+                "participation": rates.get(p, 0.0),
+                "probability": round(probability * rates.get(p, 0.0), 4),
+            }
+            for p in products
+        ]
         stage = self._stage_for(probability, scores.get("overall", 0.0))
 
         expected_roi = business_value.get("expected_roi", 0.0)
