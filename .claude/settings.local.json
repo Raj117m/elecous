@@ -284,7 +284,8 @@
       "Bash(curl -s -m 10 http://127.0.0.1:8322/api/home)",
       "Bash(git commit -q -m 'Live first-time-user audit: products lead, duplicates purged, magnitude honest, responsive *)",
       "Bash(.venv/bin/python elecous/scripts/backfill_volume_multiplier.py)",
-      "Bash(git commit -q -m 'Priority cycle: measured magnitudes \\(P4\\), per-product probabilities \\(P2\\), force timeline \\(P3\\) *)"
+      "Bash(git commit -q -m 'Priority cycle: measured magnitudes \\(P4\\), per-product probabilities \\(P2\\), force timeline \\(P3\\) *)",
+      "Bash(git commit -q -m 'Fix jargon leak caught in live click-through: behavioural chains render statements, not raw dicts *)"
     ]
   }
 }

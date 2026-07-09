@@ -594,7 +594,14 @@ def _recommendation_contract(stack: ElecousStack, opportunity: dict[str, Any]) -
     for am in evidence.get("activated_mechanisms", []):
         chain = am.get("behavioural_chain") or []
         if chain:
-            chains.append(" → ".join(str(step) for step in chain[:3]))
+            # Chain steps are dicts; users get the plain-language statements,
+            # never raw structures (str(step) leaked JSON into the UI —
+            # caught in the live audit).
+            statements = [
+                step.get("statement") if isinstance(step, dict) else str(step)
+                for step in chain[:3]
+            ]
+            chains.append(" → ".join(s for s in statements if s))
 
     # why ELECOUS believes it
     why = ""
