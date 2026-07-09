@@ -73,6 +73,21 @@
 
   .grid { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 22px; align-items: start; }
   @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  /* narrow viewports: the sidebar becomes a horizontal top bar so content
+     never gets squeezed into a sliver */
+  @media (max-width: 760px) {
+    body { flex-direction: column; }
+    #nav { width: 100%; flex-direction: row; align-items: center; gap: 2px;
+           padding: 10px 12px; border-right: none; border-bottom: 1px solid var(--line-soft);
+           overflow-x: auto; }
+    .brand { padding: 0 12px 0 0; }
+    .brand .tag, .nav-sep, .nav-live { display: none; }
+    .nav-btn { width: auto; padding: 8px 10px; border-left: none;
+               border-bottom: 2px solid transparent; white-space: nowrap; }
+    .nav-btn.active { border-left-color: transparent; border-bottom-color: var(--accent); background: none; }
+    .nav-foot { margin: 0 0 0 auto; padding: 0 0 0 10px; border-top: none; }
+    .content { padding: 20px 14px 60px; }
+  }
 
   .panel { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; }
   .panel h3 { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--dim); font-weight: 600; margin-bottom: 14px; }
@@ -346,6 +361,24 @@ VIEWS.today = async function (app) {
   const bench = home.benchmark || {};
   const benchTone = { good: "up", mixed: "warn", bad: "down", none: "" }[bench.tone] || "";
 
+  const spikeText = (s) => s && s.multiplier
+    ? `<span>typical past spike <b>×${s.multiplier}</b> <span class="muted small">(${s.episodes} past episodes)</span></span>`
+    : `<span class="muted">no past spike sizes recorded yet</span>`;
+
+  const tops = home.top_products || [];
+  const topProductsHTML = tops.length ? `
+    <div class="panel">
+      <h3>Top products right now</h3>
+      ${tops.map((p, i) => `
+        <div class="feed-item" style="display:flex;gap:12px;align-items:baseline">
+          <span class="mono muted" style="min-width:1.6em;text-align:right">${i + 1}</span>
+          <div style="flex:1">
+            <div class="feed-title"><b>${esc(p.product)}</b> <span class="muted small">· ${esc(p.story)}</span></div>
+            <div class="feed-why">${pct(p.probability)} probability · ${windowText(p.expected_window)}${p.typical_past_spike && p.typical_past_spike.multiplier ? ` · past spikes ×${p.typical_past_spike.multiplier}` : ""} — ${esc(p.why)}</div>
+          </div>
+        </div>`).join("")}
+    </div>` : "";
+
   const attHTML = att.length ? att.map((a, i) => `
     <div class="att-card">
       <div class="att-top">
@@ -356,6 +389,7 @@ VIEWS.today = async function (app) {
       <div class="att-meta">
         <span>probability <b>${pct(a.probability)}</b>${deltaText(a.probability_delta)}</span>
         <span>expected <b>${windowText(a.expected_window)}</b></span>
+        ${spikeText(a.typical_past_spike)}
         ${a.products && a.products.length ? `<span>products with evidence: <b style="font-family:var(--sans)">${esc(a.products.slice(0, 3).join(", "))}</b></span>` : `<span class="muted">no product has earned evidence yet</span>`}
       </div>
       <button class="expand-btn" onclick="toggleContract(${i})">Full reasoning ▾</button>
@@ -407,6 +441,7 @@ VIEWS.today = async function (app) {
     <div class="page-sub">as of ${fmtDateTime(home.as_of)} · ${home.opportunities_active} live opportunities · ${cov.active_source_count ?? 0} evidence sources active</div>
     <div class="grid">
       <div>
+        ${topProductsHTML}
         ${attHTML}
         <div class="panel"><h3>Changed since yesterday</h3>
           ${changeBlock("Strengthened", ch.strengthened, "up")}

@@ -4,8 +4,11 @@
     {
       "name": "elecous-dashboard",
       "runtimeExecutable": ".venv/bin/python",
-      "runtimeArgs": ["-m", "elecous.dashboard.api.app"],
-      "port": 8321
+      "runtimeArgs": [
+        "-m",
+        "elecous.dashboard.api.app"
+      ],
+      "port": 8322
     }
   ]
 }

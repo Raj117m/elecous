@@ -92,7 +92,9 @@ http:
 
 dashboard:
   host: 127.0.0.1
-  port: 8321
+  # 8322 while the retired '~/ELECOUS copy' process (old code, Antigravity-
+  # managed) still squats on 8321; move back once that workspace is closed.
+  port: 8322
   refresh_seconds: 30
   notifications:
     # Spec 9.25: notify only above scientific-importance thresholds.

@@ -276,7 +276,13 @@
       "Bash(git commit -q -m 'R8 \\(agent side\\) + R4 follow-through: commercial-license gate at discovery; recency-first product ordering *)",
       "Bash(.venv/bin/python -m pytest elecous/tests/test_phase9_dashboard.py -m \"not network\" -q)",
       "Bash(.venv/bin/python -m pytest elecous/tests/test_phase9_dashboard.py -m \"not network\" -q --tb=short)",
-      "Bash(git commit -q -m 'R6: dashboard rebuilt from first principles — honest, live, decision-focused *)"
+      "Bash(git commit -q -m 'R6: dashboard rebuilt from first principles — honest, live, decision-focused *)",
+      "Bash(.venv/bin/python -m pytest elecous/tests/test_phase9_dashboard.py elecous/tests/test_phase8_prediction.py -m \"not network\" -q --tb=short)",
+      "Bash(curl -s http://127.0.0.1:8322/)",
+      "Bash(curl -s http://127.0.0.1:8322/api/home)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('top_products:', len\\(d.get\\('top_products',[]\\)\\)\\); print\\('attention:', len\\(d['attention']\\)\\); print\\('opps_active:', d.get\\('opportunities_active'\\)\\)\")",
+      "Bash(curl -s -m 10 http://127.0.0.1:8322/api/home)",
+      "Bash(git commit -q -m 'Live first-time-user audit: products lead, duplicates purged, magnitude honest, responsive *)"
     ]
   }
 }

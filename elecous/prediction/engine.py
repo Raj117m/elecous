@@ -164,6 +164,7 @@ class PredictionEngine:
             created.append(opportunity_id)
 
         self.opportunities.detect_conflicts([self.opportunities.latest(o) for o in created])
+        self.opportunities.expire_superseded()
         return created
 
     def _pending_by_categories(self, tolerance_days: float = 3.0) -> dict[frozenset, dict[str, Any]]:

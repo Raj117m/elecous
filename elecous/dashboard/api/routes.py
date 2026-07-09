@@ -995,6 +995,40 @@ def prediction_accuracy(request: Request):
     }
 
 
+def _typical_past_spike(stack: ElecousStack, categories: list[str]) -> dict[str, Any] | None:
+    """HOW MUCH, answered honestly from history: the median size of genuine
+    past demand spikes in these categories (episodes.volume_multiplier) and
+    how many episodes that median rests on. This is stored history
+    serialized — labeled as 'typical past spike', never as a forecast."""
+    if not categories:
+        return None
+    try:
+        placeholders = ",".join("?" for _ in categories)
+        rows = stack.demand.episodes.db.query_dicts(
+            f"""
+            SELECT volume_multiplier FROM research_episodes e
+            WHERE version = (SELECT max(version) FROM research_episodes WHERE episode_id = e.episode_id)
+              AND category IN ({placeholders})
+              AND is_control = FALSE AND is_negative = FALSE
+              AND volume_multiplier IS NOT NULL
+            """,
+            list(categories),
+        )
+    except Exception:
+        return None
+    values = sorted(_coerce_float(r["volume_multiplier"], 0.0) for r in rows)
+    # 1.0 is the migration backfill DEFAULT for episodes recorded before the
+    # multiplier existed — indistinguishable from 'unknown'. Treating those
+    # as measurements made the median read '×1', which communicates nothing
+    # (caught in the live first-time-user audit). Only genuinely measured
+    # sizes count; if none exist we say so instead.
+    values = [v for v in values if v > 0 and abs(v - 1.0) > 1e-9]
+    if not values:
+        return None
+    median = values[len(values) // 2]
+    return {"multiplier": round(median, 2), "episodes": len(values)}
+
+
 def _first_verdict_due(stack: ElecousStack) -> str | None:
     """The real date the earliest unresolved prediction becomes judgeable
     (created_at + lead_time + 3d tolerance) — computed, never asserted."""
@@ -1536,15 +1570,35 @@ def home(request: Request):
     decision_rank = {"Act": 0, "Prepare": 1, "Review": 2, "Monitor": 3, "Ignore": 4}
     ranked = sorted(
         active,
-        key=lambda o: (decision_rank.get(str(o.get("decision")), 5), -_coerce_float(o.get("probability"))),
+        key=lambda o: (
+            decision_rank.get(str(o.get("decision")), 5),
+            -_coerce_float(o.get("probability")),
+            # among duplicates, prefer the newest version of the newest row
+            str(o.get("created_at") or ""),
+        ),
     )
     attention = []
-    for opp in ranked[:6]:
+    seen_category_sets: set[frozenset] = set()
+    for opp in ranked:
+        if len(attention) >= 6:
+            break
+        # Attention means attention: rows the decision engine itself marked
+        # Ignore do not belong on a list titled "what deserves attention".
+        if str(opp.get("decision")) == "Ignore":
+            continue
         parsed = _parse(opp, ("categories", "products", "lead_time", "evidence"))
+        categories = _as_list(parsed.get("categories"))
+        # One card per demand story: the pre-R1 era minted duplicate
+        # opportunities for the same category set every 15 minutes and those
+        # rows stay 'active' until they expire — never show the same story twice.
+        cat_key = frozenset(categories)
+        if cat_key in seen_category_sets:
+            continue
+        seen_category_sets.add(cat_key)
         signals = _opportunity_signals(parsed)
         attention.append({
             "opportunity_id": opp["opportunity_id"],
-            "headline": _human_categories(_as_list(parsed.get("categories"))),
+            "headline": _human_categories(categories),
             "products": _as_list(parsed.get("products"))[:5],
             "probability": _coerce_float(opp.get("probability")),
             "probability_delta": delta_by_opp.get(opp["opportunity_id"]),
@@ -1552,8 +1606,31 @@ def home(request: Request):
             "stage": opp.get("stage"),
             "why": (f"because {_human_signals(signals)}" if signals else "no live signals stored on this version"),
             "expected_window": _window_dates(opp.get("created_at"), _as_dict(parsed.get("lead_time"))),
+            "typical_past_spike": _typical_past_spike(stack, categories),
             "contract": _recommendation_contract(stack, opp),
         })
+
+    # Products lead (the mission question is WHICH PRODUCTS): every product
+    # claimed by a non-Ignore attention story, ranked by its story's
+    # probability, recency-first within a story (the measured 0.68 ranking
+    # signal). Pure aggregation of rows already selected above.
+    top_products: list[dict[str, Any]] = []
+    seen_products: set[str] = set()
+    for item in sorted(attention, key=lambda a: -(a["probability"] or 0)):
+        for product in item["products"]:
+            if product in seen_products:
+                continue
+            seen_products.add(product)
+            top_products.append({
+                "product": product,
+                "probability": item["probability"],
+                "story": item["headline"],
+                "why": item["why"],
+                "expected_window": item["expected_window"],
+                "typical_past_spike": item["typical_past_spike"],
+                "opportunity_id": item["opportunity_id"],
+            })
+    top_products = top_products[:10]
 
     # what changed since yesterday — from the same real event derivation as /feed
     all_events = _derive_feed_events(stack)
@@ -1626,6 +1703,7 @@ def home(request: Request):
     return {
         "as_of": timeutil.to_iso(now),
         "attention": attention,
+        "top_products": top_products,
         "changed": changed,
         "verdicts": verdicts,
         "learned": learned,
@@ -1634,7 +1712,13 @@ def home(request: Request):
         "coverage": _coverage(stack),
         "feed_preview": all_events[:8],
         "observation_network": {"sources": len(stack.observation.registry.list(status="active"))},
-        "opportunities_active": len(active),
+        # Stories, not rows: the pre-R1 era left duplicate active rows per
+        # category set (expire_superseded cleans them on the next predict
+        # cycle); the user-facing count must never inflate on duplicates.
+        "opportunities_active": len({
+            frozenset(_as_list(_parse(o, ("categories",)).get("categories"))) for o in active
+        }),
+        "opportunity_rows_active": len(active),
     }
 
 

@@ -118,6 +118,7 @@ def test_home_reflects_zero_state_honestly(client):
     test_client, _ = client
     data = test_client.get("/api/home").json()
     assert data["attention"] == []
+    assert data["top_products"] == []
     assert data["do_next"] == []
     assert data["verdicts"]["judged"] == 0
     assert data["verdicts"]["accuracy"] is None

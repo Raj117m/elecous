@@ -325,6 +325,27 @@ class OpportunityStore:
         )
         self.bus.emit(EventType.OPPORTUNITY_UPDATED, source="prediction", opportunity_id=opportunity_id, stage=stage.value)
 
+    def expire_superseded(self) -> int:
+        """One live opportunity per demand story: among active rows sharing a
+        category set, only the newest survives; older ones expire as
+        superseded. Exists to clean the pre-R1 era (duplicate opportunities
+        minted every 15 minutes stayed 'active' for their full 21-day expiry,
+        polluting every count, card and feed); harmless afterwards. The
+        superseded rows' PREDICTIONS remain pending and are still judged at
+        their own deadlines — falsifiability is untouched."""
+        by_key: dict[frozenset, list[dict[str, Any]]] = {}
+        for opp in self.active():
+            by_key.setdefault(frozenset(json.loads(opp["categories"])), []).append(opp)
+        expired = 0
+        for rows in by_key.values():
+            rows.sort(key=lambda r: str(r["created_at"]), reverse=True)
+            for stale in rows[1:]:
+                self.update_stage(stale["opportunity_id"], OpportunityStage.EXPIRED)
+                expired += 1
+        if expired:
+            self.log.info("superseded duplicate opportunities expired", count=expired)
+        return expired
+
     def active(self) -> list[dict[str, Any]]:
         return self.db.query_dicts(
             "SELECT * FROM opportunities o WHERE version = "
