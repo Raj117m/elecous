@@ -3,643 +3,752 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ELECOUS — Intelligence Operating System</title>
+<title>ELECOUS — Demand Intelligence</title>
 <style>
   :root {
-    --bg: #030303; 
-    --surface: #0a0a0c; 
-    --card: #111114; 
-    --line: #222228; 
-    --line-soft: #16161a;
-    --text: #ffffff; 
-    --dim: #a1a1aa; 
-    --faint: #52525b;
-    --accent: #d4af37; 
-    --accent-dim: #4a3c11; 
-    --good: #4ade80; 
-    --warn: #fbbf24; 
-    --bad: #f87171;
-    --mono: "SF Mono", ui-monospace, Menlo, monospace;
-    --sans: "SF Pro Text", "Inter", -apple-system, sans-serif;
+    --bg: #0a0c0e;
+    --panel: #101317;
+    --panel-2: #14181d;
+    --line: #21262d;
+    --line-soft: #171c22;
+    --text: #e8eaed;
+    --dim: #9aa3ad;
+    --faint: #5f6873;
+    --accent: #d3a94f;
+    --accent-soft: rgba(211,169,79,0.12);
+    --up: #63d68e;
+    --up-soft: rgba(99,214,142,0.12);
+    --down: #e07a6a;
+    --down-soft: rgba(224,122,106,0.12);
+    --info: #6ea8dc;
+    --info-soft: rgba(110,168,220,0.12);
+    --warn: #e0b76a;
+    --warn-soft: rgba(224,183,106,0.12);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
-  * { box-sizing: border-box; margin: 0; }
-  body { 
-    background: var(--bg); 
-    color: var(--text); 
-    font: 14px/1.6 var(--sans); 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 13.5px/1.55 var(--sans);
     -webkit-font-smoothing: antialiased;
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
+    display: flex; overflow: hidden;
   }
-  ::selection { background: var(--accent-dim); }
-  
-  /* Layout */
-  #sidebar {
-    width: 260px;
-    background: var(--surface);
-    border-right: 1px solid var(--line);
-    display: flex;
-    flex-direction: column;
-    padding: 24px 0;
+  ::selection { background: var(--accent-soft); }
+  a { color: var(--info); text-decoration: none; }
+
+  /* ---------- sidebar ---------- */
+  #nav {
+    width: 216px; flex: none; background: var(--panel);
+    border-right: 1px solid var(--line-soft);
+    display: flex; flex-direction: column; padding: 22px 0 16px;
   }
-  #main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg);
-    overflow-y: auto;
-    position: relative;
-  }
-  
-  /* Sidebar */
-  .brand {
-    padding: 0 24px;
-    margin-bottom: 40px;
-  }
-  .brand h1 {
-    font-size: 14px;
-    letter-spacing: 3px;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
+  .brand { padding: 0 22px 26px; }
+  .brand h1 { font-size: 13px; letter-spacing: 3.5px; font-weight: 600; }
   .brand h1 span { color: var(--accent); }
-  .nav-group {
-    margin-bottom: 24px;
-  }
-  .nav-label {
-    padding: 0 24px;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--faint);
-    margin-bottom: 8px;
-    font-weight: 600;
-  }
+  .brand .tag { font-size: 10.5px; color: var(--faint); letter-spacing: 0.4px; margin-top: 3px; }
   .nav-btn {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: transparent;
-    border: none;
-    color: var(--dim);
-    padding: 10px 24px;
-    cursor: pointer;
-    font-size: 13.5px;
-    transition: all 0.2s;
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    color: var(--dim); font: inherit; font-size: 13px; padding: 8px 22px;
+    cursor: pointer; border-left: 2px solid transparent; transition: color .15s, background .15s;
   }
-  .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
-  .nav-btn.active { color: var(--text); background: rgba(255,255,255,0.05); border-left: 2px solid var(--accent); }
-  
-  .dev-toggle {
-    margin-top: auto;
-    padding: 20px 24px;
-    border-top: 1px solid var(--line-soft);
-  }
-  .dev-toggle label {
-    font-size: 12px;
-    color: var(--dim);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--text); border-left-color: var(--accent); background: rgba(255,255,255,0.025); }
+  .nav-sep { font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--faint); padding: 18px 22px 6px; }
+  #devNav { display: none; }
+  .nav-foot { margin-top: auto; padding: 14px 22px 0; border-top: 1px solid var(--line-soft); }
+  .nav-foot label { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--faint); cursor: pointer; }
+  .nav-foot input { accent-color: var(--accent); }
+  #liveDot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); margin-right: 6px; }
+  #liveDot.on { background: var(--up); }
+  .nav-live { font-size: 11px; color: var(--faint); margin-top: 10px; }
 
-  /* Main View */
-  .header-bar {
-    padding: 30px 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    border-bottom: 1px solid var(--line-soft);
-    position: sticky;
-    top: 0;
-    background: rgba(3,3,3,0.9);
-    backdrop-filter: blur(8px);
-    z-index: 10;
-  }
-  .header-bar h2 { font-size: 20px; font-weight: 400; letter-spacing: -0.5px; }
-  .growth-ticker { font-family: var(--mono); font-size: 12px; color: var(--good); }
-  
-  .content { padding: 40px; max-width: 1100px; margin: 0 auto; width: 100%; }
+  /* ---------- main ---------- */
+  #main { flex: 1; overflow-y: auto; }
+  .content { max-width: 1160px; margin: 0 auto; padding: 34px 40px 80px; }
+  .page-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+  .page-head h2 { font-size: 21px; font-weight: 500; letter-spacing: -0.3px; }
+  .page-sub { color: var(--faint); font-size: 12px; margin-bottom: 24px; }
 
-  /* Utilities */
+  .grid { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 22px; align-items: start; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; }
+  .panel h3 { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--dim); font-weight: 600; margin-bottom: 14px; }
+  .empty { color: var(--faint); font-size: 12.5px; padding: 4px 0; }
   .muted { color: var(--faint); }
+  .dimmed { color: var(--dim); }
   .mono { font-family: var(--mono); }
-  .badge { 
-    display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; 
-    letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--mono);
-    background: var(--line); color: var(--dim);
+  .small { font-size: 11.5px; }
+
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10.5px;
+    letter-spacing: 0.5px; font-weight: 600; background: var(--panel-2); color: var(--dim);
+    border: 1px solid var(--line-soft);
   }
-  .badge.good { background: rgba(74,222,128,0.1); color: var(--good); }
-  .badge.warn { background: rgba(251,191,36,0.1); color: var(--warn); }
-  .badge.bad { background: rgba(248,113,113,0.1); color: var(--bad); }
-  .badge.accent { background: rgba(212,175,55,0.1); color: var(--accent); }
+  .pill.up { background: var(--up-soft); color: var(--up); border-color: transparent; }
+  .pill.down { background: var(--down-soft); color: var(--down); border-color: transparent; }
+  .pill.gold { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .pill.info { background: var(--info-soft); color: var(--info); border-color: transparent; }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
 
-  /* Timeline View */
-  .timeline { border-left: 1px solid var(--line); margin-left: 20px; padding: 20px 0; }
-  .tl-node { position: relative; padding-left: 30px; margin-bottom: 30px; }
-  .tl-node::before {
-    content: ''; position: absolute; left: -5px; top: 6px; width: 9px; height: 9px;
-    border-radius: 50%; background: var(--line); border: 2px solid var(--bg);
+  /* attention cards */
+  .att-card { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; transition: border-color .15s; }
+  .att-card:hover { border-color: var(--line); }
+  .att-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .att-top h4 { font-size: 16px; font-weight: 500; text-transform: capitalize; }
+  .att-why { color: var(--dim); font-size: 12.5px; margin: 7px 0 10px; }
+  .att-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--dim); }
+  .att-meta b { color: var(--text); font-weight: 500; font-family: var(--mono); }
+  .expand-btn { background: none; border: none; color: var(--info); font: inherit; font-size: 12px; cursor: pointer; padding: 8px 0 0; }
+  .contract { border-top: 1px solid var(--line-soft); margin-top: 12px; padding-top: 4px; display: none; }
+  .contract.open { display: block; }
+  .c-row { padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
+  .c-row:last-child { border-bottom: none; }
+  .c-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--faint); margin-bottom: 3px; }
+  .c-val { font-size: 12.5px; color: var(--dim); }
+  .c-val ul { list-style: none; }
+  .c-val li { padding: 1px 0; }
+  .c-val li::before { content: '·'; color: var(--faint); margin-right: 7px; }
+
+  /* feed */
+  .feed-item { padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+  .feed-item:last-child { border-bottom: none; }
+  .feed-item.fresh { animation: slideIn .5s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  .feed-time { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  .feed-title { font-size: 12.5px; margin: 2px 0 1px; }
+  .feed-why { font-size: 11.5px; color: var(--dim); }
+  .fk { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; background: var(--faint); vertical-align: 1px; }
+  .fk.up { background: var(--up); } .fk.down { background: var(--down); }
+  .fk.gold { background: var(--accent); } .fk.info { background: var(--info); } .fk.warn { background: var(--warn); }
+
+  /* coverage */
+  .cov-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 12.5px; }
+  .cov-row .name { flex: 1; text-transform: capitalize; }
+  .cov-track { width: 90px; height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .cov-track i { display: block; height: 100%; background: var(--up); }
+
+  /* timeline */
+  .tl { position: relative; margin-left: 10px; padding-left: 26px; border-left: 1px solid var(--line); }
+  .tl-item { position: relative; margin-bottom: 16px; }
+  .tl-item::before {
+    content: ''; position: absolute; left: -31px; top: 7px; width: 9px; height: 9px;
+    border-radius: 50%; background: var(--faint); border: 2px solid var(--bg);
   }
-  .tl-node.future::before { background: var(--accent); box-shadow: 0 0 10px rgba(212,175,55,0.4); }
-  .tl-node.present::before { background: var(--text); }
-  .tl-node.past::before { background: var(--faint); }
-  .tl-node.past-good::before { background: var(--good); }
-  .tl-node.past-bad::before { background: var(--bad); }
+  .tl-item.future::before { background: var(--up); box-shadow: 0 0 8px rgba(99,214,142,0.35); }
+  .tl-item.present::before { background: var(--info); box-shadow: 0 0 8px rgba(110,168,220,0.35); }
+  .tl-item.past::before { background: var(--accent); }
+  .tl-date { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .tl-card { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 8px; padding: 12px 16px; margin-top: 4px; }
+  .tl-card h4 { font-size: 13.5px; font-weight: 500; }
+  .tl-card p { font-size: 12px; color: var(--dim); margin-top: 3px; }
+  .tl-band { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--faint); margin: 26px 0 14px; }
+  .tl-band.future { color: var(--up); } .tl-band.present { color: var(--info); } .tl-band.past { color: var(--accent); }
+  #tl-sentinel { padding: 18px 0; color: var(--faint); font-size: 12px; }
 
-  .tl-time { font-family: var(--mono); font-size: 11px; color: var(--faint); margin-bottom: 4px; display:block; }
-  .tl-card { 
-    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 8px; 
-    padding: 16px 20px; cursor: pointer; transition: border-color 0.2s;
+  /* tables */
+  table.list { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.list th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--faint); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  table.list td { padding: 9px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.list tr.click { cursor: pointer; }
+  table.list tr.click:hover td { background: rgba(255,255,255,0.02); }
+  .bar { width: 74px; height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 7px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+
+  /* controls */
+  select, input[type=text], input[type=date], input[type=search] {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 7px; padding: 7px 10px; font: inherit; font-size: 12.5px;
   }
-  .tl-card:hover { border-color: var(--line); }
-  .tl-card h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
-  .tl-card p { color: var(--dim); font-size: 13px; line-height: 1.5; }
+  select:focus, input:focus { outline: none; border-color: var(--accent); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
+  .controls label { font-size: 11px; color: var(--faint); display: flex; flex-direction: column; gap: 4px; }
+  input[type=range] { accent-color: var(--accent); }
+  .back-btn { background: none; border: none; color: var(--dim); font: inherit; font-size: 12px; cursor: pointer; padding: 0 0 16px; }
+  .back-btn:hover { color: var(--text); }
 
-  /* Intelligence Report (Product Briefing) */
-  .briefing-header { margin-bottom: 30px; }
-  .briefing-header h2 { font-size: 28px; font-weight: 500; letter-spacing: -0.5px; margin-bottom: 8px; }
-  .briefing-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
-  .b-panel { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 8px; padding: 24px; }
-  .b-panel h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin-bottom: 16px; font-weight: 600;}
-  
-  .evidence-list { list-style: none; padding: 0; }
-  .evidence-list li { margin-bottom: 10px; font-size: 13px; display: flex; gap: 10px; align-items: baseline; }
-  .evidence-list.support li::before { content: '✓'; color: var(--good); font-family: var(--mono); }
-  .evidence-list.against li::before { content: '✗'; color: var(--bad); font-family: var(--mono); }
-  .evidence-list.unknown li::before { content: '?'; color: var(--faint); font-family: var(--mono); }
-
-  .domain-tag { 
-    display: inline-block; padding: 2px 8px; border: 1px solid var(--line); border-radius: 12px; 
-    font-size: 11px; color: var(--dim); margin-right: 6px; margin-bottom: 6px;
-  }
-
-  /* Domains Coverage */
-  .domain-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px;}
-  .domain-bar .track { flex: 1; height: 4px; background: var(--line); border-radius: 4px; margin: 0 16px; overflow: hidden; }
-  .domain-bar .track i { display: block; height: 100%; background: var(--text); }
-  
-  /* Graph */
-  #d3graph { width: 100%; height: 600px; background: var(--surface); border-radius: 8px; border: 1px solid var(--line-soft); }
-
-  /* Legacy dev view tables */
-  .dev-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .dev-table th, .dev-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--line-soft); }
-  .dev-table th { color: var(--faint); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; font-size: 10px; }
-
+  .section-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--dim); font-weight: 600; margin: 26px 0 12px; }
+  .spark { width: 100%; height: 46px; }
+  .err { color: var(--down); font-size: 12.5px; padding: 10px 0; }
 </style>
-<script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
 
-<div id="sidebar">
+<aside id="nav">
   <div class="brand">
     <h1>ELEC<span>OUS</span></h1>
-    <div class="muted mono" style="font-size:10px;margin-top:4px">Demand Intelligence OS</div>
+    <div class="tag">Demand Intelligence</div>
   </div>
-  
-  <div class="nav-group">
-    <div class="nav-label">Intelligence</div>
-    <button class="nav-btn active" data-view="timeline" onclick="nav('timeline')">Timeline</button>
-    <button class="nav-btn" data-view="world" onclick="nav('world')">World Model</button>
-    <button class="nav-btn" data-view="domains" onclick="nav('domains')">Domains & Coverage</button>
+  <button class="nav-btn active" data-view="today" onclick="nav('today')">Today</button>
+  <button class="nav-btn" data-view="timeline" onclick="nav('timeline')">Timeline</button>
+  <button class="nav-btn" data-view="products" onclick="nav('products')">Products</button>
+  <button class="nav-btn" data-view="search" onclick="nav('search')">Search</button>
+  <div id="devNav"></div>
+  <div class="nav-foot">
+    <label><input type="checkbox" id="devToggle"> Developer mode</label>
+    <div class="nav-live"><span id="liveDot"></span><span id="liveText">connecting…</span></div>
   </div>
+</aside>
 
-  <div class="nav-group" id="dev-nav" style="display:none">
-    <div class="nav-label">Developer</div>
-    <button class="nav-btn" data-view="legacy_mechanisms" onclick="nav('legacy_mechanisms')">Mechanisms</button>
-    <button class="nav-btn" data-view="legacy_factors" onclick="nav('legacy_factors')">Factors</button>
-    <button class="nav-btn" data-view="legacy_scheduler" onclick="nav('legacy_scheduler')">Scheduler & Health</button>
-  </div>
-
-  <div class="dev-toggle">
-    <label><input type="checkbox" id="dev-mode-cb" onchange="toggleDevMode(this.checked)"> Enable Developer Mode</label>
-  </div>
-</div>
-
-<div id="main">
-  <div class="header-bar">
-    <h2 id="view-title">Timeline</h2>
-    <div class="growth-ticker" id="ticker">Synchronizing...</div>
-  </div>
-  <div class="content" id="app"></div>
-</div>
+<main id="main"><div class="content" id="app"></div></main>
 
 <script>
+"use strict";
 const API = "/api";
-let currentView = "timeline";
-let isDevMode = false;
-let globalData = {}; // Cache for drilldowns
+const VIEWS = {};
+let currentView = "today";
+let currentArg = null;
 
-async function fetchAPI(path) {
+/* ------------------------------------------------ utilities */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cap = s => { s = String(s ?? ""); return s.charAt(0).toUpperCase() + s.slice(1); };
+const pct = v => (v == null ? "—" : (v * 100).toFixed(0) + "%");
+const num = (v, d = 2) => (v == null ? "—" : Number(v).toFixed(d));
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return esc(String(iso).slice(0, 10));
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return esc(String(iso).slice(0, 16));
+  const hh = String(d.getUTCHours()).padStart(2, "0"), mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${fmtDate(iso)} ${hh}:${mm} UTC`;
+}
+function windowText(w) {
+  if (!w) return "window unknown";
+  if (w.note) return esc(w.note);
+  if (w.earliest && w.latest) return `${fmtDate(w.earliest)} – ${fmtDate(w.latest)}`;
+  if (w.most_probable) return `around ${fmtDate(w.most_probable)}`;
+  return "window unknown";
+}
+async function fetchJSON(path) {
   const r = await fetch(API + path);
-  if(!r.ok) throw new Error(\`API Error: \${path}\`);
+  if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return r.json();
 }
-
-function toggleDevMode(on) {
-  isDevMode = on;
-  document.getElementById('dev-nav').style.display = on ? 'block' : 'none';
-  if (!on && currentView.startsWith("legacy_")) nav("timeline");
+function setLive(ok, text) {
+  document.getElementById("liveDot").className = ok ? "on" : "";
+  document.getElementById("liveText").textContent = text;
 }
 
-function nav(view) {
-  currentView = view;
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  
-  const titles = {
-    timeline: "Intelligence Timeline", world: "World Model", domains: "Environmental Domains",
-    legacy_mechanisms: "[DEV] Mechanism Store", legacy_factors: "[DEV] Factor Store", legacy_scheduler: "[DEV] Operations"
-  };
-  document.getElementById('view-title').textContent = titles[view] || "Briefing";
-  
-  renderView();
+/* ------------------------------------------------ navigation */
+function nav(view, arg) {
+  currentView = view; currentArg = arg ?? null;
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+  render();
+}
+async function render() {
+  const app = document.getElementById("app");
+  const fn = VIEWS[currentView];
+  if (!fn) { app.innerHTML = `<div class="err">Unknown view.</div>`; return; }
+  try { await fn(app, currentArg); }
+  catch (e) { app.innerHTML = `<div class="err">Could not load this view: ${esc(e.message)}</div>`; }
 }
 
-// Formatters
-const prettySig = s => { const [p,d,loc]=s.split(':'); return \`\${p.replace(/_/g,' ')} \${d==='up'?'rising':'falling'}\${loc?' in '+loc:''}\`; };
-const formatP = pct => (pct*100).toFixed(0)+'%';
-
-// ---- Renderers ---- //
-
-async function renderTimeline() {
-  const [opps, acc, eps] = await Promise.all([fetchAPI("/opportunities"), fetchAPI("/predictions/accuracy"), fetchAPI("/episodes")]);
-  globalData.opportunities = opps.opportunities;
-  globalData.predictions = acc.recent;
-  
-  let html = \`<div class="timeline">\`;
-  
-  // Future (Opportunities)
-  html += \`<h3 style="font-family:var(--mono); color:var(--accent); font-size:12px; margin-bottom:20px; letter-spacing:1px">EXPECTED DEMAND SHIFTS</h3>\`;
-  const activeOpps = opps.opportunities.filter(o => o.confidence > 0.4).sort((a,b)=>b.confidence - a.confidence);
-  if (activeOpps.length === 0) html += \`<div class="muted" style="margin-bottom:30px; margin-left:30px">No active predictions with high confidence.</div>\`;
-  activeOpps.forEach(o => {
-    html += \`
-      <div class="tl-node future">
-        <span class="tl-time">Expected: \${o.lead_time?.most_probable||"?"} days</span>
-        <div class="tl-card" onclick="renderBriefing('opp', '\${o.opportunity_id}')">
-          <div style="display:flex;justify-content:space-between">
-            <h3>\${(o.categories||[]).join(", ")}</h3>
-            <span class="badge accent">\${formatP(o.confidence)} Confidence</span>
-          </div>
-          <p>Driven by: \${o.domains?.join(", ") || "Unknown conditions"}</p>
-        </div>
-      </div>\`;
-  });
-
-  // Present (Live state summary)
-  html += \`<h3 style="font-family:var(--mono); color:var(--text); font-size:12px; margin:40px 0 20px; letter-spacing:1px">LIVE EXTERNAL FORCES</h3>\`;
-  const state = await fetchAPI("/home"); // /world-state doesn't exist anymore, /home has world_state
-  const sigs = (state.world_state?.signals||[]).slice(0,5).map(s=>prettySig(s.signal_key)).join(", ");
-  html += \`
-    <div class="tl-node present">
-      <span class="tl-time">Now</span>
-      <div class="tl-card">
-        <h3>Current Environment</h3>
-        <p>Active shifts: \${sigs || "Quiet"}</p>
-      </div>
-    </div>\`;
-
-  // Past (Validated Predictions)
-  html += \`<h3 style="font-family:var(--mono); color:var(--faint); font-size:12px; margin:40px 0 20px; letter-spacing:1px">VALIDATED INTELLIGENCE</h3>\`;
-  const past = (acc.recent||[]).slice(0, 10);
-  past.forEach(p => {
-    const isGood = p.validation_status === 'correct';
-    html += \`
-      <div class="tl-node \${isGood?'past-good':'past-bad'}">
-        <span class="tl-time">\${p.created_at?.slice(0,10) || "Past"}</span>
-        <div class="tl-card" onclick="renderBriefing('pred', '\${p.prediction_id}')">
-          <div style="display:flex;justify-content:space-between">
-            <h3>Prediction: \${(p.outcome?.categories||[]).join(", ")||"Demand Shift"}</h3>
-            <span class="badge \${isGood?'good':p.validation_status==='incorrect'?'bad':'warn'}">\${p.validation_status}</span>
-          </div>
-          <p>Confidence was \${formatP(p.confidence)}</p>
-        </div>
-      </div>\`;
-  });
-
-  html += \`</div>\`;
-  document.getElementById('app').innerHTML = html;
-}
-
-async function renderBriefing(type, id) {
-  document.getElementById('view-title').textContent = "Intelligence Report";
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  
-  let data, title, isPred;
-  if (type === 'pred') {
-    const audit = await fetchAPI(\`/audit/\${id}\`);
-    data = audit.prediction;
-    title = \`Prediction \${id.slice(0,8)}\`;
-    isPred = true;
-  } else {
-    data = await fetchAPI(\`/opportunities/\${id}\`);
-    title = (data.categories||[]).join(", ") + " Demand Shift";
-    isPred = false;
-  }
-
-  const ev = data.structured_evidence || {supporting:[], against:[], unknowns:[], trend:"stable"};
-  const domains = data.domains || [];
-
-  let html = \`
-    <button onclick="nav('timeline')" style="background:none;border:none;color:var(--dim);cursor:pointer;margin-bottom:20px;font-family:var(--mono);font-size:12px">← Back to Timeline</button>
-    <div class="briefing-header">
-      <h2>\${title}</h2>
-      <div class="muted">Confidence: <b style="color:var(--text)">\${formatP(data.confidence||0)}</b> &nbsp;·&nbsp; Trend: <span class="\${ev.trend==='rising'?'good':'muted'}">\${ev.trend}</span></div>
-      <div style="margin-top:12px">\${domains.map(d=>\`<span class="domain-tag">\${d}</span>\`).join("")}</div>
-    </div>
-    
-    <div class="briefing-grid">
-      <!-- Left Column: Reasoning -->
-      <div>
-        <div class="b-panel" style="margin-bottom:20px">
-          <h3>Why does ELECOUS believe this?</h3>
-          <p style="color:var(--dim); font-size:14px; margin-bottom:20px; line-height:1.6">
-            ELECOUS has detected a confluence of external forces in \${domains.join(" and ") || "the environment"}. 
-            Historically, when these specific conditions align, demand for \${(data.categories||[]).join(", ")} spikes.
-          </p>
-          
-          <h4 style="font-size:12px; margin-bottom:10px; color:var(--text)">Supporting Evidence</h4>
-          <ul class="evidence-list support">
-            \${ev.supporting.map(s => \`<li>\${prettySig(s)}</li>\`).join("") || \`<li class="muted">No direct signals</li>\`}
-          </ul>
-          
-          <h4 style="font-size:12px; margin:20px 0 10px; color:var(--text)">Contradictory Evidence</h4>
-          <ul class="evidence-list against">
-            \${ev.against.map(s => \`<li>\${prettySig(s)}</li>\`).join("") || \`<li class="muted">No known contradictions</li>\`}
-          </ul>
-        </div>
-      </div>
-      
-      <!-- Right Column: Actionability -->
-      <div>
-        <div class="b-panel">
-          <h3>Actionability</h3>
-          <div style="margin-bottom:16px">
-            <div class="muted" style="font-size:12px; margin-bottom:4px">Expected Timing</div>
-            <div style="font-size:15px">\${data.lead_time?.most_probable||"?"} days</div>
-          </div>
-          <div style="margin-bottom:16px">
-            <div class="muted" style="font-size:12px; margin-bottom:4px">Target Products</div>
-            <div style="font-size:14px">\${(data.products||[]).slice(0,5).join(", ") || "Category-wide"}</div>
-          </div>
-          <div>
-            <div class="muted" style="font-size:12px; margin-bottom:4px">Recommendation</div>
-            <div style="font-size:15px; color:\${data.confidence>0.7?'var(--good)':'var(--warn)'}">
-              \${data.confidence > 0.7 ? "Act Now" : "Monitor Closely"}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  \`;
-  document.getElementById('app').innerHTML = html;
-}
-
-async function renderDomains() {
-  const factors = await fetchAPI("/factors");
-  const counts = {};
-  factors.factors.forEach(f => {
-    (f.domains||[]).forEach(d => { counts[d] = (counts[d]||0) + 1; });
-  });
-  
-  const total = Object.values(counts).reduce((a,b)=>a+b, 0) || 1;
-  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-
-  let html = \`<div class="b-panel" style="max-width:600px">
-    <h3>Environmental Domain Coverage</h3>
-    <p class="muted" style="margin-bottom:24px">Distribution of validated environmental forces currently tracked by ELECOUS.</p>
-  \`;
-  
-  sorted.forEach(([domain, count]) => {
-    const pct = count/total;
-    html += \`
-      <div class="domain-bar">
-        <div style="width:120px">\${domain}</div>
-        <div class="track"><i style="width:\${pct*100}%"></i></div>
-        <div style="width:40px; text-align:right" class="muted">\${formatP(pct)}</div>
-      </div>
-    \`;
-  });
-  
-  html += \`</div>\`;
-  document.getElementById('app').innerHTML = html;
-}
-
-let d3sim = null;
-async function renderWorld() {
-  const g = await fetchAPI("/knowledge/graph");
-  document.getElementById('app').innerHTML = \`<div id="d3graph"></div><div class="muted" style="margin-top:10px;text-align:center">The Living Intelligence Model: Watch connections form and strengthen.</div>\`;
-  
-  if(!window.d3) return;
-  const container = document.getElementById("d3graph");
-  const width = container.clientWidth;
-  const height = 600;
-  
-  if(d3sim) d3sim.stop();
-  const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
-  const simulation = d3.forceSimulation(g.nodes)
-      .force("link", d3.forceLink(g.links).id(d => d.id).distance(100))
-      .force("charge", d3.forceManyBody().strength(-150))
-      .force("center", d3.forceCenter(width / 2, height / 2));
-  d3sim = simulation;
-  
-  const link = svg.append("g").attr("stroke", "var(--line)").attr("stroke-opacity", 0.6)
-      .selectAll("line").data(g.links).join("line").attr("stroke-width", d => Math.max(1, (d.value||1)*2));
-  
-  const node = svg.append("g").selectAll("g").data(g.nodes).join("g")
-      .call(d3.drag()
-        .on("start", e=>{if(!e.active)simulation.alphaTarget(0.3).restart();e.subject.fx=e.subject.x;e.subject.fy=e.subject.y;})
-        .on("drag", e=>{e.subject.fx=e.x;e.subject.fy=e.y;})
-        .on("end", e=>{if(!e.active)simulation.alphaTarget(0);e.subject.fx=null;e.subject.fy=null;}));
-
-  node.append("circle")
-      .attr("r", d => d.group==="mechanism" ? 8 : 5)
-      .attr("fill", d => d.group === "mechanism" ? "var(--accent)" : d.group === "factor" ? "var(--good)" : "var(--faint)")
-      .attr("stroke", "var(--surface)").attr("stroke-width", 2);
-
-  node.append("text")
-      .text(d => d.label)
-      .attr("x", 12).attr("y", 4)
-      .style("font-size", "10px").style("fill", "var(--dim)").style("font-family", "var(--mono)")
-      .style("pointer-events", "none");
-
-  simulation.on("tick", () => {
-      link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-      node.attr("transform", d => \`translate(\${d.x},\${d.y})\`);
-  });
-}
-
-// ---- Legacy Renderers for Dev Mode ---- //
-
-async function renderLegacyMechanisms() {
-  const d = await fetchAPI("/mechanisms");
-  let html = \`<table class="dev-table"><tr><th>Mechanism ID</th><th>Name</th><th>Confidence</th><th>Lifecycle</th></tr>\`;
-  d.mechanisms.forEach(m => {
-    html += \`<tr><td class="mono">\${m.mechanism_id}</td><td>\${m.name}</td><td>\${formatP(m.current_confidence)}</td><td><span class="badge neutral">\${m.lifecycle}</span></td></tr>\`;
-  });
-  html += \`</table>\`;
-  document.getElementById('app').innerHTML = \`<div class="b-panel">\${html}</div>\`;
-}
-
-async function renderLegacyFactors() {
-  const d = await fetchAPI("/factors");
-  let html = \`<table class="dev-table"><tr><th>Factor ID</th><th>Name</th><th>Signals</th><th>Domains</th></tr>\`;
-  d.factors.forEach(m => {
-    html += \`<tr><td class="mono">\${m.factor_id}</td><td>\${m.name}</td><td class="mono">\${(m.signals||[]).length} signals</td><td>\${(m.domains||[]).join(", ")}</td></tr>\`;
-  });
-  html += \`</table>\`;
-  document.getElementById('app').innerHTML = \`<div class="b-panel">\${html}</div>\`;
-}
-
-async function renderLegacyScheduler() {
-  const s = await fetchAPI("/health/system");
-  const tele = s.scheduler_telemetry || {};
-  let html = \`
-    <div class="b-panel" style="margin-bottom:20px"><h3>Telemetry</h3>
-      <p>Running Tasks: \${(tele.running_tasks||[]).join(", ") || "None"}</p>
-      <p>Workers: \${tele.max_workers}</p>
-      <p>Running Tasks: ${(tele.running_tasks||[]).join(", ") || "None"}</p>
-      <p>Workers: ${tele.max_workers}</p>
-    </div>
-    <div class="b-panel"><h3>Next Work</h3><table class="dev-table"><tr><th>Task</th><th>Next Run</th></tr>
-  `;
-  (s.scheduler||[]).forEach(t => { html += `<tr><td class="mono">${t.name}</td><td>${t.next_run}</td></tr>`; });
-  html += `</table></div>`;
-  document.getElementById('app').innerHTML = html;
-}
-
-// ---- Core Engine ---- //
-
-const renderMap = {
-  timeline: renderTimeline, world: renderWorld, domains: renderDomains,
-  legacy_mechanisms: renderLegacyMechanisms, legacy_factors: renderLegacyFactors, legacy_scheduler: renderLegacyScheduler
+/* ------------------------------------------------ live feed poller */
+const FEED_KIND_DOT = {
+  opportunity_new: "gold", opportunity_strengthened: "up", opportunity_weakened: "down",
+  opportunity_stage: "gold", prediction_updated: "info", prediction_confirmed: "up",
+  prediction_failed: "down", prediction_unjudgeable: "warn", relationship_failed: "down",
+  relationship_validated: "up", relationship_rechecked: "warn", relationship_discovered: "info",
+  source_connected: "info", demand_spike: "gold",
 };
-
-async function renderView() {
-  const app = document.getElementById('app');
-  if (currentView !== 'timeline') {
-    app.style.opacity = 0.5;
-  }
-  try {
-    if (currentView === 'timeline') {
-      renderTimelineFromStream();
-    } else {
-      await renderMap[currentView]();
-    }
-    app.style.opacity = 1;
-  } catch (err) {
-    app.innerHTML = `<div class="b-panel"><h3 style="color:var(--bad)">System Error</h3><p>${err.message}</p></div>`;
-    app.style.opacity = 1;
-  }
+let feedKnown = new Set();
+let feedCache = [];
+function feedItemHTML(e, fresh) {
+  const dot = FEED_KIND_DOT[e.kind] || "";
+  return `<div class="feed-item${fresh ? " fresh" : ""}" data-fid="${esc(e.id)}">
+    <div class="feed-time">${fmtDateTime(e.at)}</div>
+    <div class="feed-title"><span class="fk ${dot}"></span>${esc(e.title)}</div>
+    <div class="feed-why">${esc(e.why)}</div>
+  </div>`;
 }
-
-// Live Ticker
-async function updateTicker() {
+async function pollFeed() {
   try {
-    const d = await fetchAPI("/knowledge/growth");
-    const m = d.metrics.find(x => !x.value.includes("0")) || d.metrics[0];
-    document.getElementById('ticker').innerHTML = `INTELLIGENCE GROWTH: <span style="color:var(--text)">${m.value}</span> <span class="muted">${m.label}</span>`;
-  } catch (e) {}
-}
-
-let streamSource = null;
-let streamState = { past: [], present: {}, future: [] };
-
-function connectStream() {
-  if (streamSource) streamSource.close();
-  streamSource = new EventSource("/api/timeline/stream");
-  
-  streamSource.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === 'initial') {
-      streamState = msg.data;
-      if (currentView === 'timeline') renderTimelineFromStream();
-    } else if (msg.type === 'update') {
-      const evt = msg.data;
-      // Differential apply based on event type
-      if (evt.event_type === 'opportunity_updated' || evt.event_type === 'prediction_created' || evt.event_type === 'world_state_updated') {
-        // Simple strategy: we can fetch the initial state again via a parallel fetch 
-        // to stay perfectly synced without duplicating backend logic in JS.
-        // Or for now just trigger a refetch of the timeline data if needed.
-        fetchAPI("/timeline").then(data => {
-            streamState = data;
-            if (currentView === 'timeline') renderTimelineFromStream();
-        });
+    const data = await fetchJSON("/feed?limit=30");
+    setLive(true, "live — updated " + new Date().toTimeString().slice(0, 5));
+    const events = data.events || [];
+    const container = document.getElementById("feedList");
+    if (container) {
+      const fresh = events.filter(e => !feedKnown.has(e.id));
+      if (feedCache.length === 0 || !container.hasChildNodes()) {
+        container.innerHTML = events.length
+          ? events.map(e => feedItemHTML(e, false)).join("")
+          : `<div class="empty">No intelligence events yet. Events appear here the moment opportunities move, predictions resolve, or new evidence arrives — all from real recorded activity.</div>`;
+      } else {
+        for (const e of fresh.reverse()) container.insertAdjacentHTML("afterbegin", feedItemHTML(e, true));
+        while (container.children.length > 40) container.removeChild(container.lastChild);
       }
-      
-      // Flash a little notification
-      const ticker = document.getElementById('ticker');
-      const oldHtml = ticker.innerHTML;
-      ticker.innerHTML = `<span style="color:var(--accent)">LIVE EVENT: ${evt.event_type}</span>`;
-      setTimeout(() => ticker.innerHTML = oldHtml, 3000);
     }
-  };
+    events.forEach(e => feedKnown.add(e.id));
+    feedCache = events;
+  } catch (e) { setLive(false, "reconnecting…"); }
 }
+setInterval(pollFeed, 15000);
 
-function renderTimelineFromStream() {
-  let html = `<div class="timeline">`;
-  
-  // Future (Opportunities)
-  html += `<h3 style="font-family:var(--mono); color:var(--accent); font-size:12px; margin-bottom:20px; letter-spacing:1px">EXPECTED DEMAND SHIFTS</h3>`;
-  const activeOpps = (streamState.future || []).filter(o => o.confidence > 0.4).sort((a,b)=>b.confidence - a.confidence);
-  if (activeOpps.length === 0) html += `<div class="muted" style="margin-bottom:30px; margin-left:30px">No active predictions with high confidence.</div>`;
-  activeOpps.forEach(o => {
-    html += `
-      <div class="tl-node future">
-        <span class="tl-time">Expected: ${o.scores?.lead_time||"?"} days</span>
-        <div class="tl-card" onclick="renderBriefing('opp', '${o.opportunity_id}')">
-          <div style="display:flex;justify-content:space-between">
-            <h3>${(o.categories||[]).join(", ")}</h3>
-            <span class="badge accent">${formatP(o.confidence)} Confidence</span>
-          </div>
-          <p>Driven by: ${(o.categories||[]).join(", ") || "Unknown conditions"}</p>
+/* ------------------------------------------------ TODAY */
+const expandedContracts = new Set();
+function contractHTML(c) {
+  if (!c) return "";
+  const list = arr => arr && arr.length ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  const rows = [];
+  rows.push(["Why ELECOUS believes this", esc(c.why)]);
+  rows.push(["Supporting evidence", list(c.supporting_evidence) || `<span class="muted">none stored</span>`]);
+  rows.push(["Contradicting evidence", c.contradicting_evidence ? list(c.contradicting_evidence) : `<span class="muted">${esc(c.contradicting_evidence_note)}</span>`]);
+  const sales = c.expected_sales_increase || {};
+  rows.push(["Expected sales increase", sales.value != null ? esc(sales.value) : `<span class="muted">${esc(sales.note)}</span>`]);
+  const t = c.expected_timing || {};
+  rows.push(["Expected timing", t.note ? `<span class="muted">${esc(t.note)}</span>` :
+    `earliest ${fmtDate(t.earliest)} · most likely ${fmtDate(t.most_probable)} · latest ${fmtDate(t.latest)}`]);
+  const p = c.expected_profit_opportunity || {};
+  rows.push(["Expected profit opportunity", (p.expected_roi != null ? `expected return ${num(p.expected_roi, 1)} · importance ${esc(p.commercial_importance ?? "unknown")}<br>` : "")
+    + `<span class="muted">${esc(p.note)}</span>`]);
+  const r = c.risk || {};
+  rows.push(["Risk", r.risk_score != null ? `risk score ${num(r.risk_score)}${r.conflicting_stories != null ? ` · conflicting stories: ${esc(r.conflicting_stories)}` : ""}` : `<span class="muted">${esc(r.note || "no risk assessment stored")}</span>`]);
+  const u = c.remaining_uncertainty || {};
+  rows.push(["Remaining uncertainty", (u.overall != null ? `overall ${num(u.overall)}` : `<span class="muted">not quantified</span>`)
+    + (u.spread_between_relationships != null ? ` · spread between relationships ${num(u.spread_between_relationships)}` : "")]);
+  rows.push(["Similar historical situations", c.similar_historical_situations
+    ? `<ul>${c.similar_historical_situations.map(s => `<li>${esc(s.entity)} (${esc(s.category)}) — ${fmtDate(s.began)}, evidence ${num(s.evidence_score)}</li>`).join("")}</ul>`
+    : `<span class="muted">${esc(c.similar_historical_situations_note)}</span>`]);
+  return rows.map(([label, val]) => `<div class="c-row"><div class="c-label">${label}</div><div class="c-val">${val}</div></div>`).join("");
+}
+function toggleContract(id) {
+  const el = document.getElementById("contract-" + id);
+  if (!el) return;
+  el.classList.toggle("open");
+  if (el.classList.contains("open")) expandedContracts.add(id); else expandedContracts.delete(id);
+}
+function decisionPill(d) {
+  if (d === "Act") return `<span class="pill up">Act now</span>`;
+  if (d === "Prepare") return `<span class="pill gold">Prepare</span>`;
+  if (d === "Review") return `<span class="pill warn">Review</span>`;
+  if (d === "Monitor") return `<span class="pill info">Monitor</span>`;
+  return d ? `<span class="pill">${esc(d)}</span>` : "";
+}
+function deltaText(d) {
+  if (d == null) return "";
+  const sign = d > 0 ? "▲" : "▼";
+  const cls = d > 0 ? "up" : "down";
+  return ` <span class="pill ${cls}">${sign} ${(Math.abs(d) * 100).toFixed(1)} pts</span>`;
+}
+let homeCache = null;
+VIEWS.today = async function (app) {
+  const home = await fetchJSON("/home");
+  homeCache = home;
+  const att = home.attention || [];
+  const bench = home.benchmark || {};
+  const benchTone = { good: "up", mixed: "warn", bad: "down", none: "" }[bench.tone] || "";
+
+  const attHTML = att.length ? att.map((a, i) => `
+    <div class="att-card">
+      <div class="att-top">
+        <h4>${esc(a.headline)}</h4>
+        <div>${decisionPill(a.decision)}</div>
+      </div>
+      <div class="att-why">${esc(cap(a.why))}.</div>
+      <div class="att-meta">
+        <span>probability <b>${pct(a.probability)}</b>${deltaText(a.probability_delta)}</span>
+        <span>expected <b>${windowText(a.expected_window)}</b></span>
+        ${a.products && a.products.length ? `<span>products with evidence: <b style="font-family:var(--sans)">${esc(a.products.slice(0, 3).join(", "))}</b></span>` : `<span class="muted">no product has earned evidence yet</span>`}
+      </div>
+      <button class="expand-btn" onclick="toggleContract(${i})">Full reasoning ▾</button>
+      <div class="contract${expandedContracts.has(i) ? " open" : ""}" id="contract-${i}">${contractHTML(a.contract)}</div>
+    </div>`).join("")
+    : `<div class="panel"><div class="empty">No live opportunities right now. ELECOUS is watching ${home.observation_network?.sources ?? 0} evidence sources and will surface an opportunity the moment learned relationships match the live world. ${home.verdicts?.first_verdict_due ? `First prediction verdicts due ${fmtDate(home.verdicts.first_verdict_due)}.` : "No predictions have been issued yet."}</div></div>`;
+
+  const ch = home.changed || {};
+  const changeBlock = (label, items, dot) => `
+    <div style="margin-bottom:12px"><div class="c-label" style="margin-bottom:6px">${label}</div>
+    ${items && items.length ? items.map(e => `<div class="feed-item"><div class="feed-title"><span class="fk ${dot}"></span>${esc(e.title)}</div><div class="feed-why">${esc(e.why)}</div></div>`).join("") : `<div class="empty">nothing in the last 24 h</div>`}</div>`;
+
+  const v = home.verdicts || {};
+  const verdictsHTML = v.judged > 0
+    ? `<div class="att-meta" style="margin-bottom:10px"><span>judged <b>${v.judged}</b></span><span>correct <b>${pct(v.accuracy)}</b></span></div>`
+      + ((v.failed_recent || []).map(e => `<div class="feed-item"><div class="feed-title"><span class="fk down"></span>${esc(e.title)}</div><div class="feed-why">${esc(e.why)}</div></div>`).join("") || `<div class="empty">no failures in the last 24 h</div>`)
+    : `<div class="empty">${v.first_verdict_due ? `No predictions judged yet — the first verdicts are due ${fmtDate(v.first_verdict_due)}. Accuracy will be shown only once real outcomes exist.` : "No predictions have been issued yet, so there is nothing to judge."}</div>`;
+
+  const l = home.learned || {};
+  const learnedRows = [
+    ["relationships validated", l.relationships_validated_today],
+    ["relationships rejected", l.relationships_rejected_today],
+    ["new relationships found", l.new_relationships_today],
+    ["evidence sources added", l.new_sources_today],
+    ["product–force links updated", l.product_force_updates_today],
+  ];
+  const learnedHTML = learnedRows.some(r => r[1] > 0)
+    ? learnedRows.filter(r => r[1] > 0).map(r => `<div class="cov-row"><span class="name" style="text-transform:none">${r[0]}</span><b class="mono">${r[1]}</b></div>`).join("")
+    : `<div class="empty">Nothing learned in the last 24 h — honest zero, not a hidden one.</div>`;
+
+  const cov = home.coverage || {};
+  const covHTML = (cov.watching || []).map(d => `
+    <div class="cov-row"><span class="name">${esc(d.capability)}</span>
+      <span class="cov-track"><i style="width:${Math.round((d.health ?? 0) * 100)}%"></i></span>
+      <span class="muted small mono">${d.sources.length}</span></div>`).join("")
+    + ((cov.blind_spots || []).length ? `<div class="c-label" style="margin:12px 0 4px">Known blind spots</div>` + cov.blind_spots.map(g => `<div class="small dimmed">· ${esc(g.capability)}</div>`).join("") : "")
+    + ((cov.suspended_sources || []).length ? `<div class="c-label" style="margin:12px 0 4px">Paused sources</div>` + cov.suspended_sources.map(s => `<div class="small dimmed">· ${esc(s.name)} — needs ${esc(s.needs)}</div>`).join("") : "");
+
+  const doNext = home.do_next || [];
+  const doNextHTML = doNext.length ? doNext.map(d => `
+    <div class="feed-item"><div class="feed-title">${decisionPill(d.action)} &nbsp;${esc(cap(d.headline))}</div>
+    <div class="feed-why">probability ${pct(d.probability)} · ${windowText(d.window)}${d.products && d.products.length ? " · " + esc(d.products.slice(0, 3).join(", ")) : ""}</div></div>`).join("")
+    : `<div class="empty">No action needed right now — ELECOUS will say so the moment that changes.</div>`;
+
+  app.innerHTML = `
+    <div class="page-head"><h2>What deserves attention now</h2>
+      <span class="pill ${benchTone}" title="${esc(bench.summary)}">track record: ${bench.tone === "none" ? "no benchmark yet" : bench.tone === "good" ? "beats baseline" : bench.tone === "mixed" ? "mixed vs baseline" : "below baseline"}</span>
+    </div>
+    <div class="page-sub">as of ${fmtDateTime(home.as_of)} · ${home.opportunities_active} live opportunities · ${cov.active_source_count ?? 0} evidence sources active</div>
+    <div class="grid">
+      <div>
+        ${attHTML}
+        <div class="panel"><h3>Changed since yesterday</h3>
+          ${changeBlock("Strengthened", ch.strengthened, "up")}
+          ${changeBlock("Weakened", ch.weakened, "down")}
+          ${changeBlock("New", ch.new, "gold")}
         </div>
-      </div>`;
-  });
-
-  // Present (Live state summary)
-  html += `<h3 style="font-family:var(--mono); color:var(--text); font-size:12px; margin:40px 0 20px; letter-spacing:1px">LIVE EXTERNAL FORCES</h3>`;
-  const sigs = (streamState.present?.signals||[]).slice(0,5).map(s=>prettySig(s.signal_key)).join(", ");
-  html += `
-    <div class="tl-node present">
-      <span class="tl-time">Now</span>
-      <div class="tl-card">
-        <h3>Current Environment</h3>
-        <p>Active shifts: ${sigs || "Quiet"}</p>
+        <div class="panel"><h3>What to do next</h3>${doNextHTML}</div>
+      </div>
+      <div>
+        <div class="panel"><h3>Live intelligence</h3><div id="feedList"></div></div>
+        <div class="panel"><h3>Prediction verdicts</h3>${verdictsHTML}</div>
+        <div class="panel"><h3>Learned in the last 24 h</h3>${learnedHTML}</div>
+        <div class="panel"><h3>Coverage — derived live</h3>${covHTML || `<div class="empty">no active sources</div>`}</div>
+        <div class="panel"><h3>Track record, honestly</h3><div class="small dimmed">${esc(bench.summary)}</div></div>
       </div>
     </div>`;
+  feedCache = []; feedKnown = new Set();
+  pollFeed();
+};
 
-  // Past (Validated Predictions/Episodes)
-  html += `<h3 style="font-family:var(--mono); color:var(--faint); font-size:12px; margin:40px 0 20px; letter-spacing:1px">VALIDATED INTELLIGENCE</h3>`;
-  const past = (streamState.past||[]).slice(0, 10);
-  if (past.length === 0) html += `<div class="muted" style="margin-bottom:30px; margin-left:30px">No past research episodes.</div>`;
-  past.forEach(p => {
-    const isGood = p.confidence > 0.5;
-    html += `
-      <div class="tl-node ${isGood?'past-good':'past-bad'}">
-        <span class="tl-time">${p.timeline?.started_at?.slice(0,10) || "Past"}</span>
-        <div class="tl-card">
-          <div style="display:flex;justify-content:space-between">
-            <h3>Research: ${p.traits?.entity || "Demand Shift"}</h3>
-            <span class="badge ${isGood?'good':'bad'}">Confidence ${formatP(p.confidence)}</span>
-          </div>
-          <p>Found ${p.evidence?.supporting_signals?.length || 0} supporting signals.</p>
-        </div>
-      </div>`;
-  });
-
-  html += `</div>`;
-  document.getElementById('app').innerHTML = html;
+/* ------------------------------------------------ TIMELINE */
+let tlState = { oldest: null, exhausted: false, loading: false, total: 0 };
+function badgeHTML(b) {
+  if (!b) return "";
+  if (!b.predicted) return `<span class="pill">not predicted</span>`;
+  if (b.verdict === "pending") return `<span class="pill info">predicted — ${esc(b.note)}</span>`;
+  if (b.verdict === "correct") return `<span class="pill up">predicted ✓ correct</span>`;
+  if (b.verdict === "incorrect") return `<span class="pill down">predicted ✗ judged incorrect</span>`;
+  if (b.verdict) return `<span class="pill warn">predicted — ${esc(String(b.verdict).replace(/_/g, " "))}</span>`;
+  return "";
 }
+function tlEventHTML(e) {
+  if (e.phase === "future") {
+    return `<div class="tl-item future"><div class="tl-date">${fmtDate(e.at)} · expected</div>
+      <div class="tl-card"><h4>${esc(e.title)}</h4><p>${esc(e.detail)} · confidence ${pct(e.confidence)} · judgment due ${fmtDate(e.judgment_due)}</p></div></div>`;
+  }
+  return `<div class="tl-item past"><div class="tl-date">${fmtDate(e.at)}</div>
+    <div class="tl-card"><h4>${esc(e.title)} ${badgeHTML(e.badge)}${e.unexpected_absence ? ` <span class="pill warn">expected spike absent</span>` : ""}</h4>
+    <p>${esc(e.detail)}</p></div></div>`;
+}
+VIEWS.timeline = async function (app) {
+  tlState = { oldest: null, exhausted: false, loading: false, total: 0 };
+  const data = await fetchJSON("/timeline?limit=60");
+  tlState.oldest = data.oldest_returned;
+  tlState.total = data.past_total;
+  tlState.exhausted = data.past_returned < 60;
+  const future = (data.events || []).filter(e => e.phase === "future");
+  const past = (data.events || []).filter(e => e.phase === "past");
+  const present = data.present;
 
-setInterval(updateTicker, 10000);
-updateTicker();
-connectStream();
-nav('timeline');
+  app.innerHTML = `
+    <div class="page-head"><h2>Timeline</h2></div>
+    <div class="page-sub">${tlState.total} recorded demand spikes · every date exact · scroll down for older history</div>
+    <div class="tl">
+      <div class="tl-band future">Next 14 days — expected</div>
+      ${future.length ? future.map(tlEventHTML).join("") : `<div class="empty" style="margin-bottom:14px">No pending predictions right now.</div>`}
+      <div class="tl-band present">Now</div>
+      ${present ? `<div class="tl-item present"><div class="tl-date">${fmtDateTime(present.as_of)}</div>
+        <div class="tl-card"><h4>Live external forces</h4>
+        <p>${present.signals.length ? present.signals.map(s => esc(s.text)).join(" · ") : "quiet — no strong signals right now"}</p></div></div>`
+        : `<div class="empty" style="margin-bottom:14px">No world snapshot recorded yet.</div>`}
+      <div class="tl-band past">History</div>
+      <div id="tlPast">${past.length ? past.map(tlEventHTML).join("") : `<div class="empty">No demand spikes recorded yet.</div>`}</div>
+      <div id="tl-sentinel">${tlState.exhausted ? "— beginning of recorded history —" : "loading more…"}</div>
+    </div>`;
 
+  const sentinel = document.getElementById("tl-sentinel");
+  const observer = new IntersectionObserver(async entries => {
+    if (!entries[0].isIntersecting || tlState.exhausted || tlState.loading || !tlState.oldest) return;
+    tlState.loading = true;
+    try {
+      const more = await fetchJSON(`/timeline?limit=60&until=${encodeURIComponent(tlState.oldest)}`);
+      const past2 = (more.events || []).filter(e => e.phase === "past");
+      if (past2.length) document.getElementById("tlPast").insertAdjacentHTML("beforeend", past2.map(tlEventHTML).join(""));
+      tlState.oldest = more.oldest_returned || tlState.oldest;
+      if (more.past_returned < 60) { tlState.exhausted = true; sentinel.textContent = "— beginning of recorded history —"; }
+    } catch (e) { sentinel.textContent = "could not load older history"; }
+    tlState.loading = false;
+  }, { root: document.getElementById("main"), rootMargin: "400px" });
+  observer.observe(sentinel);
+};
+
+/* ------------------------------------------------ PRODUCTS */
+let productSort = "largest_expected_spike";
+VIEWS.products = async function (app) {
+  const data = await fetchJSON(`/products?sort=${encodeURIComponent(productSort)}`);
+  const sorts = data.available_sorts || {};
+  const rows = (data.products || []).map(p => `
+    <tr class="click" onclick="nav('product','${esc(p.product_id)}')">
+      <td class="mono muted">${p.rank}</td>
+      <td><b style="font-weight:500">${esc(p.product)}</b><div class="small muted" style="text-transform:capitalize">${esc(String(p.category).replace(/_/g, " "))}</div></td>
+      <td><span class="pill ${p.status === "live opportunity" ? "gold" : p.status === "evidence building" ? "info" : ""}">${esc(p.status)}</span></td>
+      <td class="dimmed small" style="max-width:340px">${esc(cap(p.why))}</td>
+      <td>${p.expected_spike_probability != null ? `<span class="bar"><i style="width:${Math.round(p.expected_spike_probability * 100)}%"></i></span><span class="mono">${pct(p.expected_spike_probability)}</span>` : `<span class="muted">—</span>`}${deltaText(p.probability_delta)}</td>
+      <td class="small dimmed">${p.expected_window ? windowText(p.expected_window) : "—"}</td>
+      <td class="small">${p.last_verdict ? (p.last_verdict.verdict === "wrong" ? `<span class="pill down">wrong ${fmtDate(p.last_verdict.at)}</span>` : `<span class="pill up">correct ${fmtDate(p.last_verdict.at)}</span>`) : `<span class="muted">none yet</span>`}</td>
+    </tr>`).join("");
+
+  app.innerHTML = `
+    <div class="page-head"><h2>Products</h2></div>
+    <div class="page-sub">every monitored product always has a position — products without evidence say so honestly</div>
+    <div class="controls">
+      <label>rank by
+        <select id="sortSel">${Object.keys(sorts).map(k => `<option value="${esc(k)}"${k === productSort ? " selected" : ""}>${esc(k.replace(/_/g, " "))}</option>`).join("")}</select>
+      </label>
+      <span class="small dimmed" style="max-width:520px">${esc(data.sort_explanation)}</span>
+    </div>
+    <div class="panel" style="padding:6px 8px">
+      <table class="list">
+        <tr><th>#</th><th>Product</th><th>Status</th><th>Why</th><th>Expected spike</th><th>Expected window</th><th>Last verdict</th></tr>
+        ${rows}
+      </table>
+    </div>`;
+  document.getElementById("sortSel").onchange = e => { productSort = e.target.value; render(); };
+};
+
+/* ------------------------------------------------ PRODUCT PAGE */
+function sparkline(points) {
+  if (!points || points.length < 2) return "";
+  const vals = points.map(p => p.probability);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = (max - min) || 1;
+  const W = 320, H = 42;
+  const xy = vals.map((v, i) => `${(i / (vals.length - 1) * W).toFixed(1)},${(H - 4 - (v - min) / span * (H - 8)).toFixed(1)}`);
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="${xy.join(" ")}" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg>`;
+}
+VIEWS.product = async function (app, productId) {
+  const p = await fetchJSON(`/products/${encodeURIComponent(productId)}`);
+  const note = t => `<div class="empty">${esc(t)}</div>`;
+
+  const evidence = p.current_demand_evidence
+    ? `<div class="att-meta"><span>latest spike began <b style="font-family:var(--sans)">${fmtDate(p.current_demand_evidence.began)}</b></span>
+       <span>evidence score <b>${num(p.current_demand_evidence.evidence_score)}</b></span>
+       <span>confidence <b>${pct(p.current_demand_evidence.confidence)}</b></span></div>`
+    : note(p.current_demand_note);
+
+  const opps = p.opportunities && p.opportunities.length ? p.opportunities.map(o => `
+    <div class="feed-item"><div class="feed-title">${decisionPill(o.decision)} &nbsp;${esc(cap(o.headline))} — ${pct(o.probability)}</div>
+    <div class="feed-why">${o.why ? esc(cap(o.why)) + " · " : ""}${windowText(o.expected_window)}</div></div>`).join("") : note(p.opportunities_note);
+
+  const verdicts = p.prediction_verdicts && p.prediction_verdicts.length ? `<table class="list">
+      <tr><th>Claimed</th><th>Judged</th><th>Verdict for this product</th></tr>
+      ${p.prediction_verdicts.map(v => `<tr><td>${fmtDate(v.made_at)}</td><td>${fmtDate(v.judged_at)}</td>
+        <td>${v.verdict_for_this_product.startsWith("demand") ? `<span class="pill up">` : `<span class="pill down">`}${esc(v.verdict_for_this_product)}</span></td></tr>`).join("")}
+    </table>` : note(p.prediction_verdicts_note);
+
+  const forces = p.preceding_forces && p.preceding_forces.length ? `<table class="list">
+      <tr><th>External force</th><th>Typical lead</th><th>Confidence</th><th>Evidence</th></tr>
+      ${p.preceding_forces.slice(0, 10).map(f => `<tr><td style="max-width:420px">${esc(f.force)}</td>
+        <td class="mono">${f.typical_lead_days != null ? num(f.typical_lead_days, 1) + " d" : "—"}</td>
+        <td class="mono">${pct(f.confidence)}</td>
+        <td class="small dimmed">${f.supporting_spikes} for · ${f.contradicting_spikes} against</td></tr>`).join("")}
+    </table>` : note(p.preceding_forces_note);
+
+  const learned = p.learned_force_links && p.learned_force_links.length ? p.learned_force_links.map(l => `
+    <div class="cov-row"><span class="name" style="text-transform:none">${esc(l.force)}</span>
+    <span class="small dimmed">${l.confirmed_by_outcomes} confirmed · ${l.contradicted_by_outcomes} contradicted</span></div>`).join("") : note(p.learned_force_links_note);
+
+  const history = p.episode_history && p.episode_history.length ? `<table class="list">
+      <tr><th>Began</th><th>Peaked</th><th>Evidence score</th><th>Confidence</th></tr>
+      ${p.episode_history.slice(0, 20).map(h => `<tr><td>${fmtDate(h.began)}</td><td>${fmtDate(h.peaked)}</td>
+        <td class="mono">${num(h.evidence_score)}</td><td class="mono">${pct(h.confidence)}</td></tr>`).join("")}
+    </table>` : note("no demand spikes recorded for this product yet");
+
+  const related = p.related_products && p.related_products.length ? p.related_products.map(r => `
+    <div class="feed-item"><div class="feed-title"><a href="javascript:void(0)" onclick="nav('product','${esc(r.product_id)}')">${esc(r.product)}</a></div>
+    <div class="feed-why">${esc(r.reason)}</div></div>`).join("") : note(p.related_products_note);
+
+  const confHist = p.confidence_history && p.confidence_history.length
+    ? sparkline(p.confidence_history) + `<div class="small muted">from ${pct(p.confidence_history[0].probability)} (${fmtDate(p.confidence_history[0].at)}) to ${pct(p.confidence_history[p.confidence_history.length - 1].probability)} (${fmtDate(p.confidence_history[p.confidence_history.length - 1].at)}) across ${p.confidence_history.length} recorded assessments</div>`
+    : note(p.confidence_history_note);
+
+  app.innerHTML = `
+    <button class="back-btn" onclick="nav('products')">← All products</button>
+    <div class="page-head"><h2>${esc(p.product)}</h2><span class="pill" style="text-transform:capitalize">${esc(String(p.category).replace(/_/g, " "))}</span></div>
+    <div class="page-sub">${(p.traits || []).map(esc).join(" · ")}</div>
+    <div class="grid">
+      <div>
+        <div class="panel"><h3>Current demand evidence</h3>${evidence}</div>
+        <div class="panel"><h3>Live opportunities claiming this product</h3>${opps}</div>
+        <div class="panel"><h3>Prediction verdicts for this product</h3>${verdicts}</div>
+        <div class="panel"><h3>External forces that historically precede its spikes</h3>${forces}</div>
+        <div class="panel"><h3>Demand spike history</h3>${history}</div>
+      </div>
+      <div>
+        <div class="panel"><h3>Confidence over time</h3>${confHist}</div>
+        <div class="panel"><h3>Learned force links (from judged outcomes)</h3>${learned}</div>
+        <div class="panel"><h3>Related products</h3>${related}</div>
+      </div>
+    </div>`;
+};
+
+/* ------------------------------------------------ SEARCH */
+let searchFacets = null;
+VIEWS.search = async function (app) {
+  if (!searchFacets) {
+    try { searchFacets = (await fetchJSON("/search?kind=product&q=__none__")).facets; } catch (e) { searchFacets = { kinds: [], categories: [], regions: [], statuses: [] }; }
+  }
+  const f = searchFacets;
+  const opt = (v, label) => `<option value="${esc(v)}">${esc(label ?? v)}</option>`;
+  const kindLabels = { product: "Products", opportunity: "Opportunities", force: "External forces", relationship: "Relationships", spike: "Demand spikes", prediction: "Predictions" };
+  app.innerHTML = `
+    <div class="page-head"><h2>Search</h2></div>
+    <div class="page-sub">free text plus real facets — category, region, status, confidence, time period</div>
+    <div class="controls">
+      <label>text<input type="search" id="sq" placeholder="e.g. camping" style="width:190px"></label>
+      <label>type<select id="sk"><option value="">Everything</option>${(f.kinds || []).map(k => opt(k, kindLabels[k] || k)).join("")}</select></label>
+      <label>category<select id="sc"><option value="">Any</option>${(f.categories || []).map(c => opt(c, c.replace(/_/g, " "))).join("")}</select></label>
+      <label>region<select id="sr"><option value="">Any</option>${(f.regions || []).map(r => opt(r)).join("")}</select></label>
+      <label>status<select id="ss"><option value="">Any</option>${(f.statuses || []).map(s => opt(s, s.replace(/_/g, " "))).join("")}</select></label>
+      <label>min confidence <span id="scvLabel" class="mono">0%</span><input type="range" id="scv" min="0" max="100" value="0" style="width:110px"></label>
+      <label>from<input type="date" id="sfrom"></label>
+      <label>to<input type="date" id="sto"></label>
+    </div>
+    <div id="searchResults"><div class="empty">Type or pick a facet — results update as you go.</div></div>`;
+
+  const run = async () => {
+    const qs = new URLSearchParams();
+    const q = document.getElementById("sq").value.trim();
+    if (q) qs.set("q", q);
+    const k = document.getElementById("sk").value; if (k) qs.set("kind", k);
+    const c = document.getElementById("sc").value; if (c) qs.set("category", c);
+    const r = document.getElementById("sr").value; if (r) qs.set("region", r);
+    const s = document.getElementById("ss").value; if (s) qs.set("status", s);
+    const cv = document.getElementById("scv").value; if (cv > 0) qs.set("min_confidence", (cv / 100).toFixed(2));
+    const from = document.getElementById("sfrom").value; if (from) qs.set("since", from + "T00:00:00+00:00");
+    const to = document.getElementById("sto").value; if (to) qs.set("until", to + "T23:59:59+00:00");
+    document.getElementById("scvLabel").textContent = cv + "%";
+    const data = await fetchJSON("/search?" + qs.toString());
+    const blocks = [];
+    const group = (title, items, fn) => {
+      if (!items) return;
+      blocks.push(`<div class="section-title">${title} <span class="muted mono">${items.length}</span></div>`
+        + (items.length ? items.map(fn).join("") : `<div class="empty">no matches</div>`));
+    };
+    group("Products", data.products, i => `<div class="feed-item"><div class="feed-title"><a href="javascript:void(0)" onclick="nav('product','${esc(i.product_id)}')">${esc(i.title)}</a></div><div class="feed-why" style="text-transform:capitalize">${esc(String(i.category).replace(/_/g, " "))} · ${i.recorded_spikes} recorded spikes</div></div>`);
+    group("Opportunities", data.opportunities, i => `<div class="feed-item"><div class="feed-title">${esc(i.title)} — ${pct(i.probability)}</div><div class="feed-why">${esc(i.decision ?? "")} · ${windowText(i.window)}${i.products && i.products.length ? " · " + esc(i.products.slice(0, 4).join(", ")) : ""}</div></div>`);
+    group("External forces", data.external_forces, i => `<div class="feed-item"><div class="feed-title">${esc(i.title)}</div><div class="feed-why">confidence ${pct(i.confidence)} · ${esc(i.status ?? "")} · first seen ${fmtDate(i.first_seen)}</div></div>`);
+    group("Relationships", data.relationships, i => `<div class="feed-item"><div class="feed-title">${esc(i.title)}</div><div class="feed-why">confidence ${pct(i.confidence)} · ${esc(i.status ?? "")} · first seen ${fmtDate(i.first_seen)}</div></div>`);
+    group("Demand spikes", data.demand_spikes, i => `<div class="feed-item"><div class="feed-title">${esc(i.title)}</div><div class="feed-why" style="text-transform:capitalize">${esc(String(i.category ?? "").replace(/_/g, " "))} · began ${fmtDate(i.began)} · evidence ${num(i.evidence_score)}</div></div>`);
+    group("Predictions", data.predictions, i => `<div class="feed-item"><div class="feed-title">${esc(i.title)}</div><div class="feed-why">status ${esc(String(i.status).replace(/_/g, " "))} · confidence ${pct(i.confidence)} · made ${fmtDate(i.made_at)} · judgment due ${fmtDate(i.judgment_due)}</div></div>`);
+    document.getElementById("searchResults").innerHTML = blocks.join("") || `<div class="empty">no results</div>`;
+  };
+  let timer = null;
+  const debounced = () => { clearTimeout(timer); timer = setTimeout(() => run().catch(() => {}), 250); };
+  ["sq", "sk", "sc", "sr", "ss", "scv", "sfrom", "sto"].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", debounced); el.addEventListener("change", debounced);
+  });
+};
+
+/* ------------------------------------------------ developer mode toggle */
+const devToggle = document.getElementById("devToggle");
+function applyDevMode(on) {
+  localStorage.setItem("elecous_dev_mode", on ? "1" : "0");
+  document.getElementById("devNav").style.display = on ? "block" : "none";
+  if (on && window.buildDevNav) window.buildDevNav();
+  if (!on && currentView.startsWith("dev_")) nav("today");
+}
+devToggle.checked = localStorage.getItem("elecous_dev_mode") === "1";
+devToggle.addEventListener("change", () => applyDevMode(devToggle.checked));
+
+/* ------------------------------------------------ boot */
+applyDevMode(devToggle.checked);
+nav("today");
 </script>
+
+<!-- DEVMODE:START — engineering surfaces live ONLY behind the Developer toggle.
+     Everything below (and only below) may use implementation vocabulary. -->
+<script>
+"use strict";
+(function () {
+  const DEV_BUTTONS = [
+    ["dev_ops", "Operations"],
+    ["dev_relationships", "Mechanism store"],
+    ["dev_forces", "Factor store"],
+    ["dev_sources", "Source registry"],
+  ];
+  window.buildDevNav = function () {
+    const container = document.getElementById("devNav");
+    if (container.dataset.built) return;
+    container.dataset.built = "1";
+    container.innerHTML = `<div class="nav-sep">Developer</div>` + DEV_BUTTONS.map(([view, label]) =>
+      `<button class="nav-btn" data-view="${view}" onclick="nav('${view}')">${label}</button>`).join("");
+  };
+
+  VIEWS.dev_ops = async function (app) {
+    const [sys, act] = await Promise.all([fetchJSON("/health/system"), fetchJSON("/activity")]);
+    const tele = sys.scheduler_telemetry || {};
+    const dbRows = Object.entries(sys.databases || {}).map(([name, d]) =>
+      `<tr><td class="mono">${esc(name)}</td><td class="mono">${esc(JSON.stringify(d).slice(0, 140))}</td></tr>`).join("");
+    const schedRows = (sys.scheduler || []).map(t =>
+      `<tr><td class="mono">${esc(t.name)}</td><td>${esc(String(t.enabled))}</td><td class="mono">${esc(t.next_run ?? "")}</td></tr>`).join("");
+    const w = act.observations || {};
+    app.innerHTML = `
+      <div class="page-head"><h2>[DEV] Operations</h2></div>
+      <div class="page-sub">scheduler, workers, databases — raw internals, deliberately hidden from the business surface</div>
+      <div class="panel"><h3>Scheduler telemetry</h3>
+        <div class="small mono">running: ${esc((tele.running_tasks || []).join(", ") || "none")} · max workers: ${esc(String(tele.max_workers ?? "?"))}</div>
+        <div class="small mono" style="margin-top:6px">observations — minute ${w.minute} · hour ${w.hour} · day ${w.day} · week ${w.week} · total ${w.total}</div>
+      </div>
+      <div class="panel"><h3>Scheduled tasks</h3><table class="list"><tr><th>task</th><th>enabled</th><th>next run</th></tr>${schedRows}</table></div>
+      <div class="panel"><h3>Databases</h3><table class="list"><tr><th>db</th><th>integrity</th></tr>${dbRows}</table></div>`;
+  };
+
+  VIEWS.dev_relationships = async function (app) {
+    const d = await fetchJSON("/mechanisms");
+    app.innerHTML = `
+      <div class="page-head"><h2>[DEV] Mechanism store</h2></div>
+      <div class="page-sub">${d.mechanisms.length} latest-version mechanisms with raw ids</div>
+      <div class="panel" style="padding:6px 8px"><table class="list">
+        <tr><th>mechanism_id</th><th>name</th><th>lifecycle</th><th>confidence</th></tr>
+        ${d.mechanisms.slice(0, 300).map(m => `<tr><td class="mono">${esc(m.mechanism_id)}</td><td style="max-width:420px">${esc(m.name)}</td><td>${esc(m.lifecycle)}</td><td class="mono">${num(m.current_confidence)}</td></tr>`).join("")}
+      </table></div>`;
+  };
+
+  VIEWS.dev_forces = async function (app) {
+    const d = await fetchJSON("/factors");
+    app.innerHTML = `
+      <div class="page-head"><h2>[DEV] Factor store</h2></div>
+      <div class="page-sub">${d.factors.length} latest-version environmental factors with raw ids</div>
+      <div class="panel" style="padding:6px 8px"><table class="list">
+        <tr><th>factor_id</th><th>name</th><th>lifecycle</th><th>confidence</th><th>signals</th></tr>
+        ${d.factors.slice(0, 300).map(f => `<tr><td class="mono">${esc(f.factor_id)}</td><td style="max-width:420px">${esc(f.name)}</td><td>${esc(f.lifecycle)}</td><td class="mono">${num(f.current_confidence)}</td><td class="mono">${(f.signals || []).length}</td></tr>`).join("")}
+      </table></div>`;
+  };
+
+  VIEWS.dev_sources = async function (app) {
+    const d = await fetchJSON("/observation/sources");
+    app.innerHTML = `
+      <div class="page-head"><h2>[DEV] Source registry</h2></div>
+      <div class="page-sub">${d.sources.length} registered observation sources</div>
+      <div class="panel" style="padding:6px 8px"><table class="list">
+        <tr><th>source_id</th><th>name</th><th>capability</th><th>status</th><th>health</th><th>failures</th></tr>
+        ${d.sources.map(s => `<tr><td class="mono">${esc(s.source_id)}</td><td>${esc(s.name)}</td><td>${esc(s.observation_capability)}</td><td>${esc(s.status)}</td><td class="mono">${num(s.health)}</td><td class="mono">${esc(String(s.failure_count))}</td></tr>`).join("")}
+      </table></div>`;
+  };
+
+  if (localStorage.getItem("elecous_dev_mode") === "1") window.buildDevNav();
+})();
+</script>
+<!-- DEVMODE:END -->
 </body>
 </html>
